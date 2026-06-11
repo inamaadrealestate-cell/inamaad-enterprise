@@ -513,11 +513,37 @@ export default function App() {
 
             <div className="relative">
               <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-2xl backdrop-blur-xl">
-                <img
-                  src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80"
-                  alt="Luxury real estate investment"
-                  className="h-[430px] w-full rounded-[1.5rem] object-cover"
-                />
+                <div className="relative flex h-[430px] w-full overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-slate-900 via-slate-800 to-amber-950">
+  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.35),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.12),transparent_35%)]" />
+
+  <div className="relative z-10 flex h-full w-full flex-col justify-between p-8 text-white">
+    <div>
+      <p className="text-xs font-black uppercase tracking-[0.25em] text-amber-300">
+        Premium verified asset
+      </p>
+      <h3 className="mt-4 max-w-sm text-4xl font-black leading-tight">
+        Luxury residential investment in a high-growth market.
+      </h3>
+    </div>
+
+    <div className="grid grid-cols-3 gap-3">
+      <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+        <p className="text-xl font-black">₦185M</p>
+        <p className="mt-1 text-xs text-slate-300">Asset value</p>
+      </div>
+
+      <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+        <p className="text-xl font-black">14%</p>
+        <p className="mt-1 text-xs text-slate-300">Growth</p>
+      </div>
+
+      <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
+        <p className="text-xl font-black">Lagos</p>
+        <p className="mt-1 text-xs text-slate-300">Market</p>
+      </div>
+    </div>
+  </div>
+</div>
 
                 <div className="mt-4 rounded-[1.5rem] bg-white p-5">
                   <div className="flex items-start justify-between gap-5">
@@ -616,11 +642,19 @@ export default function App() {
                 className="group overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-2xl"
               >
                 <div className="relative h-64 overflow-hidden">
-                  <img
-                    src={listing.image}
-                    alt={listing.title}
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
+                  <div className="flex h-full w-full items-end bg-gradient-to-br from-slate-950 via-slate-800 to-amber-900 p-6 transition duration-500 group-hover:scale-105">
+  <div>
+    <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-300">
+      INAMAAD Verified Asset
+    </p>
+    <h4 className="mt-3 max-w-xs text-2xl font-black leading-tight text-white">
+      {listing.title}
+    </h4>
+    <p className="mt-2 text-sm font-semibold text-slate-300">
+      {listing.location}
+    </p>
+  </div>
+</div>
                   <div className="absolute left-4 top-4 rounded-full bg-white/95 px-4 py-2 text-xs font-black text-slate-950">
                     {listing.type}
                   </div>

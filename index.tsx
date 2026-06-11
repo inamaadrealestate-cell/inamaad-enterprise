@@ -1050,6 +1050,18 @@ function deleteListing(id: number) {
           </div>
         </div>
       )}
+      
+            <a
+        href="https://wa.me/2348106350486?text=Hello%20INAMAAD%20Real%20Estate%2C%20I%20am%20interested%20in%20your%20verified%20property%20investment%20opportunities."
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Chat with INAMAAD on WhatsApp"
+        className="fixed bottom-6 right-6 z-[120] flex items-center gap-3 rounded-full bg-green-500 px-5 py-4 text-white shadow-xl hover:bg-green-600 transition-colors"
+      >
+        <span className="text-xl">💬</span>
+        <span className="hidden sm:inline text-sm font-bold">WhatsApp</span>
+      </a>
+
     </div>
   );
 }

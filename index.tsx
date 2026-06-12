@@ -25,6 +25,7 @@ type Listing = {
   status: ListingStatus;
   ownerName?: string;
   ownerPhone?: string;
+  imageUrl?: string;
   createdAt?: string;
 };
 
@@ -241,6 +242,7 @@ function mapListingRow(row: any): Listing {
     status: row.status,
     ownerName: row.owner_name || "",
     ownerPhone: row.owner_phone || "",
+    imageUrl: row.image_url || "",
     createdAt: row.created_at,
   };
 }
@@ -271,6 +273,7 @@ function listingToRow(listing: Omit<Listing, "id">) {
     status: listing.status,
     owner_name: listing.ownerName || null,
     owner_phone: listing.ownerPhone || null,
+    image_url: listing.imageUrl || null,
   };
 }
 
@@ -315,6 +318,8 @@ export default function App() {
     ownerName: "",
     ownerPhone: "",
   });
+
+  const [postImageFile, setPostImageFile] = useState<File | null>(null);
 
   const [investorForm, setInvestorForm] = useState({
     name: "",
@@ -490,6 +495,41 @@ export default function App() {
     }
   }
 
+  async function uploadPropertyImage(file: File) {
+    if (!supabase) return "";
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const safeFileName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("property-images")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data } = supabase.storage
+      .from("property-images")
+      .getPublicUrl(safeFileName);
+
+    return data.publicUrl;
+  }
+
+  function imageFileToBase64(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
   function openListing(listing: Listing) {
     setSelectedListing(listing);
     setModal("details");
@@ -498,57 +538,74 @@ export default function App() {
   async function submitListing(event: React.FormEvent) {
     event.preventDefault();
 
-    const newListing: Omit<Listing, "id"> = {
-      title: postForm.title,
-      location: postForm.location,
-      price: postForm.price,
-      value: currencyToValue(postForm.price),
-      type: postForm.type,
-      category: postForm.category,
-      yieldText: postForm.yieldText || "Pending investment review",
-      description: postForm.description,
-      status: "Pending Review",
-      ownerName: postForm.ownerName,
-      ownerPhone: postForm.ownerPhone,
-      createdAt: new Date().toISOString(),
-    };
+    setIsLoading(true);
 
-    if (supabase) {
-      const { error } = await supabase.from("listings").insert(
-        listingToRow({
-          ...newListing,
-          status: "Pending Review",
-        })
-      );
+    try {
+      const imageUrl = postImageFile
+        ? supabase
+          ? await uploadPropertyImage(postImageFile)
+          : await imageFileToBase64(postImageFile)
+        : "";
 
-      if (error) {
-        console.error(error);
-        showSuccess("Unable to submit listing. Check database settings.");
-        return;
+      const newListing: Omit<Listing, "id"> = {
+        title: postForm.title,
+        location: postForm.location,
+        price: postForm.price,
+        value: currencyToValue(postForm.price),
+        type: postForm.type,
+        category: postForm.category,
+        yieldText: postForm.yieldText || "Pending investment review",
+        description: postForm.description,
+        status: "Pending Review",
+        ownerName: postForm.ownerName,
+        ownerPhone: postForm.ownerPhone,
+        imageUrl,
+        createdAt: new Date().toISOString(),
+      };
+
+      if (supabase) {
+        const { error } = await supabase.from("listings").insert(
+          listingToRow({
+            ...newListing,
+            status: "Pending Review",
+          })
+        );
+
+        if (error) {
+          console.error(error);
+          showSuccess("Unable to submit listing. Check database settings.");
+          return;
+        }
+
+        await loadDatabaseListings();
+      } else {
+        setListings((current) => [
+          { ...newListing, id: Date.now() },
+          ...current,
+        ]);
       }
 
-      await loadDatabaseListings();
-    } else {
-      setListings((current) => [
-        { ...newListing, id: Date.now() },
-        ...current,
-      ]);
+      setPostForm({
+        title: "",
+        location: "",
+        price: "",
+        type: "Residential",
+        category: "For Sale",
+        yieldText: "",
+        description: "",
+        ownerName: "",
+        ownerPhone: "",
+      });
+      setPostImageFile(null);
+
+      setModal(null);
+      showSuccess("Opportunity submitted successfully. Admin review is pending.");
+    } catch (error) {
+      console.error(error);
+      showSuccess("Image upload failed. Please try a smaller JPG, PNG, or WEBP image.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setPostForm({
-      title: "",
-      location: "",
-      price: "",
-      type: "Residential",
-      category: "For Sale",
-      yieldText: "",
-      description: "",
-      ownerName: "",
-      ownerPhone: "",
-    });
-
-    setModal(null);
-    showSuccess("Opportunity submitted successfully. Admin review is pending.");
   }
 
   async function submitInvestorRequest(event: React.FormEvent) {
@@ -1026,8 +1083,20 @@ export default function App() {
                     className="group overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
                   >
                     <div className="relative h-72 overflow-hidden bg-[#0d1c38]">
-                      <div className="absolute inset-0 bg-gradient-to-br from-[#0d1c38] via-[#1b3157] to-[#9b6b16]" />
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
+                      {listing.imageUrl ? (
+                        <img
+                          src={listing.imageUrl}
+                          alt={listing.title}
+                          className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <>
+                          <div className="absolute inset-0 bg-gradient-to-br from-[#0d1c38] via-[#1b3157] to-[#9b6b16]" />
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
+                        </>
+                      )}
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0d1c38]/95 via-[#0d1c38]/45 to-[#0d1c38]/10" />
 
                       <div className="relative z-10 flex h-full flex-col justify-between p-7 text-white">
                         <div className="flex items-start justify-between gap-4">
@@ -1696,6 +1765,31 @@ export default function App() {
                   />
                 </div>
 
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
+                  <label className="text-sm font-black text-[#0d1c38]">
+                    Property image
+                  </label>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Upload one clear JPG, PNG, or WEBP image. Maximum 5MB.
+                  </p>
+
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) =>
+                      setPostImageFile(event.target.files?.[0] || null)
+                    }
+                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  {postImageFile && (
+                    <p className="mt-3 text-xs font-bold text-emerald-700">
+                      Selected: {postImageFile.name}
+                    </p>
+                  )}
+                </div>
+
                 <textarea
                   required
                   value={postForm.description}
@@ -1736,8 +1830,11 @@ export default function App() {
                   />
                 </div>
 
-                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
-                  Submit for admin review
+                <button
+                  disabled={isLoading}
+                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isLoading ? "Submitting..." : "Submit for admin review"}
                 </button>
               </form>
             )}
@@ -1840,8 +1937,20 @@ export default function App() {
             {modal === "details" && selectedListing && (
               <div>
                 <div className="relative h-80 overflow-hidden rounded-[26px] bg-[#0d1c38]">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#0d1c38] via-[#1b3157] to-[#9b6b16]" />
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
+                  {selectedListing.imageUrl ? (
+                    <img
+                      src={selectedListing.imageUrl}
+                      alt={selectedListing.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#0d1c38] via-[#1b3157] to-[#9b6b16]" />
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
+                    </>
+                  )}
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0d1c38]/95 via-[#0d1c38]/45 to-[#0d1c38]/10" />
 
                   <div className="relative z-10 flex h-full flex-col justify-end p-8 text-white">
                     <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">

@@ -81,6 +81,55 @@ const navLinks = [
   { label: "Contact", href: "#contact" },
 ];
 
+const nigeriaStateOptions = [
+  "Abia",
+  "Adamawa",
+  "Akwa Ibom",
+  "Anambra",
+  "Bauchi",
+  "Bayelsa",
+  "Benue",
+  "Borno",
+  "Cross River",
+  "Delta",
+  "Ebonyi",
+  "Edo",
+  "Ekiti",
+  "Enugu",
+  "Gombe",
+  "Imo",
+  "Jigawa",
+  "Kaduna",
+  "Kano",
+  "Katsina",
+  "Kebbi",
+  "Kogi",
+  "Kwara",
+  "Lagos",
+  "Nasarawa",
+  "Niger",
+  "Ogun",
+  "Ondo",
+  "Osun",
+  "Oyo",
+  "Plateau",
+  "Rivers",
+  "Sokoto",
+  "Taraba",
+  "Yobe",
+  "Zamfara",
+];
+
+const nigeriaLocationOptions = [
+  { label: "FCT Abuja", value: "Abuja" },
+  ...nigeriaStateOptions.map((state) => ({ label: state, value: state })),
+];
+
+const nigeriaLocationLabels = [
+  "FCT Abuja",
+  ...nigeriaStateOptions,
+];
+
 const seedListings: Listing[] = [
   {
     id: 1,
@@ -172,7 +221,7 @@ const stats = [
   { value: "2,500+", label: "Verified listings" },
   { value: "10,000+", label: "Registered users" },
   { value: "150+", label: "JV opportunities" },
-  { value: "36", label: "States covered + FCT served separately" },
+  { value: "36", label: "States + FCT" },
 ];
 
 const categoryCards = [
@@ -1500,6 +1549,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f7f8fb] text-slate-950">
+      <datalist id="nigeria-location-options">
+        {nigeriaLocationLabels.map((location) => (
+          <option key={location} value={location} />
+        ))}
+      </datalist>
+
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
           <a href="#" className="flex items-center gap-3">
@@ -1645,11 +1700,12 @@ export default function App() {
                     onChange={(event) => setLocationFilter(event.target.value)}
                     className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
                   >
-                    <option>All Locations</option>
-                    <option>Abuja</option>
-                    <option>Lagos</option>
-                    <option>Port Harcourt</option>
-                    <option>Kano</option>
+                    <option value="All Locations">All Locations</option>
+                    {nigeriaLocationOptions.map((location) => (
+                      <option key={location.label} value={location.value}>
+                        {location.label}
+                      </option>
+                    ))}
                   </select>
 
                   <a
@@ -2454,6 +2510,7 @@ export default function App() {
 
                   <input
                     required
+                    list="nigeria-location-options"
                     value={postForm.location}
                     onChange={(event) =>
                       setPostForm({
@@ -2461,7 +2518,7 @@ export default function App() {
                         location: event.target.value,
                       })
                     }
-                    placeholder="Location"
+                    placeholder="State/FCT or city, e.g. Lagos or FCT Abuja"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
                 </div>
@@ -2615,11 +2672,12 @@ export default function App() {
 
                   <input
                     required
+                    list="nigeria-location-options"
                     value={editForm.location}
                     onChange={(event) =>
                       setEditForm({ ...editForm, location: event.target.value })
                     }
-                    placeholder="Location"
+                    placeholder="State/FCT or city, e.g. Lagos or FCT Abuja"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
                 </div>
@@ -3700,4 +3758,3 @@ export default function App() {
     </div>
   );
 }
-

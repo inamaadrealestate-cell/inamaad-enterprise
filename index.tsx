@@ -40,6 +40,18 @@ type InvestorRequest = {
   createdAt: string;
 };
 
+type PropertyInquiry = {
+  id: number;
+  listingId?: number | null;
+  listingTitle: string;
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+  status: "New" | "Contacted" | "Closed";
+  createdAt: string;
+};
+
 const WHATSAPP_NUMBER = "2348106350486";
 const LOCAL_ADMIN_PASSWORD = "admin123";
 
@@ -260,6 +272,20 @@ function mapInvestorRow(row: any): InvestorRequest {
   };
 }
 
+function mapPropertyInquiryRow(row: any): PropertyInquiry {
+  return {
+    id: Number(row.id),
+    listingId: row.listing_id ? Number(row.listing_id) : null,
+    listingTitle: row.listing_title,
+    name: row.name,
+    email: row.email || "",
+    phone: row.phone,
+    message: row.message || "",
+    status: row.status || "New",
+    createdAt: row.created_at,
+  };
+}
+
 function listingToRow(listing: Omit<Listing, "id">) {
   return {
     title: listing.title,
@@ -280,6 +306,9 @@ function listingToRow(listing: Omit<Listing, "id">) {
 export default function App() {
   const [listings, setListings] = useState<Listing[]>(seedListings);
   const [investorRequests, setInvestorRequests] = useState<InvestorRequest[]>(
+    []
+  );
+  const [propertyInquiries, setPropertyInquiries] = useState<PropertyInquiry[]>(
     []
   );
   const [modal, setModal] = useState<ModalType>(null);
@@ -330,6 +359,13 @@ export default function App() {
     message: "",
   });
 
+  const [inquiryForm, setInquiryForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: "",
+  });
+
   const usesDatabase = Boolean(supabase);
 
   const pendingListings = listings.filter(
@@ -377,6 +413,7 @@ export default function App() {
         if (!session?.user) {
           setAdminUnlocked(false);
           setInvestorRequests([]);
+          setPropertyInquiries([]);
         }
       }
     );
@@ -405,6 +442,14 @@ export default function App() {
   }, [investorRequests]);
 
   useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem(
+      "inamaad_property_inquiries",
+      JSON.stringify(propertyInquiries)
+    );
+  }, [propertyInquiries]);
+
+  useEffect(() => {
     function openAdminShortcut(event: KeyboardEvent) {
       if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
         setAdminPassword("");
@@ -425,6 +470,7 @@ export default function App() {
     try {
       const storedListings = localStorage.getItem("inamaad_listings");
       const storedRequests = localStorage.getItem("inamaad_investor_requests");
+      const storedInquiries = localStorage.getItem("inamaad_property_inquiries");
 
       if (storedListings) {
         setListings(JSON.parse(storedListings) as Listing[]);
@@ -433,9 +479,14 @@ export default function App() {
       if (storedRequests) {
         setInvestorRequests(JSON.parse(storedRequests) as InvestorRequest[]);
       }
+
+      if (storedInquiries) {
+        setPropertyInquiries(JSON.parse(storedInquiries) as PropertyInquiry[]);
+      }
     } catch {
       localStorage.removeItem("inamaad_listings");
       localStorage.removeItem("inamaad_investor_requests");
+      localStorage.removeItem("inamaad_property_inquiries");
     }
   }
 
@@ -476,6 +527,22 @@ export default function App() {
     setInvestorRequests((data || []).map(mapInvestorRow));
   }
 
+  async function loadDatabasePropertyInquiries() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("property_inquiries")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setPropertyInquiries((data || []).map(mapPropertyInquiryRow));
+  }
+
   async function checkAdminAccess() {
     if (!supabase) return;
 
@@ -492,6 +559,7 @@ export default function App() {
     if (data) {
       await loadDatabaseListings();
       await loadDatabaseInvestorRequests();
+      await loadDatabasePropertyInquiries();
     }
   }
 
@@ -532,6 +600,7 @@ export default function App() {
 
   function openListing(listing: Listing) {
     setSelectedListing(listing);
+    setInquiryForm({ name: "", email: "", phone: "", message: "" });
     setModal("details");
   }
 
@@ -651,6 +720,49 @@ export default function App() {
     showSuccess("Investor request saved. INAMAAD will contact you shortly.");
   }
 
+  async function submitPropertyInquiry(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!selectedListing) return;
+
+    const newInquiry: Omit<PropertyInquiry, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      name: inquiryForm.name,
+      email: inquiryForm.email,
+      phone: inquiryForm.phone,
+      message: inquiryForm.message,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("property_inquiries").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        name: inquiryForm.name,
+        email: inquiryForm.email || null,
+        phone: inquiryForm.phone,
+        message: inquiryForm.message,
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit inquiry. Check database settings.");
+        return;
+      }
+    } else {
+      setPropertyInquiries((current) => [
+        { ...newInquiry, id: Date.now() },
+        ...current,
+      ]);
+    }
+
+    setInquiryForm({ name: "", email: "", phone: "", message: "" });
+    setModal(null);
+    showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
+  }
+
   async function handleSignIn(event: React.FormEvent) {
     event.preventDefault();
 
@@ -740,6 +852,7 @@ export default function App() {
     setAdminUnlocked(false);
     setUser(null);
     setInvestorRequests([]);
+    setPropertyInquiries([]);
     showSuccess("Staff signed out.");
   }
 
@@ -807,6 +920,29 @@ export default function App() {
     }
 
     showSuccess("Investor request removed.");
+  }
+
+  async function deletePropertyInquiry(id: number) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("property_inquiries")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete property inquiry.");
+        return;
+      }
+
+      await loadDatabasePropertyInquiries();
+    } else {
+      setPropertyInquiries((current) =>
+        current.filter((inquiry) => inquiry.id !== id)
+      );
+    }
+
+    showSuccess("Property inquiry removed.");
   }
 
   return (
@@ -2016,10 +2152,79 @@ export default function App() {
                       onClick={() => setModal("investor")}
                       className="mt-6 w-full rounded-2xl bg-[#f0bf3c] px-5 py-3 text-sm font-black text-[#0d1c38]"
                     >
-                      Request Access
+                      Investor Access
                     </button>
                   </div>
                 </div>
+
+                <form
+                  onSubmit={submitPropertyInquiry}
+                  className="mt-6 grid gap-4 rounded-[24px] border border-slate-200 bg-white p-6"
+                >
+                  <div>
+                    <p className="text-xl font-black text-[#0d1c38]">
+                      Ask about this property
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Send your contact details to INAMAAD for this specific listing.
+                    </p>
+                  </div>
+
+                  <input
+                    required
+                    value={inquiryForm.name}
+                    onChange={(event) =>
+                      setInquiryForm({ ...inquiryForm, name: event.target.value })
+                    }
+                    placeholder="Your name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      value={inquiryForm.email}
+                      onChange={(event) =>
+                        setInquiryForm({
+                          ...inquiryForm,
+                          email: event.target.value,
+                        })
+                      }
+                      type="email"
+                      placeholder="Email address optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      required
+                      value={inquiryForm.phone}
+                      onChange={(event) =>
+                        setInquiryForm({
+                          ...inquiryForm,
+                          phone: event.target.value,
+                        })
+                      }
+                      placeholder="Phone or WhatsApp number"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <textarea
+                    value={inquiryForm.message}
+                    onChange={(event) =>
+                      setInquiryForm({
+                        ...inquiryForm,
+                        message: event.target.value,
+                      })
+                    }
+                    placeholder="Message, inspection request, or offer details"
+                    rows={4}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                    Send property inquiry
+                  </button>
+                </form>
               </div>
             )}
 
@@ -2079,7 +2284,7 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
                     <p className="text-2xl font-black text-[#0d1c38]">
                       {listings.length}
@@ -2092,6 +2297,13 @@ export default function App() {
                       {pendingListings.length}
                     </p>
                     <p className="text-sm text-slate-500">Pending review</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {propertyInquiries.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Property inquiries</p>
                   </div>
 
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
@@ -2150,6 +2362,58 @@ export default function App() {
                               Delete
                             </button>
                           </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    Property inquiries
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {propertyInquiries.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No property inquiries yet.
+                      </p>
+                    )}
+
+                    {propertyInquiries.map((inquiry) => (
+                      <div
+                        key={inquiry.id}
+                        className="rounded-2xl border border-slate-200 p-5"
+                      >
+                        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                              {inquiry.listingTitle}
+                            </p>
+
+                            <p className="mt-2 font-black text-[#0d1c38]">
+                              {inquiry.name}
+                            </p>
+
+                            <p className="mt-1 text-sm text-slate-500">
+                              {inquiry.email || "No email"} • {inquiry.phone}
+                            </p>
+
+                            <p className="mt-3 text-sm leading-6 text-slate-600">
+                              {inquiry.message || "No extra message."}
+                            </p>
+
+                            <p className="mt-2 text-xs font-bold text-slate-400">
+                              Submitted {formatDate(inquiry.createdAt)}
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => deletePropertyInquiry(inquiry.id)}
+                            className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                          >
+                            Delete
+                          </button>
                         </div>
                       </div>
                     ))}

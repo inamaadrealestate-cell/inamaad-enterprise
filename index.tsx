@@ -28,6 +28,8 @@ type Listing = {
   ownerName?: string;
   ownerPhone?: string;
   imageUrl?: string;
+  featured?: boolean;
+  featuredRank?: number;
   createdAt?: string;
 };
 
@@ -377,6 +379,8 @@ function mapListingRow(row: any): Listing {
     ownerName: row.owner_name || "",
     ownerPhone: row.owner_phone || "",
     imageUrl: row.image_url || "",
+    featured: Boolean(row.featured),
+    featuredRank: Number(row.featured_rank || 0),
     createdAt: row.created_at,
   };
 }
@@ -432,6 +436,8 @@ function listingToRow(listing: Omit<Listing, "id">) {
     owner_name: listing.ownerName || null,
     owner_phone: listing.ownerPhone || null,
     image_url: listing.imageUrl || null,
+    featured: Boolean(listing.featured),
+    featured_rank: Number(listing.featuredRank || 0),
   };
 }
 
@@ -499,6 +505,8 @@ export default function App() {
     ownerName: "",
     ownerPhone: "",
     imageUrl: "",
+    featured: false,
+    featuredRank: "0",
   });
 
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
@@ -600,6 +608,15 @@ export default function App() {
         );
       })
       .sort((a, b) => {
+        if (Boolean(a.featured) !== Boolean(b.featured)) {
+          return Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+        }
+
+        if (Boolean(a.featured) && Boolean(b.featured)) {
+          const rankDifference = Number(b.featuredRank || 0) - Number(a.featuredRank || 0);
+          if (rankDifference !== 0) return rankDifference;
+        }
+
         if (sortMode === "Price High to Low") {
           return Number(b.value || 0) - Number(a.value || 0);
         }
@@ -908,6 +925,8 @@ export default function App() {
       ownerName: listing.ownerName || "",
       ownerPhone: listing.ownerPhone || "",
       imageUrl: listing.imageUrl || "",
+      featured: Boolean(listing.featured),
+      featuredRank: String(listing.featuredRank || 0),
     });
     setModal("edit");
   }
@@ -937,6 +956,8 @@ export default function App() {
         ownerName: postForm.ownerName,
         ownerPhone: postForm.ownerPhone,
         imageUrl,
+        featured: false,
+        featuredRank: 0,
         createdAt: new Date().toISOString(),
       };
 
@@ -1013,6 +1034,8 @@ export default function App() {
         ownerName: editForm.ownerName,
         ownerPhone: editForm.ownerPhone,
         imageUrl,
+        featured: Boolean(editForm.featured),
+        featuredRank: Number(editForm.featuredRank || 0),
       };
 
       if (supabase) {
@@ -1032,6 +1055,8 @@ export default function App() {
               ownerName: updatedListing.ownerName,
               ownerPhone: updatedListing.ownerPhone,
               imageUrl: updatedListing.imageUrl,
+              featured: updatedListing.featured,
+              featuredRank: updatedListing.featuredRank,
               createdAt: updatedListing.createdAt,
             })
           )
@@ -1891,7 +1916,9 @@ export default function App() {
                 {filteredListings.map((listing) => (
                   <article
                     key={listing.id}
-                    className="group overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                    className={`group overflow-hidden rounded-[28px] border bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${
+                      listing.featured ? "border-[#f0bf3c] shadow-xl ring-2 ring-[#f0bf3c]/30" : "border-slate-200"
+                    }`}
                   >
                     <div className="relative h-72 overflow-hidden bg-[#0d1c38]">
                       {listing.imageUrl ? (
@@ -1911,8 +1938,16 @@ export default function App() {
 
                       <div className="relative z-10 flex h-full flex-col justify-between p-7 text-white">
                         <div className="flex items-start justify-between gap-4">
-                          <div className="rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide backdrop-blur">
-                            {listing.type}
+                          <div className="flex flex-wrap gap-2">
+                            <div className="rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide backdrop-blur">
+                              {listing.type}
+                            </div>
+
+                            {listing.featured && (
+                              <div className="rounded-full bg-[#f0bf3c] px-4 py-2 text-xs font-black uppercase tracking-wide text-[#0d1c38] shadow-lg">
+                                Featured
+                              </div>
+                            )}
                           </div>
 
                           <div className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white">
@@ -1922,7 +1957,7 @@ export default function App() {
 
                         <div>
                           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
-                            INAMAAD verified asset
+                            {listing.featured ? "INAMAAD premium featured asset" : "INAMAAD verified asset"}
                           </p>
                           <h3 className="mt-3 max-w-sm text-3xl font-black leading-tight">
                             {listing.title}
@@ -2735,6 +2770,31 @@ export default function App() {
                     <option>Verified</option>
                     <option>Pending Review</option>
                   </select>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-[#0d1c38]">
+                    <input
+                      type="checkbox"
+                      checked={editForm.featured}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, featured: event.target.checked })
+                      }
+                      className="h-5 w-5 accent-[#d4a017]"
+                    />
+                    Mark as featured / premium
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.featuredRank}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, featuredRank: event.target.value })
+                    }
+                    placeholder="Featured rank, e.g. 10"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
                 </div>
 
                 <input
@@ -3722,6 +3782,7 @@ export default function App() {
 
                             <p className="mt-1 text-xs font-black text-slate-400">
                               {listing.status}
+                              {listing.featured ? ` • Featured rank ${listing.featuredRank || 0}` : ""}
                             </p>
 
 

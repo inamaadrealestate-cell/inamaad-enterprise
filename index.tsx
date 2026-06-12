@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { createClient, type User } from "@supabase/supabase-js";
 
 type ModalType =
   | null
@@ -39,7 +40,15 @@ type InvestorRequest = {
 };
 
 const WHATSAPP_NUMBER = "2348106350486";
-const ADMIN_PASSWORD = "admin123";
+const LOCAL_ADMIN_PASSWORD = "admin123";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_KEY =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined);
+
+const supabase =
+  SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 const navLinks = [
   { label: "Home", href: "#" },
@@ -140,7 +149,7 @@ const stats = [
   { value: "2,500+", label: "Verified listings" },
   { value: "10,000+", label: "Registered users" },
   { value: "150+", label: "JV opportunities" },
-  { value: "36", label: "States covered" },
+  { value: "37", label: "States covered" },
 ];
 
 const categoryCards = [
@@ -218,6 +227,53 @@ function currencyToValue(value: string) {
   return Number(cleaned || 0);
 }
 
+function mapListingRow(row: any): Listing {
+  return {
+    id: Number(row.id),
+    title: row.title,
+    location: row.location,
+    price: row.price,
+    value: Number(row.value || 0),
+    type: row.type,
+    category: row.category,
+    yieldText: row.yield_text,
+    description: row.description,
+    status: row.status,
+    ownerName: row.owner_name || "",
+    ownerPhone: row.owner_phone || "",
+    createdAt: row.created_at,
+  };
+}
+
+function mapInvestorRow(row: any): InvestorRequest {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    budget: row.budget,
+    interest: row.interest,
+    message: row.message || "",
+    createdAt: row.created_at,
+  };
+}
+
+function listingToRow(listing: Omit<Listing, "id">) {
+  return {
+    title: listing.title,
+    location: listing.location,
+    price: listing.price,
+    value: listing.value,
+    type: listing.type,
+    category: listing.category,
+    yield_text: listing.yieldText,
+    description: listing.description,
+    status: listing.status,
+    owner_name: listing.ownerName || null,
+    owner_phone: listing.ownerPhone || null,
+  };
+}
+
 export default function App() {
   const [listings, setListings] = useState<Listing[]>(seedListings);
   const [investorRequests, setInvestorRequests] = useState<InvestorRequest[]>(
@@ -230,8 +286,23 @@ export default function App() {
   const [propertyType, setPropertyType] = useState("All");
   const [locationFilter, setLocationFilter] = useState("All Locations");
   const [successMessage, setSuccessMessage] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [user, setUser] = useState<User | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+
+  const [signInForm, setSignInForm] = useState({
+    email: "",
+    password: "",
+  });
+
+  const [registerForm, setRegisterForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
 
   const [postForm, setPostForm] = useState({
     title: "",
@@ -254,47 +325,7 @@ export default function App() {
     message: "",
   });
 
-  useEffect(() => {
-    try {
-      const storedListings = localStorage.getItem("inamaad_listings");
-      const storedRequests = localStorage.getItem("inamaad_investor_requests");
-
-      if (storedListings) {
-        setListings(JSON.parse(storedListings) as Listing[]);
-      }
-
-      if (storedRequests) {
-        setInvestorRequests(JSON.parse(storedRequests) as InvestorRequest[]);
-      }
-    } catch {
-      localStorage.removeItem("inamaad_listings");
-      localStorage.removeItem("inamaad_investor_requests");
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("inamaad_listings", JSON.stringify(listings));
-  }, [listings]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "inamaad_investor_requests",
-      JSON.stringify(investorRequests)
-    );
-  }, [investorRequests]);
-
-  useEffect(() => {
-    function openAdminShortcut(event: KeyboardEvent) {
-      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
-        setAdminUnlocked(false);
-        setAdminPassword("");
-        setModal("admin");
-      }
-    }
-
-    window.addEventListener("keydown", openAdminShortcut);
-    return () => window.removeEventListener("keydown", openAdminShortcut);
-  }, []);
+  const usesDatabase = Boolean(supabase);
 
   const pendingListings = listings.filter(
     (listing) => listing.status === "Pending Review"
@@ -320,9 +351,143 @@ export default function App() {
     });
   }, [listings, query, propertyType, locationFilter]);
 
+  useEffect(() => {
+    if (!supabase) {
+      loadLocalData();
+      return;
+    }
+
+    loadDatabaseListings();
+
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      if (data.user) {
+        checkAdminAccess();
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+        if (!session?.user) {
+          setAdminUnlocked(false);
+          setInvestorRequests([]);
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase || !user) return;
+    checkAdminAccess();
+  }, [user]);
+
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_listings", JSON.stringify(listings));
+  }, [listings]);
+
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem(
+      "inamaad_investor_requests",
+      JSON.stringify(investorRequests)
+    );
+  }, [investorRequests]);
+
+  useEffect(() => {
+    function openAdminShortcut(event: KeyboardEvent) {
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
+        setAdminPassword("");
+        setModal("admin");
+      }
+    }
+
+    window.addEventListener("keydown", openAdminShortcut);
+    return () => window.removeEventListener("keydown", openAdminShortcut);
+  }, []);
+
   function showSuccess(message: string) {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(""), 4500);
+  }
+
+  function loadLocalData() {
+    try {
+      const storedListings = localStorage.getItem("inamaad_listings");
+      const storedRequests = localStorage.getItem("inamaad_investor_requests");
+
+      if (storedListings) {
+        setListings(JSON.parse(storedListings) as Listing[]);
+      }
+
+      if (storedRequests) {
+        setInvestorRequests(JSON.parse(storedRequests) as InvestorRequest[]);
+      }
+    } catch {
+      localStorage.removeItem("inamaad_listings");
+      localStorage.removeItem("inamaad_investor_requests");
+    }
+  }
+
+  async function loadDatabaseListings() {
+    if (!supabase) return;
+
+    setIsLoading(true);
+
+    const { data, error } = await supabase
+      .from("listings")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    setIsLoading(false);
+
+    if (error) {
+      console.error(error);
+      showSuccess("Unable to load listings from database.");
+      return;
+    }
+
+    setListings((data || []).map(mapListingRow));
+  }
+
+  async function loadDatabaseInvestorRequests() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("investor_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setInvestorRequests((data || []).map(mapInvestorRow));
+  }
+
+  async function checkAdminAccess() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase.rpc("is_admin");
+
+    if (error) {
+      console.error(error);
+      setAdminUnlocked(false);
+      return;
+    }
+
+    setAdminUnlocked(Boolean(data));
+
+    if (data) {
+      await loadDatabaseListings();
+      await loadDatabaseInvestorRequests();
+    }
   }
 
   function openListing(listing: Listing) {
@@ -330,11 +495,10 @@ export default function App() {
     setModal("details");
   }
 
-  function submitListing(event: React.FormEvent) {
+  async function submitListing(event: React.FormEvent) {
     event.preventDefault();
 
-    const newListing: Listing = {
-      id: Date.now(),
+    const newListing: Omit<Listing, "id"> = {
       title: postForm.title,
       location: postForm.location,
       price: postForm.price,
@@ -349,7 +513,27 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
 
-    setListings((current) => [newListing, ...current]);
+    if (supabase) {
+      const { error } = await supabase.from("listings").insert(
+        listingToRow({
+          ...newListing,
+          status: "Pending Review",
+        })
+      );
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit listing. Check database settings.");
+        return;
+      }
+
+      await loadDatabaseListings();
+    } else {
+      setListings((current) => [
+        { ...newListing, id: Date.now() },
+        ...current,
+      ]);
+    }
 
     setPostForm({
       title: "",
@@ -367,16 +551,35 @@ export default function App() {
     showSuccess("Opportunity submitted successfully. Admin review is pending.");
   }
 
-  function submitInvestorRequest(event: React.FormEvent) {
+  async function submitInvestorRequest(event: React.FormEvent) {
     event.preventDefault();
 
-    const newRequest: InvestorRequest = {
-      id: Date.now(),
+    const newRequest: Omit<InvestorRequest, "id"> = {
       ...investorForm,
       createdAt: new Date().toISOString(),
     };
 
-    setInvestorRequests((current) => [newRequest, ...current]);
+    if (supabase) {
+      const { error } = await supabase.from("investor_requests").insert({
+        name: investorForm.name,
+        email: investorForm.email,
+        phone: investorForm.phone,
+        budget: investorForm.budget,
+        interest: investorForm.interest,
+        message: investorForm.message,
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit investor request. Check database.");
+        return;
+      }
+    } else {
+      setInvestorRequests((current) => [
+        { ...newRequest, id: Date.now() },
+        ...current,
+      ]);
+    }
 
     setInvestorForm({
       name: "",
@@ -391,36 +594,160 @@ export default function App() {
     showSuccess("Investor request saved. INAMAAD will contact you shortly.");
   }
 
-  function unlockAdmin(event: React.FormEvent) {
+  async function handleSignIn(event: React.FormEvent) {
     event.preventDefault();
 
-    if (adminPassword === ADMIN_PASSWORD) {
-      setAdminUnlocked(true);
-      setAdminPassword("");
-    } else {
-      showSuccess("Wrong admin password.");
+    if (!supabase) {
+      setModal(null);
+      showSuccess("Demo sign in completed.");
+      return;
     }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: signInForm.email,
+      password: signInForm.password,
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setSignInForm({ email: "", password: "" });
+    setModal(null);
+    showSuccess("Signed in successfully.");
   }
 
-  function approveListing(id: number) {
-    setListings((current) =>
-      current.map((listing) =>
-        listing.id === id ? { ...listing, status: "Verified" } : listing
-      )
-    );
+  async function handleRegister(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!supabase) {
+      setModal(null);
+      showSuccess("Demo account created.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signUp({
+      email: registerForm.email,
+      password: registerForm.password,
+      options: {
+        data: {
+          full_name: registerForm.name,
+        },
+      },
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setRegisterForm({ name: "", email: "", password: "" });
+    setModal(null);
+    showSuccess("Account created. Check your email if confirmation is required.");
+  }
+
+  async function unlockAdmin(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!supabase) {
+      if (adminPassword === LOCAL_ADMIN_PASSWORD) {
+        setAdminUnlocked(true);
+        setAdminPassword("");
+      } else {
+        showSuccess("Wrong admin password.");
+      }
+
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: adminEmail,
+      password: adminPassword,
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setAdminPassword("");
+    await checkAdminAccess();
+  }
+
+  async function logoutAdmin() {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+
+    setAdminUnlocked(false);
+    setUser(null);
+    setInvestorRequests([]);
+    showSuccess("Staff signed out.");
+  }
+
+  async function approveListing(id: number) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("listings")
+        .update({ status: "Verified" })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to approve listing.");
+        return;
+      }
+
+      await loadDatabaseListings();
+    } else {
+      setListings((current) =>
+        current.map((listing) =>
+          listing.id === id ? { ...listing, status: "Verified" } : listing
+        )
+      );
+    }
 
     showSuccess("Listing approved.");
   }
 
-  function deleteListing(id: number) {
-    setListings((current) => current.filter((listing) => listing.id !== id));
+  async function deleteListing(id: number) {
+    if (supabase) {
+      const { error } = await supabase.from("listings").delete().eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete listing.");
+        return;
+      }
+
+      await loadDatabaseListings();
+    } else {
+      setListings((current) => current.filter((listing) => listing.id !== id));
+    }
+
     showSuccess("Listing deleted.");
   }
 
-  function deleteInvestorRequest(id: number) {
-    setInvestorRequests((current) =>
-      current.filter((request) => request.id !== id)
-    );
+  async function deleteInvestorRequest(id: number) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("investor_requests")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete investor request.");
+        return;
+      }
+
+      await loadDatabaseInvestorRequests();
+    } else {
+      setInvestorRequests((current) =>
+        current.filter((request) => request.id !== id)
+      );
+    }
 
     showSuccess("Investor request removed.");
   }
@@ -587,6 +914,12 @@ export default function App() {
                   </a>
                 </div>
               </div>
+
+              {!usesDatabase && (
+                <p className="mt-4 text-xs font-semibold text-slate-300">
+                  Database not connected yet. Forms will use local demo storage until Supabase environment variables are added.
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -681,85 +1014,91 @@ export default function App() {
               ))}
             </div>
 
-            <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {filteredListings.map((listing) => (
-                <article
-                  key={listing.id}
-                  className="group overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
-                >
-                  <div className="relative h-72 overflow-hidden bg-[#0d1c38]">
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#0d1c38] via-[#1b3157] to-[#9b6b16]" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
+            {isLoading ? (
+              <div className="mt-12 rounded-[28px] bg-white p-8 text-center font-bold text-slate-500">
+                Loading listings...
+              </div>
+            ) : (
+              <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {filteredListings.map((listing) => (
+                  <article
+                    key={listing.id}
+                    className="group overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                  >
+                    <div className="relative h-72 overflow-hidden bg-[#0d1c38]">
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#0d1c38] via-[#1b3157] to-[#9b6b16]" />
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
 
-                    <div className="relative z-10 flex h-full flex-col justify-between p-7 text-white">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide backdrop-blur">
-                          {listing.type}
+                      <div className="relative z-10 flex h-full flex-col justify-between p-7 text-white">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide backdrop-blur">
+                            {listing.type}
+                          </div>
+
+                          <div className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white">
+                            {listing.status}
+                          </div>
                         </div>
 
-                        <div className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white">
-                          {listing.status}
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
+                            INAMAAD verified asset
+                          </p>
+                          <h3 className="mt-3 max-w-sm text-3xl font-black leading-tight">
+                            {listing.title}
+                          </h3>
+                          <p className="mt-3 text-base font-medium text-slate-200">
+                            {listing.location}
+                          </p>
                         </div>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
-                          INAMAAD verified asset
-                        </p>
-                        <h3 className="mt-3 max-w-sm text-3xl font-black leading-tight">
-                          {listing.title}
-                        </h3>
-                        <p className="mt-3 text-base font-medium text-slate-200">
-                          {listing.location}
-                        </p>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="p-7">
-                    <div className="flex items-start justify-between gap-5">
-                      <div>
+                    <div className="p-7">
+                      <div className="flex items-start justify-between gap-5">
+                        <div>
+                          <p className="text-sm font-bold text-slate-500">
+                            Starting price
+                          </p>
+                          <p className="mt-1 text-3xl font-black text-[#0d1c38]">
+                            {listing.price}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-[#fff6dc] px-4 py-3 text-right">
+                          <p className="text-xs font-bold text-slate-500">
+                            Type
+                          </p>
+                          <p className="text-sm font-black text-[#9b6b16]">
+                            {listing.category}
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="mt-5 min-h-[72px] text-base leading-7 text-slate-600">
+                        {listing.description}
+                      </p>
+
+                      <div className="mt-6 rounded-2xl bg-slate-50 p-5">
                         <p className="text-sm font-bold text-slate-500">
-                          Starting price
+                          Investment highlight
                         </p>
-                        <p className="mt-1 text-3xl font-black text-[#0d1c38]">
-                          {listing.price}
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-[#fff6dc] px-4 py-3 text-right">
-                        <p className="text-xs font-bold text-slate-500">
-                          Type
-                        </p>
-                        <p className="text-sm font-black text-[#9b6b16]">
-                          {listing.category}
+                        <p className="mt-2 text-base font-black text-[#0d1c38]">
+                          {listing.yieldText}
                         </p>
                       </div>
+
+                      <button
+                        onClick={() => openListing(listing)}
+                        className="mt-6 flex w-full items-center justify-center rounded-2xl bg-[#0d1c38] px-5 py-4 text-base font-bold text-white transition hover:bg-[#13284f]"
+                      >
+                        View Details
+                      </button>
                     </div>
-
-                    <p className="mt-5 min-h-[72px] text-base leading-7 text-slate-600">
-                      {listing.description}
-                    </p>
-
-                    <div className="mt-6 rounded-2xl bg-slate-50 p-5">
-                      <p className="text-sm font-bold text-slate-500">
-                        Investment highlight
-                      </p>
-                      <p className="mt-2 text-base font-black text-[#0d1c38]">
-                        {listing.yieldText}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => openListing(listing)}
-                      className="mt-6 flex w-full items-center justify-center rounded-2xl bg-[#0d1c38] px-5 py-4 text-base font-bold text-white transition hover:bg-[#13284f]"
-                    >
-                      View Details
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -1125,7 +1464,6 @@ export default function App() {
 
               <button
                 onClick={() => {
-                  setAdminUnlocked(false);
                   setAdminPassword("");
                   setModal("admin");
                 }}
@@ -1186,17 +1524,14 @@ export default function App() {
             </div>
 
             {modal === "signin" && (
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  setModal(null);
-                  showSuccess("Demo sign in completed.");
-                }}
-                className="grid gap-4"
-              >
+              <form onSubmit={handleSignIn} className="grid gap-4">
                 <input
                   required
                   type="email"
+                  value={signInForm.email}
+                  onChange={(event) =>
+                    setSignInForm({ ...signInForm, email: event.target.value })
+                  }
                   placeholder="Email address"
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
@@ -1204,6 +1539,13 @@ export default function App() {
                 <input
                   required
                   type="password"
+                  value={signInForm.password}
+                  onChange={(event) =>
+                    setSignInForm({
+                      ...signInForm,
+                      password: event.target.value,
+                    })
+                  }
                   placeholder="Password"
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
@@ -1223,16 +1565,16 @@ export default function App() {
             )}
 
             {modal === "register" && (
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  setModal(null);
-                  showSuccess("Demo account created.");
-                }}
-                className="grid gap-4"
-              >
+              <form onSubmit={handleRegister} className="grid gap-4">
                 <input
                   required
+                  value={registerForm.name}
+                  onChange={(event) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      name: event.target.value,
+                    })
+                  }
                   placeholder="Full name"
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
@@ -1240,6 +1582,13 @@ export default function App() {
                 <input
                   required
                   type="email"
+                  value={registerForm.email}
+                  onChange={(event) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      email: event.target.value,
+                    })
+                  }
                   placeholder="Email address"
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
@@ -1247,6 +1596,13 @@ export default function App() {
                 <input
                   required
                   type="password"
+                  value={registerForm.password}
+                  onChange={(event) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      password: event.target.value,
+                    })
+                  }
                   placeholder="Password"
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
@@ -1561,17 +1917,28 @@ export default function App() {
             {modal === "admin" && !adminUnlocked && (
               <form onSubmit={unlockAdmin} className="grid gap-4">
                 <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm leading-6 text-slate-600">
-                  Enter the staff password to manage pending listings and
-                  investor requests. You can also open this portal later with{" "}
-                  <strong>Ctrl + Shift + A</strong>.
+                  {usesDatabase
+                    ? "Enter your Supabase staff email and password. Your email must exist in the admin_users table."
+                    : "Database is not connected. Enter the local demo admin password."}
                 </p>
+
+                {usesDatabase && (
+                  <input
+                    required
+                    type="email"
+                    value={adminEmail}
+                    onChange={(event) => setAdminEmail(event.target.value)}
+                    placeholder="Staff email"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                )}
 
                 <input
                   required
                   type="password"
                   value={adminPassword}
                   onChange={(event) => setAdminPassword(event.target.value)}
-                  placeholder="Admin password"
+                  placeholder={usesDatabase ? "Staff password" : "Admin password"}
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
@@ -1583,6 +1950,26 @@ export default function App() {
 
             {modal === "admin" && adminUnlocked && (
               <div className="grid gap-8">
+                <div className="flex flex-col justify-between gap-4 rounded-2xl bg-[#f7f8fb] p-5 md:flex-row md:items-center">
+                  <div>
+                    <p className="font-black text-[#0d1c38]">
+                      Staff portal active
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {usesDatabase
+                        ? user?.email || "Supabase admin"
+                        : "Local demo admin"}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={logoutAdmin}
+                    className="rounded-full bg-slate-900 px-5 py-2 text-xs font-black text-white"
+                  >
+                    Sign out
+                  </button>
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
                     <p className="text-2xl font-black text-[#0d1c38]">

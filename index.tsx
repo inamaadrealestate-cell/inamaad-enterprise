@@ -241,6 +241,39 @@ function currencyToValue(value: string) {
   return Number(cleaned || 0);
 }
 
+function formatNairaCompact(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "₦0";
+
+  if (value >= 1_000_000_000) {
+    return `₦${(value / 1_000_000_000).toFixed(value % 1_000_000_000 === 0 ? 0 : 1)}B`;
+  }
+
+  if (value >= 1_000_000) {
+    return `₦${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 1)}M`;
+  }
+
+  if (value >= 1_000) {
+    return `₦${(value / 1_000).toFixed(value % 1_000 === 0 ? 0 : 1)}K`;
+  }
+
+  return `₦${value.toLocaleString("en-NG")}`;
+}
+
+function getTopCount(items: string[]) {
+  const counts = items.reduce<Record<string, number>>((accumulator, item) => {
+    const key = item || "Unknown";
+    accumulator[key] = (accumulator[key] || 0) + 1;
+    return accumulator;
+  }, {});
+
+  return (
+    Object.entries(counts).sort((first, second) => second[1] - first[1])[0] || [
+      "None yet",
+      0,
+    ]
+  );
+}
+
 function mapListingRow(row: any): Listing {
   return {
     id: Number(row.id),
@@ -388,6 +421,29 @@ export default function App() {
 
   const pendingListings = listings.filter(
     (listing) => listing.status === "Pending Review"
+  );
+
+  const verifiedListings = listings.filter(
+    (listing) => listing.status === "Verified"
+  );
+
+  const totalPropertyValue = listings.reduce(
+    (total, listing) => total + Number(listing.value || 0),
+    0
+  );
+
+  const verifiedPropertyValue = verifiedListings.reduce(
+    (total, listing) => total + Number(listing.value || 0),
+    0
+  );
+
+  const totalLeads = investorRequests.length + propertyInquiries.length;
+  const conversionReadyLeads = propertyInquiries.length;
+  const [topLocation, topLocationCount] = getTopCount(
+    listings.map((listing) => listing.location.split(",")[0]?.trim() || listing.location)
+  );
+  const [topType, topTypeCount] = getTopCount(
+    listings.map((listing) => listing.type)
   );
 
   const filteredListings = useMemo(() => {
@@ -2595,6 +2651,88 @@ export default function App() {
                       {investorRequests.length}
                     </p>
                     <p className="text-sm text-slate-500">Investor requests</p>
+                  </div>
+                </div>
+
+                <div className="rounded-[2rem] bg-[#0d1c38] p-6 text-white shadow-2xl shadow-slate-900/10">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.3em] text-[#f5c542]">
+                        Business analytics
+                      </p>
+                      <h3 className="mt-2 text-2xl font-black">
+                        INAMAAD performance dashboard
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                        Track property inventory, verified asset value, lead flow,
+                        and the strongest property categories from your staff portal.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 px-5 py-4">
+                      <p className="text-xs uppercase tracking-[0.25em] text-slate-300">
+                        Total pipeline value
+                      </p>
+                      <p className="mt-1 text-3xl font-black text-[#f5c542]">
+                        {formatNairaCompact(totalPropertyValue)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Verified listings</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {verifiedListings.length}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Approved and visible publicly
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Verified value</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {formatNairaCompact(verifiedPropertyValue)}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Approved property inventory value
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Total leads</p>
+                      <p className="mt-2 text-3xl font-black">{totalLeads}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Investor requests + property inquiries
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Property inquiries</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {conversionReadyLeads}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Buyer leads from listing pages
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Top location</p>
+                      <p className="mt-2 text-2xl font-black">{topLocation}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {topLocationCount} listing{topLocationCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Top asset type</p>
+                      <p className="mt-2 text-2xl font-black">{topType}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {topTypeCount} listing{topTypeCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
                   </div>
                 </div>
 

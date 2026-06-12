@@ -140,7 +140,7 @@ const stats = [
   { value: "2,500+", label: "Verified listings" },
   { value: "10,000+", label: "Registered users" },
   { value: "150+", label: "JV opportunities" },
-  { value: "36", label: "States covered" },
+  { value: "37", label: "States covered" },
 ];
 
 const categoryCards = [
@@ -523,7 +523,7 @@ export default function App() {
 
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.22),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.1),transparent_35%)]" />
 
-          <div className="relative mx-auto max-w-7xl px-6 py-14 lg:px-10 lg:py-16">
+          <div className="relative mx-auto max-w-7xl px-6 py-12 lg:px-10 lg:py-14">
             <div className="max-w-5xl">
               <div className="mb-5 flex items-center gap-3">
                 <div className="h-[3px] w-14 bg-[#f0bf3c]" />
@@ -532,7 +532,7 @@ export default function App() {
                 </p>
               </div>
 
-              <h1 className="max-w-4xl text-3xl font-black leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-5xl">
+              <h1 className="max-w-3xl text-3xl font-black leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-[44px]">
                 Connecting Property,
                 <br />
                 <span className="text-[#f0bf3c]">Land</span>, Investors

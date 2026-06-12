@@ -12,6 +12,7 @@ type ModalType =
   | "edit";
 
 type ListingStatus = "Verified" | "Pending Review";
+type LeadStatus = "New" | "Contacted" | "Closed";
 
 type Listing = {
   id: number;
@@ -38,6 +39,7 @@ type InvestorRequest = {
   budget: string;
   interest: string;
   message: string;
+  status: LeadStatus;
   createdAt: string;
 };
 
@@ -49,7 +51,7 @@ type PropertyInquiry = {
   email: string;
   phone: string;
   message: string;
-  status: "New" | "Contacted" | "Closed";
+  status: LeadStatus;
   createdAt: string;
 };
 
@@ -259,6 +261,36 @@ function formatNairaCompact(value: number) {
   return `₦${value.toLocaleString("en-NG")}`;
 }
 
+function normalizePhoneForLink(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+
+  if (digits.startsWith("0")) {
+    return `234${digits.slice(1)}`;
+  }
+
+  return digits;
+}
+
+function createWhatsAppLeadLink(phone: string, message: string) {
+  return `https://wa.me/${normalizePhoneForLink(phone)}?text=${encodeURIComponent(
+    message
+  )}`;
+}
+
+function createCallLeadLink(phone: string) {
+  return `tel:${phone.replace(/\s/g, "")}`;
+}
+
+function createEmailLeadLink(email: string, subject: string) {
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+}
+
+function leadStatusClass(status: LeadStatus) {
+  if (status === "Closed") return "bg-emerald-100 text-emerald-700";
+  if (status === "Contacted") return "bg-blue-100 text-blue-700";
+  return "bg-amber-100 text-amber-700";
+}
+
 function getTopCount(items: string[]) {
   const counts = items.reduce<Record<string, number>>((accumulator, item) => {
     const key = item || "Unknown";
@@ -302,6 +334,7 @@ function mapInvestorRow(row: any): InvestorRequest {
     budget: row.budget,
     interest: row.interest,
     message: row.message || "",
+    status: row.status || "New",
     createdAt: row.created_at,
   };
 }
@@ -855,6 +888,7 @@ export default function App() {
 
     const newRequest: Omit<InvestorRequest, "id"> = {
       ...investorForm,
+      status: "New",
       createdAt: new Date().toISOString(),
     };
 
@@ -866,6 +900,7 @@ export default function App() {
         budget: investorForm.budget,
         interest: investorForm.interest,
         message: investorForm.message,
+        status: "New",
       });
 
       if (error) {
@@ -1070,6 +1105,56 @@ export default function App() {
     }
 
     showSuccess("Listing deleted.");
+  }
+
+  async function updateInvestorRequestStatus(id: number, status: LeadStatus) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("investor_requests")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update investor request status.");
+        return;
+      }
+
+      await loadDatabaseInvestorRequests();
+    } else {
+      setInvestorRequests((current) =>
+        current.map((request) =>
+          request.id === id ? { ...request, status } : request
+        )
+      );
+    }
+
+    showSuccess(`Investor request marked as ${status}.`);
+  }
+
+  async function updatePropertyInquiryStatus(id: number, status: LeadStatus) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("property_inquiries")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update property inquiry status.");
+        return;
+      }
+
+      await loadDatabasePropertyInquiries();
+    } else {
+      setPropertyInquiries((current) =>
+        current.map((inquiry) =>
+          inquiry.id === id ? { ...inquiry, status } : inquiry
+        )
+      );
+    }
+
+    showSuccess(`Property inquiry marked as ${status}.`);
   }
 
   async function deleteInvestorRequest(id: number) {
@@ -2809,43 +2894,121 @@ export default function App() {
                       </p>
                     )}
 
-                    {propertyInquiries.map((inquiry) => (
-                      <div
-                        key={inquiry.id}
-                        className="rounded-2xl border border-slate-200 p-5"
-                      >
-                        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-                          <div>
-                            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
-                              {inquiry.listingTitle}
-                            </p>
+                    {propertyInquiries.map((inquiry) => {
+                      const inquiryStatus = inquiry.status || "New";
+                      const inquiryWhatsAppMessage = `Hello ${inquiry.name}, this is INAMAAD Real Estate. We received your request about ${inquiry.listingTitle}.`;
 
-                            <p className="mt-2 font-black text-[#0d1c38]">
-                              {inquiry.name}
-                            </p>
+                      return (
+                        <div
+                          key={inquiry.id}
+                          className="rounded-2xl border border-slate-200 p-5"
+                        >
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                                  {inquiry.listingTitle}
+                                </p>
 
-                            <p className="mt-1 text-sm text-slate-500">
-                              {inquiry.email || "No email"} • {inquiry.phone}
-                            </p>
+                                <span
+                                  className={`rounded-full px-3 py-1 text-[11px] font-black ${leadStatusClass(
+                                    inquiryStatus
+                                  )}`}
+                                >
+                                  {inquiryStatus}
+                                </span>
+                              </div>
 
-                            <p className="mt-3 text-sm leading-6 text-slate-600">
-                              {inquiry.message || "No extra message."}
-                            </p>
+                              <p className="mt-2 font-black text-[#0d1c38]">
+                                {inquiry.name}
+                              </p>
 
-                            <p className="mt-2 text-xs font-bold text-slate-400">
-                              Submitted {formatDate(inquiry.createdAt)}
-                            </p>
+                              <p className="mt-1 text-sm text-slate-500">
+                                {inquiry.email || "No email"} • {inquiry.phone}
+                              </p>
+
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {inquiry.message || "No extra message."}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(inquiry.createdAt)}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <a
+                                href={createWhatsAppLeadLink(
+                                  inquiry.phone,
+                                  inquiryWhatsAppMessage
+                                )}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                WhatsApp
+                              </a>
+
+                              <a
+                                href={createCallLeadLink(inquiry.phone)}
+                                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Call
+                              </a>
+
+                              {inquiry.email && (
+                                <a
+                                  href={createEmailLeadLink(
+                                    inquiry.email,
+                                    `INAMAAD inquiry: ${inquiry.listingTitle}`
+                                  )}
+                                  className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white"
+                                >
+                                  Email
+                                </a>
+                              )}
+
+                              <button
+                                onClick={() =>
+                                  updatePropertyInquiryStatus(inquiry.id, "New")
+                                }
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700"
+                              >
+                                New
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updatePropertyInquiryStatus(
+                                    inquiry.id,
+                                    "Contacted"
+                                  )
+                                }
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700"
+                              >
+                                Contacted
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updatePropertyInquiryStatus(inquiry.id, "Closed")
+                                }
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700"
+                              >
+                                Closed
+                              </button>
+
+                              <button
+                                onClick={() => deletePropertyInquiry(inquiry.id)}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
-
-                          <button
-                            onClick={() => deletePropertyInquiry(inquiry.id)}
-                            className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
-                          >
-                            Delete
-                          </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -2861,44 +3024,119 @@ export default function App() {
                       </p>
                     )}
 
-                    {investorRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className="rounded-2xl border border-slate-200 p-5"
-                      >
-                        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-                          <div>
-                            <p className="font-black text-[#0d1c38]">
-                              {request.name}
-                            </p>
+                    {investorRequests.map((request) => {
+                      const requestStatus = request.status || "New";
+                      const investorWhatsAppMessage = `Hello ${request.name}, this is INAMAAD Real Estate. We received your investment request for ${request.interest} with budget ${request.budget}.`;
 
-                            <p className="mt-1 text-sm text-slate-500">
-                              {request.email} • {request.phone}
-                            </p>
+                      return (
+                        <div
+                          key={request.id}
+                          className="rounded-2xl border border-slate-200 p-5"
+                        >
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-black text-[#0d1c38]">
+                                  {request.name}
+                                </p>
 
-                            <p className="mt-1 text-sm text-slate-500">
-                              Budget: {request.budget} • Interest:{" "}
-                              {request.interest}
-                            </p>
+                                <span
+                                  className={`rounded-full px-3 py-1 text-[11px] font-black ${leadStatusClass(
+                                    requestStatus
+                                  )}`}
+                                >
+                                  {requestStatus}
+                                </span>
+                              </div>
 
-                            <p className="mt-3 text-sm leading-6 text-slate-600">
-                              {request.message || "No extra message."}
-                            </p>
+                              <p className="mt-1 text-sm text-slate-500">
+                                {request.email} • {request.phone}
+                              </p>
 
-                            <p className="mt-2 text-xs font-bold text-slate-400">
-                              Submitted {formatDate(request.createdAt)}
-                            </p>
+                              <p className="mt-1 text-sm text-slate-500">
+                                Budget: {request.budget} • Interest: {request.interest}
+                              </p>
+
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {request.message || "No extra message."}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(request.createdAt)}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <a
+                                href={createWhatsAppLeadLink(
+                                  request.phone,
+                                  investorWhatsAppMessage
+                                )}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                WhatsApp
+                              </a>
+
+                              <a
+                                href={createCallLeadLink(request.phone)}
+                                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Call
+                              </a>
+
+                              <a
+                                href={createEmailLeadLink(
+                                  request.email,
+                                  `INAMAAD investor request: ${request.interest}`
+                                )}
+                                className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white"
+                              >
+                                Email
+                              </a>
+
+                              <button
+                                onClick={() =>
+                                  updateInvestorRequestStatus(request.id, "New")
+                                }
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700"
+                              >
+                                New
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updateInvestorRequestStatus(
+                                    request.id,
+                                    "Contacted"
+                                  )
+                                }
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700"
+                              >
+                                Contacted
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updateInvestorRequestStatus(request.id, "Closed")
+                                }
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700"
+                              >
+                                Closed
+                              </button>
+
+                              <button
+                                onClick={() => deleteInvestorRequest(request.id)}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
-
-                          <button
-                            onClick={() => deleteInvestorRequest(request.id)}
-                            className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
-                          >
-                            Delete
-                          </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

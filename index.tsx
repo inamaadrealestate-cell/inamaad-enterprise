@@ -385,6 +385,9 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [propertyType, setPropertyType] = useState("All");
   const [locationFilter, setLocationFilter] = useState("All Locations");
+  const [minValueFilter, setMinValueFilter] = useState("");
+  const [maxValueFilter, setMaxValueFilter] = useState("");
+  const [sortMode, setSortMode] = useState("Newest");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -480,24 +483,63 @@ export default function App() {
   );
 
   const filteredListings = useMemo(() => {
-    return listings.filter((listing) => {
-      if (listing.status !== "Verified") return false;
+    const minValue = Number(minValueFilter || 0);
+    const maxValue = Number(maxValueFilter || 0);
 
-      const searchText =
-        `${listing.title} ${listing.location} ${listing.type} ${listing.category}`.toLowerCase();
+    return listings
+      .filter((listing) => {
+        if (listing.status !== "Verified") return false;
 
-      const matchesSearch = searchText.includes(query.toLowerCase());
+        const searchText =
+          `${listing.title} ${listing.location} ${listing.type} ${listing.category}`.toLowerCase();
 
-      const matchesType =
-        propertyType === "All" || listing.type === propertyType;
+        const matchesSearch = searchText.includes(query.toLowerCase());
 
-      const matchesLocation =
-        locationFilter === "All Locations" ||
-        listing.location.toLowerCase().includes(locationFilter.toLowerCase());
+        const matchesType =
+          propertyType === "All" || listing.type === propertyType;
 
-      return matchesSearch && matchesType && matchesLocation;
-    });
-  }, [listings, query, propertyType, locationFilter]);
+        const matchesLocation =
+          locationFilter === "All Locations" ||
+          listing.location.toLowerCase().includes(locationFilter.toLowerCase());
+
+        const matchesMinValue = !minValueFilter || Number(listing.value || 0) >= minValue;
+        const matchesMaxValue = !maxValueFilter || Number(listing.value || 0) <= maxValue;
+
+        return (
+          matchesSearch &&
+          matchesType &&
+          matchesLocation &&
+          matchesMinValue &&
+          matchesMaxValue
+        );
+      })
+      .sort((a, b) => {
+        if (sortMode === "Price High to Low") {
+          return Number(b.value || 0) - Number(a.value || 0);
+        }
+
+        if (sortMode === "Price Low to High") {
+          return Number(a.value || 0) - Number(b.value || 0);
+        }
+
+        if (sortMode === "Title A-Z") {
+          return a.title.localeCompare(b.title);
+        }
+
+        return (
+          new Date(b.createdAt || "").getTime() -
+          new Date(a.createdAt || "").getTime()
+        );
+      });
+  }, [
+    listings,
+    query,
+    propertyType,
+    locationFilter,
+    minValueFilter,
+    maxValueFilter,
+    sortMode,
+  ]);
 
   useEffect(() => {
     if (!supabase) {
@@ -1610,6 +1652,72 @@ export default function App() {
                   {item}
                 </button>
               ))}
+            </div>
+
+            <div className="mt-8 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[0.16em] text-[#d39b19]">
+                    Advanced search
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {filteredListings.length} verified result{filteredListings.length === 1 ? "" : "s"} found
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setQuery("");
+                    setPropertyType("All");
+                    setLocationFilter("All Locations");
+                    setMinValueFilter("");
+                    setMaxValueFilter("");
+                    setSortMode("Newest");
+                  }}
+                  className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black text-[#0d1c38] transition hover:border-[#0d1c38]"
+                >
+                  Clear filters
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  type="text"
+                  placeholder="Search title, location, type..."
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38] lg:col-span-2"
+                />
+
+                <input
+                  value={minValueFilter}
+                  onChange={(event) => setMinValueFilter(event.target.value)}
+                  type="number"
+                  min="0"
+                  placeholder="Min value"
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                />
+
+                <input
+                  value={maxValueFilter}
+                  onChange={(event) => setMaxValueFilter(event.target.value)}
+                  type="number"
+                  min="0"
+                  placeholder="Max value"
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                />
+
+                <select
+                  value={sortMode}
+                  onChange={(event) => setSortMode(event.target.value)}
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                >
+                  <option>Newest</option>
+                  <option>Price High to Low</option>
+                  <option>Price Low to High</option>
+                  <option>Title A-Z</option>
+                </select>
+              </div>
             </div>
 
             {isLoading ? (

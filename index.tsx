@@ -172,7 +172,7 @@ const stats = [
   { value: "2,500+", label: "Verified listings" },
   { value: "10,000+", label: "Registered users" },
   { value: "150+", label: "JV opportunities" },
-  { value: "37", label: "States covered" },
+  { value: "36", label: "States covered + FCT served separately" },
 ];
 
 const categoryCards = [
@@ -3700,3 +3700,4 @@ export default function App() {
     </div>
   );
 }
+

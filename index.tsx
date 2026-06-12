@@ -343,6 +343,20 @@ function createEmailLeadLink(email: string, subject: string) {
   return `mailto:${email}?subject=${encodeURIComponent(subject)}`;
 }
 
+function buildListingShareUrl(listingId: number) {
+  const url = new URL(window.location.origin);
+  url.pathname = window.location.pathname;
+  url.searchParams.set("property", String(listingId));
+  url.hash = "properties";
+  return url.toString();
+}
+
+function buildListingShareText(listing: Listing) {
+  return `INAMAAD Real Estate: ${listing.title} - ${listing.price} in ${listing.location}. View details: ${buildListingShareUrl(
+    listing.id
+  )}`;
+}
+
 function leadStatusClass(status: LeadStatus) {
   if (status === "Closed") return "bg-emerald-100 text-emerald-700";
   if (status === "Contacted") return "bg-blue-100 text-blue-700";
@@ -462,6 +476,7 @@ export default function App() {
   const [sortMode, setSortMode] = useState("Newest");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [sharedListingOpened, setSharedListingOpened] = useState(false);
 
   const [user, setUser] = useState<User | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
@@ -719,6 +734,23 @@ export default function App() {
     return () => window.removeEventListener("keydown", openAdminShortcut);
   }, []);
 
+  useEffect(() => {
+    if (sharedListingOpened || !listings.length) return;
+
+    const propertyId = Number(new URLSearchParams(window.location.search).get("property"));
+    if (!propertyId) return;
+
+    const listing = listings.find(
+      (currentListing) =>
+        currentListing.id === propertyId && currentListing.status === "Verified"
+    );
+
+    if (!listing) return;
+
+    setSharedListingOpened(true);
+    openListing(listing);
+  }, [listings, sharedListingOpened]);
+
   function showSuccess(message: string) {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(""), 4500);
@@ -907,6 +939,45 @@ export default function App() {
     } else {
       setPropertyViews((current) => [{ ...newView, id: Date.now() }, ...current]);
     }
+  }
+
+  async function copyListingShareLink(listing: Listing) {
+    const shareUrl = buildListingShareUrl(listing.id);
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showSuccess("Property link copied. You can now share it with clients.");
+    } catch {
+      showSuccess(shareUrl);
+    }
+  }
+
+  async function shareListing(listing: Listing) {
+    const shareUrl = buildListingShareUrl(listing.id);
+    const shareText = buildListingShareText(listing);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: listing.title,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        // User cancelled native sharing, so fall back to copying.
+      }
+    }
+
+    await copyListingShareLink(listing);
+  }
+
+  function shareListingToWhatsApp(listing: Listing) {
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(buildListingShareText(listing))}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   }
 
   function openEditListing(listing: Listing) {
@@ -2003,12 +2074,21 @@ export default function App() {
                         </p>
                       </div>
 
-                      <button
-                        onClick={() => openListing(listing)}
-                        className="mt-6 flex w-full items-center justify-center rounded-2xl bg-[#0d1c38] px-5 py-4 text-base font-bold text-white transition hover:bg-[#13284f]"
-                      >
-                        View Details
-                      </button>
+                      <div className="mt-6 grid grid-cols-2 gap-3">
+                        <button
+                          onClick={() => openListing(listing)}
+                          className="flex items-center justify-center rounded-2xl bg-[#0d1c38] px-5 py-4 text-base font-bold text-white transition hover:bg-[#13284f]"
+                        >
+                          View Details
+                        </button>
+
+                        <button
+                          onClick={() => shareListing(listing)}
+                          className="flex items-center justify-center rounded-2xl border border-[#0d1c38] bg-white px-5 py-4 text-base font-black text-[#0d1c38] transition hover:bg-slate-50"
+                        >
+                          Share
+                        </button>
+                      </div>
                     </div>
                   </article>
                 ))}
@@ -3066,6 +3146,24 @@ export default function App() {
                     >
                       Investor Access
                     </button>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => copyListingShareLink(selectedListing)}
+                        className="rounded-2xl bg-white/10 px-4 py-3 text-xs font-black text-white transition hover:bg-white/20"
+                      >
+                        Copy Link
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => shareListingToWhatsApp(selectedListing)}
+                        className="rounded-2xl bg-emerald-500 px-4 py-3 text-xs font-black text-white transition hover:bg-emerald-600"
+                      >
+                        WhatsApp
+                      </button>
+                    </div>
                   </div>
                 </div>
 

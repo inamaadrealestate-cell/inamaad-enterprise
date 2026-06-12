@@ -8,7 +8,8 @@ type ModalType =
   | "post"
   | "investor"
   | "admin"
-  | "details";
+  | "details"
+  | "edit";
 
 type ListingStatus = "Verified" | "Pending Review";
 
@@ -313,6 +314,7 @@ export default function App() {
   );
   const [modal, setModal] = useState<ModalType>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [propertyType, setPropertyType] = useState("All");
@@ -349,6 +351,22 @@ export default function App() {
   });
 
   const [postImageFile, setPostImageFile] = useState<File | null>(null);
+
+  const [editForm, setEditForm] = useState({
+    title: "",
+    location: "",
+    price: "",
+    type: "Residential",
+    category: "For Sale",
+    yieldText: "",
+    description: "",
+    status: "Verified" as ListingStatus,
+    ownerName: "",
+    ownerPhone: "",
+    imageUrl: "",
+  });
+
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
 
   const [investorForm, setInvestorForm] = useState({
     name: "",
@@ -604,6 +622,26 @@ export default function App() {
     setModal("details");
   }
 
+  function openEditListing(listing: Listing) {
+    setEditingListing(listing);
+    setSelectedListing(null);
+    setEditImageFile(null);
+    setEditForm({
+      title: listing.title,
+      location: listing.location,
+      price: listing.price,
+      type: listing.type,
+      category: listing.category,
+      yieldText: listing.yieldText,
+      description: listing.description,
+      status: listing.status,
+      ownerName: listing.ownerName || "",
+      ownerPhone: listing.ownerPhone || "",
+      imageUrl: listing.imageUrl || "",
+    });
+    setModal("edit");
+  }
+
   async function submitListing(event: React.FormEvent) {
     event.preventDefault();
 
@@ -669,6 +707,85 @@ export default function App() {
 
       setModal(null);
       showSuccess("Opportunity submitted successfully. Admin review is pending.");
+    } catch (error) {
+      console.error(error);
+      showSuccess("Image upload failed. Please try a smaller JPG, PNG, or WEBP image.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function submitEditListing(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!editingListing) return;
+
+    setIsLoading(true);
+
+    try {
+      const imageUrl = editImageFile
+        ? supabase
+          ? await uploadPropertyImage(editImageFile)
+          : await imageFileToBase64(editImageFile)
+        : editForm.imageUrl;
+
+      const updatedListing: Listing = {
+        ...editingListing,
+        title: editForm.title,
+        location: editForm.location,
+        price: editForm.price,
+        value: currencyToValue(editForm.price),
+        type: editForm.type,
+        category: editForm.category,
+        yieldText: editForm.yieldText || "Pending investment review",
+        description: editForm.description,
+        status: editForm.status,
+        ownerName: editForm.ownerName,
+        ownerPhone: editForm.ownerPhone,
+        imageUrl,
+      };
+
+      if (supabase) {
+        const { error } = await supabase
+          .from("listings")
+          .update(
+            listingToRow({
+              title: updatedListing.title,
+              location: updatedListing.location,
+              price: updatedListing.price,
+              value: updatedListing.value,
+              type: updatedListing.type,
+              category: updatedListing.category,
+              yieldText: updatedListing.yieldText,
+              description: updatedListing.description,
+              status: updatedListing.status,
+              ownerName: updatedListing.ownerName,
+              ownerPhone: updatedListing.ownerPhone,
+              imageUrl: updatedListing.imageUrl,
+              createdAt: updatedListing.createdAt,
+            })
+          )
+          .eq("id", editingListing.id);
+
+        if (error) {
+          console.error(error);
+          showSuccess("Unable to update listing. Check database policies.");
+          return;
+        }
+
+        await loadDatabaseListings();
+      } else {
+        setListings((current) =>
+          current.map((listing) =>
+            listing.id === editingListing.id ? updatedListing : listing
+          )
+        );
+      }
+
+      setEditImageFile(null);
+      setEditingListing(null);
+      setModal("admin");
+      showSuccess("Listing updated successfully.");
     } catch (error) {
       console.error(error);
       showSuccess("Image upload failed. Please try a smaller JPG, PNG, or WEBP image.");
@@ -1713,6 +1830,7 @@ export default function App() {
                   {modal === "post" && "Submit opportunity"}
                   {modal === "investor" && "Request investor access"}
                   {modal === "admin" && "Staff portal"}
+                  {modal === "edit" && "Edit listing"}
                   {modal === "details" && selectedListing?.title}
                 </h2>
               </div>
@@ -1721,6 +1839,7 @@ export default function App() {
                 onClick={() => {
                   setModal(null);
                   setSelectedListing(null);
+                  setEditingListing(null);
                 }}
                 className="rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-200"
               >
@@ -1971,6 +2090,171 @@ export default function App() {
                   className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isLoading ? "Submitting..." : "Submit for admin review"}
+                </button>
+              </form>
+            )}
+
+            {modal === "edit" && editingListing && (
+              <form onSubmit={submitEditListing} className="grid gap-4">
+                <div className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-600">
+                  Editing: <span className="font-black text-[#0d1c38]">{editingListing.title}</span>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input
+                    required
+                    value={editForm.title}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, title: event.target.value })
+                    }
+                    placeholder="Property title"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <input
+                    required
+                    value={editForm.location}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, location: event.target.value })
+                    }
+                    placeholder="Location"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input
+                    required
+                    value={editForm.price}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, price: event.target.value })
+                    }
+                    placeholder="Price, e.g. ₦50,000,000"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <select
+                    value={editForm.type}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, type: event.target.value })
+                    }
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  >
+                    <option>Residential</option>
+                    <option>Land</option>
+                    <option>Commercial</option>
+                    <option>Joint Venture</option>
+                  </select>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <select
+                    value={editForm.category}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, category: event.target.value })
+                    }
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  >
+                    <option>For Sale</option>
+                    <option>Investment</option>
+                    <option>JV</option>
+                    <option>Land Banking</option>
+                    <option>Short-let</option>
+                  </select>
+
+                  <select
+                    value={editForm.status}
+                    onChange={(event) =>
+                      setEditForm({
+                        ...editForm,
+                        status: event.target.value as ListingStatus,
+                      })
+                    }
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  >
+                    <option>Verified</option>
+                    <option>Pending Review</option>
+                  </select>
+                </div>
+
+                <input
+                  value={editForm.yieldText}
+                  onChange={(event) =>
+                    setEditForm({ ...editForm, yieldText: event.target.value })
+                  }
+                  placeholder="Investment highlight"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
+                  <label className="text-sm font-black text-[#0d1c38]">
+                    Replace property image
+                  </label>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Leave empty to keep the current image. Upload JPG, PNG, or WEBP under 5MB.
+                  </p>
+
+                  {editForm.imageUrl && !editImageFile && (
+                    <img
+                      src={editForm.imageUrl}
+                      alt={editForm.title}
+                      className="mt-4 h-36 w-full rounded-2xl object-cover"
+                    />
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) =>
+                      setEditImageFile(event.target.files?.[0] || null)
+                    }
+                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  {editImageFile && (
+                    <p className="mt-3 text-xs font-bold text-emerald-700">
+                      New image selected: {editImageFile.name}
+                    </p>
+                  )}
+                </div>
+
+                <textarea
+                  required
+                  value={editForm.description}
+                  onChange={(event) =>
+                    setEditForm({ ...editForm, description: event.target.value })
+                  }
+                  placeholder="Describe the opportunity"
+                  rows={4}
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input
+                    value={editForm.ownerName}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, ownerName: event.target.value })
+                    }
+                    placeholder="Owner/developer name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <input
+                    value={editForm.ownerPhone}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, ownerPhone: event.target.value })
+                    }
+                    placeholder="Phone number"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <button
+                  disabled={isLoading}
+                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isLoading ? "Saving changes..." : "Save listing changes"}
                 </button>
               </form>
             )}
@@ -2349,6 +2633,13 @@ export default function App() {
 
                           <div className="flex gap-3">
                             <button
+                              onClick={() => openEditListing(listing)}
+                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                            >
+                              Edit
+                            </button>
+
+                            <button
                               onClick={() => approveListing(listing.id)}
                               className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
                             >
@@ -2499,12 +2790,21 @@ export default function App() {
                             </p>
                           </div>
 
-                          <button
-                            onClick={() => deleteListing(listing.id)}
-                            className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
-                          >
-                            Delete
-                          </button>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => openEditListing(listing)}
+                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() => deleteListing(listing.id)}
+                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

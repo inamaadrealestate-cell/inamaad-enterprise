@@ -55,6 +55,13 @@ type PropertyInquiry = {
   createdAt: string;
 };
 
+type PropertyView = {
+  id: number;
+  listingId: number;
+  listingTitle: string;
+  viewedAt: string;
+};
+
 const WHATSAPP_NUMBER = "2348106350486";
 const LOCAL_ADMIN_PASSWORD = "admin123";
 
@@ -353,6 +360,15 @@ function mapPropertyInquiryRow(row: any): PropertyInquiry {
   };
 }
 
+function mapPropertyViewRow(row: any): PropertyView {
+  return {
+    id: Number(row.id),
+    listingId: Number(row.listing_id),
+    listingTitle: row.listing_title,
+    viewedAt: row.viewed_at,
+  };
+}
+
 function listingToRow(listing: Omit<Listing, "id">) {
   return {
     title: listing.title,
@@ -378,6 +394,7 @@ export default function App() {
   const [propertyInquiries, setPropertyInquiries] = useState<PropertyInquiry[]>(
     []
   );
+  const [propertyViews, setPropertyViews] = useState<PropertyView[]>([]);
   const [modal, setModal] = useState<ModalType>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
@@ -482,6 +499,26 @@ export default function App() {
     listings.map((listing) => listing.type)
   );
 
+  const totalPropertyViews = propertyViews.length;
+  const [mostViewedProperty, mostViewedPropertyCount] = getTopCount(
+    propertyViews.map((view) => view.listingTitle)
+  );
+  const viewCountByListingId = useMemo(() => {
+    return propertyViews.reduce<Record<number, number>>((counts, view) => {
+      counts[view.listingId] = (counts[view.listingId] || 0) + 1;
+      return counts;
+    }, {});
+  }, [propertyViews]);
+  const topViewedListings = useMemo(() => {
+    return [...listings]
+      .map((listing) => ({
+        ...listing,
+        views: viewCountByListingId[listing.id] || 0,
+      }))
+      .sort((first, second) => second.views - first.views)
+      .slice(0, 5);
+  }, [listings, viewCountByListingId]);
+
   const filteredListings = useMemo(() => {
     const minValue = Number(minValueFilter || 0);
     const maxValue = Number(maxValueFilter || 0);
@@ -563,6 +600,7 @@ export default function App() {
           setAdminUnlocked(false);
           setInvestorRequests([]);
           setPropertyInquiries([]);
+          setPropertyViews([]);
         }
       }
     );
@@ -599,6 +637,11 @@ export default function App() {
   }, [propertyInquiries]);
 
   useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_property_views", JSON.stringify(propertyViews));
+  }, [propertyViews]);
+
+  useEffect(() => {
     function openAdminShortcut(event: KeyboardEvent) {
       if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
         setAdminPassword("");
@@ -620,6 +663,7 @@ export default function App() {
       const storedListings = localStorage.getItem("inamaad_listings");
       const storedRequests = localStorage.getItem("inamaad_investor_requests");
       const storedInquiries = localStorage.getItem("inamaad_property_inquiries");
+      const storedViews = localStorage.getItem("inamaad_property_views");
 
       if (storedListings) {
         setListings(JSON.parse(storedListings) as Listing[]);
@@ -632,10 +676,15 @@ export default function App() {
       if (storedInquiries) {
         setPropertyInquiries(JSON.parse(storedInquiries) as PropertyInquiry[]);
       }
+
+      if (storedViews) {
+        setPropertyViews(JSON.parse(storedViews) as PropertyView[]);
+      }
     } catch {
       localStorage.removeItem("inamaad_listings");
       localStorage.removeItem("inamaad_investor_requests");
       localStorage.removeItem("inamaad_property_inquiries");
+      localStorage.removeItem("inamaad_property_views");
     }
   }
 
@@ -692,6 +741,22 @@ export default function App() {
     setPropertyInquiries((data || []).map(mapPropertyInquiryRow));
   }
 
+  async function loadDatabasePropertyViews() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("property_views")
+      .select("*")
+      .order("viewed_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setPropertyViews((data || []).map(mapPropertyViewRow));
+  }
+
   async function checkAdminAccess() {
     if (!supabase) return;
 
@@ -709,6 +774,7 @@ export default function App() {
       await loadDatabaseListings();
       await loadDatabaseInvestorRequests();
       await loadDatabasePropertyInquiries();
+      await loadDatabasePropertyViews();
     }
   }
 
@@ -747,10 +813,34 @@ export default function App() {
     });
   }
 
-  function openListing(listing: Listing) {
+  async function openListing(listing: Listing) {
     setSelectedListing(listing);
     setInquiryForm({ name: "", email: "", phone: "", message: "" });
     setModal("details");
+
+    const newView: Omit<PropertyView, "id"> = {
+      listingId: listing.id,
+      listingTitle: listing.title,
+      viewedAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("property_views").insert({
+        listing_id: listing.id,
+        listing_title: listing.title,
+      });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      if (adminUnlocked) {
+        await loadDatabasePropertyViews();
+      }
+    } else {
+      setPropertyViews((current) => [{ ...newView, id: Date.now() }, ...current]);
+    }
   }
 
   function openEditListing(listing: Listing) {
@@ -1370,6 +1460,19 @@ export default function App() {
     );
   }
 
+  function exportPropertyViewsCsv() {
+    downloadCsv(
+      "inamaad-property-views.csv",
+      ["ID", "Listing ID", "Listing Title", "Viewed At"],
+      propertyViews.map((view) => [
+        view.id,
+        view.listingId,
+        view.listingTitle,
+        view.viewedAt,
+      ])
+    );
+  }
+
   function exportBusinessReportCsv() {
     downloadCsv(
       "inamaad-business-report.csv",
@@ -1382,6 +1485,9 @@ export default function App() {
         ["Verified property value", verifiedPropertyValue],
         ["Investor requests", investorRequests.length],
         ["Property inquiries", propertyInquiries.length],
+        ["Property views", totalPropertyViews],
+        ["Most viewed property", mostViewedProperty],
+        ["Most viewed property count", mostViewedPropertyCount],
         ["Total leads", totalLeads],
         ["Top location", topLocation],
         ["Top location listing count", topLocationCount],
@@ -2826,6 +2932,14 @@ export default function App() {
                           {selectedListing.status}
                         </p>
                       </div>
+
+
+                      <div>
+                        <p className="text-slate-400">Views</p>
+                        <p className="font-black text-[#f0bf3c]">
+                          {viewCountByListingId[selectedListing.id] || 0}
+                        </p>
+                      </div>
                     </div>
 
                     <button
@@ -2964,7 +3078,7 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-5">
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
                     <p className="text-2xl font-black text-[#0d1c38]">
                       {listings.length}
@@ -2984,6 +3098,13 @@ export default function App() {
                       {propertyInquiries.length}
                     </p>
                     <p className="text-sm text-slate-500">Property inquiries</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {totalPropertyViews}
+                    </p>
+                    <p className="text-sm text-slate-500">Property views</p>
                   </div>
 
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
@@ -3059,6 +3180,24 @@ export default function App() {
                     </div>
 
                     <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Property views</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {totalPropertyViews}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Total listing detail page opens
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Most viewed property</p>
+                      <p className="mt-2 text-2xl font-black">{mostViewedProperty}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {mostViewedPropertyCount} view{mostViewedPropertyCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
                       <p className="text-sm text-slate-300">Top location</p>
                       <p className="mt-2 text-2xl font-black">{topLocation}</p>
                       <p className="mt-1 text-xs text-slate-400">
@@ -3076,6 +3215,52 @@ export default function App() {
                   </div>
                 </div>
 
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Property views
+                      </p>
+                      <h3 className="mt-2 text-2xl font-black text-[#0d1c38]">
+                        Most viewed listings
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                        See which properties buyers and investors open the most. Use this to know which assets deserve stronger follow-up or promotion.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-4">
+                    {topViewedListings.map((listing, index) => (
+                      <div
+                        key={listing.id}
+                        className="flex flex-col justify-between gap-3 rounded-2xl bg-[#f7f8fb] p-5 md:flex-row md:items-center"
+                      >
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                            #{index + 1} viewed property
+                          </p>
+                          <p className="mt-1 font-black text-[#0d1c38]">
+                            {listing.title}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {listing.location} • {listing.price}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-white px-5 py-3 text-right shadow-sm">
+                          <p className="text-2xl font-black text-[#0d1c38]">
+                            {listing.views}
+                          </p>
+                          <p className="text-xs font-bold text-slate-500">
+                            view{listing.views === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
 
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -3116,6 +3301,15 @@ export default function App() {
                       className="rounded-full bg-[#d49613] px-5 py-3 text-xs font-black text-white"
                     >
                       Export investor requests
+                    </button>
+
+
+                    <button
+                      type="button"
+                      onClick={exportPropertyViewsCsv}
+                      className="rounded-full bg-slate-700 px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export property views
                     </button>
 
                     <button
@@ -3470,6 +3664,11 @@ export default function App() {
 
                             <p className="mt-1 text-xs font-black text-slate-400">
                               {listing.status}
+                            </p>
+
+
+                            <p className="mt-1 text-xs font-bold text-slate-500">
+                              Views: {viewCountByListingId[listing.id] || 0}
                             </p>
                           </div>
 

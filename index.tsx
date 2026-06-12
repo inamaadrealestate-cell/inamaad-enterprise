@@ -1203,6 +1203,153 @@ export default function App() {
     showSuccess("Property inquiry removed.");
   }
 
+
+  function escapeCsvValue(value: unknown) {
+    const text = String(value ?? "");
+
+    if (/[",\n\r]/.test(text)) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    return text;
+  }
+
+  function downloadCsv(filename: string, headers: string[], rows: unknown[][]) {
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map(escapeCsvValue).join(","))
+      .join("\n");
+
+    const blob = new Blob([`\uFEFF${csvContent}`], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    showSuccess(`${filename} downloaded.`);
+  }
+
+  function exportListingsCsv() {
+    downloadCsv(
+      "inamaad-listings.csv",
+      [
+        "ID",
+        "Title",
+        "Location",
+        "Price",
+        "Numeric Value",
+        "Type",
+        "Category",
+        "Yield / Highlight",
+        "Description",
+        "Status",
+        "Owner Name",
+        "Owner Phone",
+        "Image URL",
+        "Created At",
+      ],
+      listings.map((listing) => [
+        listing.id,
+        listing.title,
+        listing.location,
+        listing.price,
+        listing.value,
+        listing.type,
+        listing.category,
+        listing.yieldText,
+        listing.description,
+        listing.status,
+        listing.ownerName || "",
+        listing.ownerPhone || "",
+        listing.imageUrl || "",
+        listing.createdAt || "",
+      ])
+    );
+  }
+
+  function exportInvestorRequestsCsv() {
+    downloadCsv(
+      "inamaad-investor-requests.csv",
+      [
+        "ID",
+        "Name",
+        "Email",
+        "Phone",
+        "Budget",
+        "Interest",
+        "Status",
+        "Message",
+        "Created At",
+      ],
+      investorRequests.map((request) => [
+        request.id,
+        request.name,
+        request.email,
+        request.phone,
+        request.budget,
+        request.interest,
+        request.status || "New",
+        request.message || "",
+        request.createdAt,
+      ])
+    );
+  }
+
+  function exportPropertyInquiriesCsv() {
+    downloadCsv(
+      "inamaad-property-inquiries.csv",
+      [
+        "ID",
+        "Listing ID",
+        "Listing Title",
+        "Name",
+        "Email",
+        "Phone",
+        "Status",
+        "Message",
+        "Created At",
+      ],
+      propertyInquiries.map((inquiry) => [
+        inquiry.id,
+        inquiry.listingId || "",
+        inquiry.listingTitle,
+        inquiry.name,
+        inquiry.email || "",
+        inquiry.phone,
+        inquiry.status || "New",
+        inquiry.message || "",
+        inquiry.createdAt,
+      ])
+    );
+  }
+
+  function exportBusinessReportCsv() {
+    downloadCsv(
+      "inamaad-business-report.csv",
+      ["Metric", "Value"],
+      [
+        ["Total listings", listings.length],
+        ["Verified listings", verifiedListings.length],
+        ["Pending listings", pendingListings.length],
+        ["Total property value", totalPropertyValue],
+        ["Verified property value", verifiedPropertyValue],
+        ["Investor requests", investorRequests.length],
+        ["Property inquiries", propertyInquiries.length],
+        ["Total leads", totalLeads],
+        ["Top location", topLocation],
+        ["Top location listing count", topLocationCount],
+        ["Top asset type", topType],
+        ["Top asset type listing count", topTypeCount],
+        ["Generated at", new Date().toISOString()],
+      ]
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f7f8fb] text-slate-950">
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
@@ -2818,6 +2965,58 @@ export default function App() {
                         {topTypeCount} listing{topTypeCount === 1 ? "" : "s"}
                       </p>
                     </div>
+                  </div>
+                </div>
+
+
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Reports
+                      </p>
+                      <h3 className="mt-2 text-2xl font-black text-[#0d1c38]">
+                        Export business data
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                        Download listings, leads, and performance numbers as CSV files for Excel, Google Sheets, accounting, or investor reporting.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={exportBusinessReportCsv}
+                      className="rounded-full bg-[#0d1c38] px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export business report
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportListingsCsv}
+                      className="rounded-full bg-slate-900 px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export listings
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportInvestorRequestsCsv}
+                      className="rounded-full bg-[#d49613] px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export investor requests
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportPropertyInquiriesCsv}
+                      className="rounded-full bg-emerald-600 px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export property inquiries
+                    </button>
                   </div>
                 </div>
 

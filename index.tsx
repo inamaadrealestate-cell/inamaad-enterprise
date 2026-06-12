@@ -140,13 +140,13 @@ const stats = [
   { value: "2,500+", label: "Verified listings" },
   { value: "10,000+", label: "Registered users" },
   { value: "150+", label: "JV opportunities" },
-  { value: "36", label: "States covered" },
+  { value: "37", label: "States covered" },
 ];
 
 const categoryCards = [
   {
     title: "Residential",
-    text: "Premium homes, apartments, terrace, bungalows, duplexes, and estate opportunities for buyers and investors.",
+    text: "Premium homes, apartments, duplexes, and estate opportunities for buyers and investors.",
   },
   {
     title: "Land & Commercial",
@@ -304,7 +304,8 @@ export default function App() {
     return listings.filter((listing) => {
       if (listing.status !== "Verified") return false;
 
-      const searchText = `${listing.title} ${listing.location} ${listing.type} ${listing.category}`.toLowerCase();
+      const searchText =
+        `${listing.title} ${listing.location} ${listing.type} ${listing.category}`.toLowerCase();
 
       const matchesSearch = searchText.includes(query.toLowerCase());
 
@@ -522,42 +523,42 @@ export default function App() {
 
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.22),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.1),transparent_35%)]" />
 
-          <div className="relative mx-auto max-w-7xl px-6 py-20 lg:px-10 lg:py-24">
+          <div className="relative mx-auto max-w-7xl px-6 py-14 lg:px-10 lg:py-16">
             <div className="max-w-5xl">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="h-[3px] w-16 bg-[#f0bf3c]" />
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c] sm:text-base">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f0bf3c] sm:text-sm">
                   Nigeria’s premier platform
                 </p>
               </div>
 
-              <h1 className="max-w-5xl text-3xl font-black leading-[2.05] tracking-tight text-white sm:text-6xl lg:text-8xl">
+              <h1 className="max-w-4xl text-3xl font-black leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-5xl">
                 Connecting Property,
                 <br />
                 <span className="text-[#f0bf3c]">Land</span>, Investors
                 <br />& Opportunities
               </h1>
 
-              <p className="mt-6 max-w-3xl text-xl leading-relaxed text-slate-200 sm:text-2xl">
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">
                 Discover verified properties, joint venture deals, and
                 investment opportunities across Nigeria. Buy, sell, and invest
                 with confidence.
               </p>
 
-              <div className="mt-12 max-w-6xl rounded-[28px] bg-white p-5 shadow-2xl">
+              <div className="mt-8 max-w-6xl rounded-[24px] bg-white p-4 shadow-2xl">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr_1fr_1.1fr]">
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     type="text"
                     placeholder="Search properties..."
-                    className="h-16 rounded-2xl border border-slate-200 px-5 text-lg outline-none transition focus:border-[#0d1c38]"
+                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
                   />
 
                   <select
                     value={propertyType}
                     onChange={(event) => setPropertyType(event.target.value)}
-                    className="h-16 rounded-2xl border border-slate-200 px-5 text-lg outline-none transition focus:border-[#0d1c38]"
+                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
                   >
                     <option>All</option>
                     <option>Residential</option>
@@ -569,7 +570,7 @@ export default function App() {
                   <select
                     value={locationFilter}
                     onChange={(event) => setLocationFilter(event.target.value)}
-                    className="h-16 rounded-2xl border border-slate-200 px-5 text-lg outline-none transition focus:border-[#0d1c38]"
+                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
                   >
                     <option>All Locations</option>
                     <option>Abuja</option>
@@ -580,7 +581,7 @@ export default function App() {
 
                   <a
                     href="#properties"
-                    className="flex h-16 items-center justify-center rounded-2xl bg-[#0d1c38] px-6 text-xl font-semibold text-white transition hover:bg-[#13284f]"
+                    className="flex h-14 items-center justify-center rounded-2xl bg-[#0d1c38] px-6 text-lg font-semibold text-white transition hover:bg-[#13284f]"
                   >
                     Search
                   </a>
@@ -1144,7 +1145,7 @@ export default function App() {
         aria-label="Chat with INAMAAD on WhatsApp"
         className="fixed bottom-6 right-6 z-[120] flex items-center gap-3 rounded-full bg-green-500 px-5 py-4 text-white shadow-2xl hover:bg-green-600"
       >
-        <span className="text-xl">▣</span>
+        <span className="text-sm font-black">WA</span>
         <span className="hidden text-sm font-black sm:inline">WhatsApp</span>
       </a>
 

@@ -140,13 +140,13 @@ const stats = [
   { value: "2,500+", label: "Verified listings" },
   { value: "10,000+", label: "Registered users" },
   { value: "150+", label: "JV opportunities" },
-  { value: "37", label: "States covered" },
+  { value: "36", label: "States covered" },
 ];
 
 const categoryCards = [
   {
     title: "Residential",
-    text: "Premium homes, apartments, duplexes, and estate opportunities for buyers and investors.",
+    text: "Premium homes, apartments, terrace, bungalows, duplexes, and estate opportunities for buyers and investors.",
   },
   {
     title: "Land & Commercial",
@@ -531,14 +531,14 @@ export default function App() {
                 </p>
               </div>
 
-              <h1 className="max-w-5xl text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-8xl">
+              <h1 className="max-w-5xl text-3xl font-black leading-[2.05] tracking-tight text-white sm:text-6xl lg:text-8xl">
                 Connecting Property,
                 <br />
                 <span className="text-[#f0bf3c]">Land</span>, Investors
                 <br />& Opportunities
               </h1>
 
-              <p className="mt-8 max-w-4xl text-xl leading-relaxed text-slate-200 sm:text-2xl">
+              <p className="mt-6 max-w-3xl text-xl leading-relaxed text-slate-200 sm:text-2xl">
                 Discover verified properties, joint venture deals, and
                 investment opportunities across Nigeria. Buy, sell, and invest
                 with confidence.

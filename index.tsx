@@ -57,6 +57,17 @@ type PropertyInquiry = {
   createdAt: string;
 };
 
+type ContactMessage = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  status: LeadStatus;
+  createdAt: string;
+};
+
 type PropertyView = {
   id: number;
   listingId: number;
@@ -436,6 +447,19 @@ function mapPropertyViewRow(row: any): PropertyView {
   };
 }
 
+function mapContactMessageRow(row: any): ContactMessage {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    email: row.email || "",
+    phone: row.phone || "",
+    subject: row.subject || "General enquiry",
+    message: row.message || "",
+    status: row.status || "New",
+    createdAt: row.created_at,
+  };
+}
+
 function listingToRow(listing: Omit<Listing, "id">) {
   return {
     title: listing.title,
@@ -464,6 +488,7 @@ export default function App() {
     []
   );
   const [propertyViews, setPropertyViews] = useState<PropertyView[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [modal, setModal] = useState<ModalType>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
@@ -542,6 +567,14 @@ export default function App() {
     message: "",
   });
 
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+  });
+
   const usesDatabase = Boolean(supabase);
 
   const pendingListings = listings.filter(
@@ -562,8 +595,8 @@ export default function App() {
     0
   );
 
-  const totalLeads = investorRequests.length + propertyInquiries.length;
-  const conversionReadyLeads = propertyInquiries.length;
+  const totalLeads = investorRequests.length + propertyInquiries.length + contactMessages.length;
+  const conversionReadyLeads = propertyInquiries.length + contactMessages.length;
   const [topLocation, topLocationCount] = getTopCount(
     listings.map((listing) => listing.location.split(",")[0]?.trim() || listing.location)
   );
@@ -682,6 +715,7 @@ export default function App() {
           setInvestorRequests([]);
           setPropertyInquiries([]);
           setPropertyViews([]);
+          setContactMessages([]);
         }
       }
     );
@@ -723,6 +757,11 @@ export default function App() {
   }, [propertyViews]);
 
   useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_contact_messages", JSON.stringify(contactMessages));
+  }, [contactMessages]);
+
+  useEffect(() => {
     function openAdminShortcut(event: KeyboardEvent) {
       if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
         setAdminPassword("");
@@ -762,6 +801,7 @@ export default function App() {
       const storedRequests = localStorage.getItem("inamaad_investor_requests");
       const storedInquiries = localStorage.getItem("inamaad_property_inquiries");
       const storedViews = localStorage.getItem("inamaad_property_views");
+      const storedContactMessages = localStorage.getItem("inamaad_contact_messages");
 
       if (storedListings) {
         setListings(JSON.parse(storedListings) as Listing[]);
@@ -778,11 +818,16 @@ export default function App() {
       if (storedViews) {
         setPropertyViews(JSON.parse(storedViews) as PropertyView[]);
       }
+
+      if (storedContactMessages) {
+        setContactMessages(JSON.parse(storedContactMessages) as ContactMessage[]);
+      }
     } catch {
       localStorage.removeItem("inamaad_listings");
       localStorage.removeItem("inamaad_investor_requests");
       localStorage.removeItem("inamaad_property_inquiries");
       localStorage.removeItem("inamaad_property_views");
+      localStorage.removeItem("inamaad_contact_messages");
     }
   }
 
@@ -855,6 +900,22 @@ export default function App() {
     setPropertyViews((data || []).map(mapPropertyViewRow));
   }
 
+  async function loadDatabaseContactMessages() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("contact_messages")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setContactMessages((data || []).map(mapContactMessageRow));
+  }
+
   async function checkAdminAccess() {
     if (!supabase) return;
 
@@ -873,6 +934,7 @@ export default function App() {
       await loadDatabaseInvestorRequests();
       await loadDatabasePropertyInquiries();
       await loadDatabasePropertyViews();
+      await loadDatabaseContactMessages();
     }
   }
 
@@ -1248,6 +1310,48 @@ export default function App() {
     showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
   }
 
+  async function submitContactMessage(event: React.FormEvent) {
+    event.preventDefault();
+
+    const newMessage: Omit<ContactMessage, "id"> = {
+      ...contactForm,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("contact_messages").insert({
+        name: contactForm.name,
+        email: contactForm.email || null,
+        phone: contactForm.phone || null,
+        subject: contactForm.subject || "General enquiry",
+        message: contactForm.message,
+        status: "New",
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to send contact message. Check database settings.");
+        return;
+      }
+    } else {
+      setContactMessages((current) => [
+        { ...newMessage, id: Date.now() },
+        ...current,
+      ]);
+    }
+
+    setContactForm({
+      name: "",
+      email: "",
+      phone: "",
+      subject: "",
+      message: "",
+    });
+
+    showSuccess("Contact message sent. INAMAAD will reply shortly.");
+  }
+
   async function handleSignIn(event: React.FormEvent) {
     event.preventDefault();
 
@@ -1338,6 +1442,8 @@ export default function App() {
     setUser(null);
     setInvestorRequests([]);
     setPropertyInquiries([]);
+    setPropertyViews([]);
+    setContactMessages([]);
     showSuccess("Staff signed out.");
   }
 
@@ -1480,6 +1586,54 @@ export default function App() {
     showSuccess("Property inquiry removed.");
   }
 
+  async function updateContactMessageStatus(id: number, status: LeadStatus) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("contact_messages")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update contact message status.");
+        return;
+      }
+
+      await loadDatabaseContactMessages();
+    } else {
+      setContactMessages((current) =>
+        current.map((message) =>
+          message.id === id ? { ...message, status } : message
+        )
+      );
+    }
+
+    showSuccess(`Contact message marked as ${status}.`);
+  }
+
+  async function deleteContactMessage(id: number) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("contact_messages")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete contact message.");
+        return;
+      }
+
+      await loadDatabaseContactMessages();
+    } else {
+      setContactMessages((current) =>
+        current.filter((message) => message.id !== id)
+      );
+    }
+
+    showSuccess("Contact message removed.");
+  }
+
 
   function escapeCsvValue(value: unknown) {
     const text = String(value ?? "");
@@ -1605,6 +1759,32 @@ export default function App() {
     );
   }
 
+  function exportContactMessagesCsv() {
+    downloadCsv(
+      "inamaad-contact-messages.csv",
+      [
+        "ID",
+        "Name",
+        "Email",
+        "Phone",
+        "Subject",
+        "Status",
+        "Message",
+        "Created At",
+      ],
+      contactMessages.map((message) => [
+        message.id,
+        message.name,
+        message.email || "",
+        message.phone || "",
+        message.subject || "General enquiry",
+        message.status || "New",
+        message.message || "",
+        message.createdAt,
+      ])
+    );
+  }
+
   function exportPropertyViewsCsv() {
     downloadCsv(
       "inamaad-property-views.csv",
@@ -1630,6 +1810,7 @@ export default function App() {
         ["Verified property value", verifiedPropertyValue],
         ["Investor requests", investorRequests.length],
         ["Property inquiries", propertyInquiries.length],
+        ["Contact messages", contactMessages.length],
         ["Property views", totalPropertyViews],
         ["Most viewed property", mostViewedProperty],
         ["Most viewed property count", mostViewedPropertyCount],
@@ -2344,30 +2525,84 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="grid gap-4">
-                <button
-                  onClick={() => setModal("investor")}
-                  className="rounded-2xl bg-[#f0bf3c] px-7 py-5 text-base font-black text-[#0d1c38] hover:bg-[#ffd45a]"
-                >
-                  Request Investor Access
-                </button>
+              <form
+                onSubmit={submitContactMessage}
+                className="rounded-[2rem] bg-white p-6 text-[#0d1c38] shadow-2xl shadow-black/20"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                  Send message
+                </p>
+                <h3 className="mt-2 text-2xl font-black">Contact INAMAAD</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Messages from this form are saved directly inside your staff portal.
+                </p>
 
-                <button
-                  onClick={() => setModal("post")}
-                  className="rounded-2xl border border-white/20 px-7 py-5 text-base font-black text-white hover:bg-white/10"
-                >
-                  Submit Property
-                </button>
+                <div className="mt-5 grid gap-3">
+                  <input
+                    required
+                    value={contactForm.name}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, name: event.target.value })
+                    }
+                    placeholder="Full name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
 
-                <a
-                  href={`https://wa.me/${WHATSAPP_NUMBER}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-2xl bg-white px-7 py-5 text-center text-base font-black text-[#0d1c38]"
-                >
-                  WhatsApp: +{WHATSAPP_NUMBER}
-                </a>
-              </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <input
+                      type="email"
+                      value={contactForm.email}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, email: event.target.value })
+                      }
+                      placeholder="Email optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={contactForm.phone}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, phone: event.target.value })
+                      }
+                      placeholder="Phone or WhatsApp"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <input
+                    value={contactForm.subject}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, subject: event.target.value })
+                    }
+                    placeholder="Subject e.g. Property investment"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <textarea
+                    required
+                    value={contactForm.message}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, message: event.target.value })
+                    }
+                    placeholder="Write your message"
+                    rows={4}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <button className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-sm font-black text-[#0d1c38] hover:bg-[#ffd45a]">
+                    Send message
+                  </button>
+
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-2xl border border-slate-200 px-7 py-4 text-center text-sm font-black text-[#0d1c38] hover:border-[#0d1c38]"
+                  >
+                    Or WhatsApp: +{WHATSAPP_NUMBER}
+                  </a>
+                </div>
+              </form>
             </div>
           </div>
         </section>
@@ -3294,7 +3529,7 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-5">
+                <div className="grid gap-4 md:grid-cols-6">
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
                     <p className="text-2xl font-black text-[#0d1c38]">
                       {listings.length}
@@ -3314,6 +3549,13 @@ export default function App() {
                       {propertyInquiries.length}
                     </p>
                     <p className="text-sm text-slate-500">Property inquiries</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {contactMessages.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Contact messages</p>
                   </div>
 
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
@@ -3381,7 +3623,7 @@ export default function App() {
                       <p className="text-sm text-slate-300">Total leads</p>
                       <p className="mt-2 text-3xl font-black">{totalLeads}</p>
                       <p className="mt-1 text-xs text-slate-400">
-                        Investor requests + property inquiries
+                        Investor requests + property inquiries + contact messages
                       </p>
                     </div>
 
@@ -3392,6 +3634,16 @@ export default function App() {
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
                         Buyer leads from listing pages
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Contact messages</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {contactMessages.length}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Direct messages from contact section
                       </p>
                     </div>
 
@@ -3534,6 +3786,14 @@ export default function App() {
                       className="rounded-full bg-emerald-600 px-5 py-3 text-xs font-black text-white"
                     >
                       Export property inquiries
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportContactMessagesCsv}
+                      className="rounded-full bg-blue-700 px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export contact messages
                     </button>
                   </div>
                 </div>
@@ -3717,6 +3977,133 @@ export default function App() {
 
                               <button
                                 onClick={() => deletePropertyInquiry(inquiry.id)}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    Contact messages
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {contactMessages.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No contact messages yet.
+                      </p>
+                    )}
+
+                    {contactMessages.map((message) => {
+                      const messageStatus = message.status || "New";
+                      const contactWhatsAppMessage = `Hello ${message.name}, this is INAMAAD Real Estate. We received your message: ${message.subject || "General enquiry"}.`;
+
+                      return (
+                        <div
+                          key={message.id}
+                          className="rounded-2xl border border-slate-200 p-5"
+                        >
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                                  {message.subject || "General enquiry"}
+                                </p>
+
+                                <span
+                                  className={`rounded-full px-3 py-1 text-[11px] font-black ${leadStatusClass(
+                                    messageStatus
+                                  )}`}
+                                >
+                                  {messageStatus}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 font-black text-[#0d1c38]">
+                                {message.name}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {message.email || "No email"} • {message.phone || "No phone"}
+                              </p>
+
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {message.message || "No message."}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(message.createdAt)}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              {message.phone && (
+                                <>
+                                  <a
+                                    href={createWhatsAppLeadLink(
+                                      message.phone,
+                                      contactWhatsAppMessage
+                                    )}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                                  >
+                                    WhatsApp
+                                  </a>
+
+                                  <a
+                                    href={createCallLeadLink(message.phone)}
+                                    className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                                  >
+                                    Call
+                                  </a>
+                                </>
+                              )}
+
+                              {message.email && (
+                                <a
+                                  href={createEmailLeadLink(
+                                    message.email,
+                                    `INAMAAD contact message: ${message.subject || "General enquiry"}`
+                                  )}
+                                  className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white"
+                                >
+                                  Email
+                                </a>
+                              )}
+
+                              <button
+                                onClick={() => updateContactMessageStatus(message.id, "New")}
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700"
+                              >
+                                New
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updateContactMessageStatus(message.id, "Contacted")
+                                }
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700"
+                              >
+                                Contacted
+                              </button>
+
+                              <button
+                                onClick={() => updateContactMessageStatus(message.id, "Closed")}
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700"
+                              >
+                                Closed
+                              </button>
+
+                              <button
+                                onClick={() => deleteContactMessage(message.id)}
                                 className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
                               >
                                 Delete

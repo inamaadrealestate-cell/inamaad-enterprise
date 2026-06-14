@@ -4,6 +4,9 @@ import { createClient, type User } from "@supabase/supabase-js";
 type ModalType =
   | null
   | "signin"
+  | "forgot_password"
+  | "reset_password"
+  | "resend_confirmation"
   | "register"
   | "post"
   | "investor"
@@ -331,6 +334,29 @@ const SUPABASE_KEY =
 
 const supabase =
   SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+function getAppBaseUrl() {
+  const configuredUrl =
+    (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) ||
+    (import.meta.env.VITE_APP_URL as string | undefined) ||
+    (import.meta.env.VITE_SITE_URL as string | undefined);
+
+  if (configuredUrl) return configuredUrl.replace(/\/+$/, "");
+
+  if (typeof window !== "undefined") return window.location.origin;
+
+  return "";
+}
+
+function getAuthRedirectUrl(authMode: "email-confirmed" | "reset-password") {
+  const baseUrl = getAppBaseUrl();
+  const currentPath =
+    typeof window !== "undefined" ? window.location.pathname || "/" : "/";
+  const cleanPath = currentPath.startsWith("/") ? currentPath : `/${currentPath}`;
+  const redirectUrl = new URL(`${baseUrl}${cleanPath}`);
+  redirectUrl.searchParams.set("auth", authMode);
+  return redirectUrl.toString();
+}
 
 const navLinks = [
   { label: "Home", href: "#" },
@@ -1524,6 +1550,35 @@ function verificationSummary(listing: Listing | Omit<Listing, "id">) {
   return `${completed}/5 checks complete`;
 }
 
+function getUserDisplayName(sessionUser: User | null) {
+  if (!sessionUser) return "";
+
+  const metadata = sessionUser.user_metadata || {};
+  const possibleName =
+    metadata.full_name ||
+    metadata.name ||
+    metadata.display_name ||
+    sessionUser.email?.split("@")[0] ||
+    "INAMAAD user";
+
+  return String(possibleName);
+}
+
+function getUserInitials(nameOrEmail: string) {
+  const cleaned = nameOrEmail.trim();
+
+  if (!cleaned) return "IN";
+
+  const namePart = cleaned.includes("@") ? cleaned.split("@")[0] : cleaned;
+  const parts = namePart.split(/[\s._-]+/).filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0][0] || "I"}${parts[1][0] || "N"}`.toUpperCase();
+  }
+
+  return namePart.slice(0, 2).toUpperCase();
+}
+
 export default function App() {
   const [listings, setListings] = useState<Listing[]>(seedListings);
   const [investorRequests, setInvestorRequests] = useState<InvestorRequest[]>(
@@ -1566,6 +1621,7 @@ export default function App() {
   const [sharedListingOpened, setSharedListingOpened] = useState(false);
 
   const [user, setUser] = useState<User | null>(null);
+  const [demoAuthenticated, setDemoAuthenticated] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
@@ -1578,6 +1634,19 @@ export default function App() {
   const [signInForm, setSignInForm] = useState({
     email: "",
     password: "",
+  });
+
+  const [forgotPasswordForm, setForgotPasswordForm] = useState({
+    email: "",
+  });
+
+  const [confirmEmailForm, setConfirmEmailForm] = useState({
+    email: "",
+  });
+
+  const [resetPasswordForm, setResetPasswordForm] = useState({
+    password: "",
+    confirmPassword: "",
   });
 
   const [registerForm, setRegisterForm] = useState({
@@ -1893,6 +1962,29 @@ export default function App() {
   const currentStaffRole: StaffRole = usesDatabase
     ? currentStaffMember?.role || "Viewer"
     : "Super Admin";
+  const isAuthenticated = Boolean(user) || demoAuthenticated || adminUnlocked;
+  const sessionDisplayName = user
+    ? getUserDisplayName(user)
+    : demoAuthenticated
+    ? "Demo user"
+    : adminUnlocked
+    ? "Local admin"
+    : "Guest visitor";
+  const sessionEmail = user?.email || (adminUnlocked && adminEmail ? adminEmail : demoAuthenticated ? "Demo mode" : "Not signed in");
+  const sessionInitials = getUserInitials(sessionDisplayName || sessionEmail);
+  const sessionRoleText = user
+    ? currentStaffMember
+      ? currentStaffRole
+      : "Signed-in user"
+    : adminUnlocked
+    ? currentStaffRole
+    : demoAuthenticated
+    ? "Demo account"
+    : "Guest";
+  const sessionStatusText = isAuthenticated ? "Logged in" : "Not logged in";
+  const sessionStatusDescription = isAuthenticated
+    ? `Active session: ${sessionEmail}`
+    : "Sign in or create an account to see your account status here.";
   const hasAnyStaffRole = (allowedRoles: StaffRole[]) =>
     !usesDatabase || allowedRoles.includes(currentStaffRole);
 
@@ -2179,6 +2271,17 @@ export default function App() {
     sortMode,
   ]);
 
+  const filteredPropertyListings = useMemo(
+    () => filteredListings.filter((listing) => !isJointVentureListing(listing)),
+    [filteredListings]
+  );
+
+  const filteredJvListings = useMemo(
+    () => filteredListings.filter((listing) => isJointVentureListing(listing)),
+    [filteredListings]
+  );
+
+
   useEffect(() => {
     if (!supabase) {
       loadLocalData();
@@ -2187,17 +2290,28 @@ export default function App() {
 
     loadDatabaseListings();
     loadDatabasePropertyImages();
+    handleIncomingAuthRedirect();
 
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
       if (data.user) {
+        setDemoAuthenticated(false);
         checkAdminAccess();
       }
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setUser(session?.user ?? null);
+
+        if (event === "PASSWORD_RECOVERY") {
+          setModal("reset_password");
+          showSuccess("Password recovery verified. Enter a new password to finish.");
+        }
+
+        if (session?.user) {
+          setDemoAuthenticated(false);
+        }
         if (!session?.user) {
           setAdminUnlocked(false);
           setInvestorRequests([]);
@@ -4313,16 +4427,52 @@ export default function App() {
     showSuccess("Contact message sent. INAMAAD will reply shortly.");
   }
 
+  function handleIncomingAuthRedirect() {
+    if (typeof window === "undefined") return;
+
+    const currentUrl = new URL(window.location.href);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const authMode = currentUrl.searchParams.get("auth");
+    const authType = hashParams.get("type") || currentUrl.searchParams.get("type");
+    const authError =
+      hashParams.get("error_description") ||
+      currentUrl.searchParams.get("error_description") ||
+      hashParams.get("error") ||
+      currentUrl.searchParams.get("error");
+
+    if (authError) {
+      showSuccess(decodeURIComponent(authError));
+    } else if (authMode === "reset-password" || authType === "recovery") {
+      setModal("reset_password");
+      showSuccess("Reset link verified. Create a new password to finish.");
+    } else if (authMode === "email-confirmed" || authType === "signup") {
+      showSuccess("Email confirmed successfully. You can now sign in and use your INAMAAD account.");
+    }
+
+    if (authMode || authType || authError || window.location.hash) {
+      currentUrl.searchParams.delete("auth");
+      currentUrl.searchParams.delete("type");
+      currentUrl.searchParams.delete("error");
+      currentUrl.searchParams.delete("error_description");
+      window.history.replaceState(
+        {},
+        document.title,
+        `${currentUrl.pathname}${currentUrl.search}${currentUrl.search ? "" : ""}`
+      );
+    }
+  }
+
   async function handleSignIn(event: React.FormEvent) {
     event.preventDefault();
 
     if (!supabase) {
+      setDemoAuthenticated(true);
       setModal(null);
-      showSuccess("Demo sign in completed.");
+      showSuccess("Demo sign in completed. You are logged in in local demo mode.");
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: signInForm.email,
       password: signInForm.password,
     });
@@ -4332,24 +4482,124 @@ export default function App() {
       return;
     }
 
+    setUser(data.user);
+    setDemoAuthenticated(false);
     setSignInForm({ email: "", password: "" });
     setModal(null);
-    showSuccess("Signed in successfully.");
+    showSuccess(`Logged in successfully as ${data.user?.email || signInForm.email}.`);
+  }
+
+  async function handleForgotPassword(event: React.FormEvent) {
+    event.preventDefault();
+
+    const email = (forgotPasswordForm.email || signInForm.email).trim();
+
+    if (!email) {
+      showSuccess("Enter your email address first so INAMAAD can send the reset link.");
+      return;
+    }
+
+    if (!supabase) {
+      showSuccess("Password reset needs Supabase. In local demo mode, you can sign in with any email and password.");
+      return;
+    }
+
+    const redirectTo = getAuthRedirectUrl("reset-password");
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setForgotPasswordForm({ email: "" });
+    setModal("signin");
+    showSuccess("Password reset link sent. Check your email, open the link, then set a new password.");
+  }
+
+  async function handleResendConfirmation(event: React.FormEvent) {
+    event.preventDefault();
+
+    const email = (confirmEmailForm.email || signInForm.email || registerForm.email).trim();
+
+    if (!email) {
+      showSuccess("Enter the email address you used to create your INAMAAD account.");
+      return;
+    }
+
+    if (!supabase) {
+      showSuccess("Email confirmation needs Supabase. Local demo mode does not send confirmation emails.");
+      return;
+    }
+
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: getAuthRedirectUrl("email-confirmed"),
+      },
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setConfirmEmailForm({ email: "" });
+    setModal("signin");
+    showSuccess("Confirmation email sent again. Open the link from the same browser or device.");
+  }
+
+  async function handleUpdatePassword(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!supabase) {
+      showSuccess("Password update needs Supabase authentication.");
+      return;
+    }
+
+    if (resetPasswordForm.password.length < 6) {
+      showSuccess("Your new password must be at least 6 characters.");
+      return;
+    }
+
+    if (resetPasswordForm.password !== resetPasswordForm.confirmPassword) {
+      showSuccess("The two passwords do not match.");
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password: resetPasswordForm.password,
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setResetPasswordForm({ password: "", confirmPassword: "" });
+    setModal(null);
+    showSuccess("Password updated successfully. You are logged in.");
   }
 
   async function handleRegister(event: React.FormEvent) {
     event.preventDefault();
 
     if (!supabase) {
+      setDemoAuthenticated(true);
       setModal(null);
-      showSuccess("Demo account created.");
+      showSuccess("Demo account created. You are logged in in local demo mode.");
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: registerForm.email,
       password: registerForm.password,
       options: {
+        emailRedirectTo: getAuthRedirectUrl("email-confirmed"),
         data: {
           full_name: registerForm.name,
         },
@@ -4361,9 +4611,17 @@ export default function App() {
       return;
     }
 
+    if (data.session && data.user) {
+      setUser(data.user);
+      setDemoAuthenticated(false);
+      showSuccess(`Account created and logged in as ${data.user.email || registerForm.email}.`);
+    } else {
+      setUser(null);
+      showSuccess("Account created. Check your email and click Confirm. If the link still fails, fix Supabase Site URL and Redirect URLs as shown in the steps below.");
+    }
+
     setRegisterForm({ name: "", email: "", password: "" });
     setModal(null);
-    showSuccess("Account created. Check your email if confirmation is required.");
   }
 
   async function unlockAdmin(event: React.FormEvent) {
@@ -4372,7 +4630,9 @@ export default function App() {
     if (!supabase) {
       if (adminPassword === LOCAL_ADMIN_PASSWORD) {
         setAdminUnlocked(true);
+        setDemoAuthenticated(false);
         setAdminPassword("");
+        showSuccess("Local staff session unlocked. You are logged in as demo admin.");
       } else {
         showSuccess("Wrong admin password.");
       }
@@ -4380,7 +4640,7 @@ export default function App() {
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: adminEmail,
       password: adminPassword,
     });
@@ -4390,8 +4650,11 @@ export default function App() {
       return;
     }
 
+    setUser(data.user);
+    setDemoAuthenticated(false);
     setAdminPassword("");
     await checkAdminAccess();
+    showSuccess(`Staff logged in as ${data.user?.email || adminEmail}.`);
   }
 
   async function logoutAdmin() {
@@ -4400,6 +4663,7 @@ export default function App() {
     }
 
     setAdminUnlocked(false);
+    setDemoAuthenticated(false);
     setUser(null);
     setInvestorRequests([]);
     setPropertyInquiries([]);
@@ -6066,12 +6330,70 @@ export default function App() {
           </nav>
 
           <div className="hidden items-center gap-4 lg:flex">
-            <button
-              onClick={() => setModal("signin")}
-              className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
+            <div
+              className={`flex items-center gap-3 rounded-2xl border px-4 py-2 shadow-sm ${
+                isAuthenticated
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-amber-200 bg-amber-50"
+              }`}
             >
-              Sign In
-            </button>
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-black ${
+                  isAuthenticated
+                    ? "bg-emerald-700 text-white"
+                    : "bg-amber-400 text-[#0d1c38]"
+                }`}
+              >
+                {isAuthenticated ? sessionInitials : "?"}
+              </div>
+
+              <div className="min-w-0">
+                <div
+                  className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] ${
+                    isAuthenticated ? "text-emerald-700" : "text-amber-700"
+                  }`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      isAuthenticated ? "bg-emerald-500" : "bg-amber-500"
+                    }`}
+                  />
+                  {sessionStatusText}
+                </div>
+                <p className="max-w-[210px] truncate text-sm font-black text-[#0d1c38]">
+                  {sessionDisplayName}
+                </p>
+                <p className="max-w-[210px] truncate text-xs font-semibold text-slate-500">
+                  {sessionRoleText}
+                </p>
+              </div>
+            </div>
+
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={logoutAdmin}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setModal("signin")}
+                  className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
+                >
+                  Sign In
+                </button>
+
+                <button
+                  onClick={() => setModal("register")}
+                  className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-black text-[#0d1c38] shadow-sm transition hover:border-[#0d1c38]"
+                >
+                  Sign Up
+                </button>
+              </>
+            )}
 
             <button
               onClick={() => setModal("investor")}
@@ -6091,6 +6413,40 @@ export default function App() {
 
         {mobileOpen && (
           <div className="border-t border-slate-200 bg-white px-6 py-5 lg:hidden">
+            <div className="mb-5 rounded-3xl border border-slate-200 bg-[#f7f8fb] p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-black ${
+                    isAuthenticated
+                      ? "bg-emerald-700 text-white"
+                      : "bg-amber-400 text-[#0d1c38]"
+                  }`}
+                >
+                  {isAuthenticated ? sessionInitials : "?"}
+                </div>
+
+                <div className="min-w-0">
+                  <p
+                    className={`text-xs font-black uppercase tracking-[0.16em] ${
+                      isAuthenticated ? "text-emerald-700" : "text-amber-700"
+                    }`}
+                  >
+                    {sessionStatusText}
+                  </p>
+                  <p className="truncate text-sm font-black text-[#0d1c38]">
+                    {sessionDisplayName}
+                  </p>
+                  <p className="truncate text-xs text-slate-500">
+                    {sessionEmail}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs leading-5 text-slate-600">
+                {sessionStatusDescription}
+              </p>
+            </div>
+
             <div className="grid gap-4 text-sm font-semibold text-slate-700">
               {navLinks.map((item) => (
                 <a
@@ -6101,6 +6457,40 @@ export default function App() {
                   {item.label}
                 </a>
               ))}
+
+              {isAuthenticated ? (
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    logoutAdmin();
+                  }}
+                  className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-left font-black text-red-700"
+                >
+                  Sign Out
+                </button>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      setModal("signin");
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-left font-black text-[#0d1c38]"
+                  >
+                    Sign In
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      setModal("register");
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-left font-black text-[#0d1c38]"
+                  >
+                    Sign Up
+                  </button>
+                </div>
+              )}
 
               <button
                 onClick={() => {
@@ -6116,100 +6506,263 @@ export default function App() {
         )}
       </header>
 
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+          <div className="flex items-center gap-4">
+            <div
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-black shadow-sm ${
+                isAuthenticated
+                  ? "bg-emerald-700 text-white"
+                  : "bg-amber-400 text-[#0d1c38]"
+              }`}
+            >
+              {isAuthenticated ? sessionInitials : "?"}
+            </div>
+
+            <div>
+              <p
+                className={`text-xs font-black uppercase tracking-[0.18em] ${
+                  isAuthenticated ? "text-emerald-700" : "text-amber-700"
+                }`}
+              >
+                {sessionStatusText}
+              </p>
+              <h2 className="text-base font-black text-[#0d1c38]">
+                {isAuthenticated
+                  ? `Welcome, ${sessionDisplayName}`
+                  : "You are browsing as a guest"}
+              </h2>
+              <p className="text-sm leading-6 text-slate-500">
+                {sessionStatusDescription}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.16em] ${
+                isAuthenticated
+                  ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                  : "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+              }`}
+            >
+              {sessionRoleText}
+            </span>
+
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={logoutAdmin}
+                className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setModal("signin")}
+                  className="rounded-xl bg-[#0d1c38] px-4 py-2 text-sm font-black text-white hover:bg-[#13284f]"
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModal("register")}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-black text-[#0d1c38] hover:border-[#0d1c38]"
+                >
+                  Create Account
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
       <main>
-        <section className="relative overflow-hidden bg-[#0d1c38]">
+        <section className="relative overflow-hidden bg-[#0d1c38] text-white">
           <div
-            className="absolute inset-0 bg-cover bg-left-center"
+            className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage:
-                "linear-gradient(rgba(13,28,56,0.78), rgba(13,28,56,0.78)), url('/hero-building.jpg')",
+                "linear-gradient(135deg, rgba(13,28,56,0.92), rgba(13,28,56,0.82)), url('/hero-building.jpg')",
             }}
           />
 
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.22),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.1),transparent_35%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.30),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.13),transparent_38%)]" />
 
-          <div className="relative mx-auto max-w-7xl px-6 py-12 lg:px-10 lg:py-14">
-            <div className="max-w-5xl">
-              <div className="mb-5 flex items-center gap-3">
-                <div className="h-[3px] w-14 bg-[#f0bf3c]" />
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f0bf3c] sm:text-sm">
-                  Nigeria’s premier platform
+          <div className="relative mx-auto max-w-7xl px-6 py-12 lg:px-10 lg:py-16">
+            <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+              <div>
+                <div className="mb-5 inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-2 backdrop-blur">
+                  <span className="h-2 w-2 rounded-full bg-[#f0bf3c]" />
+                  <span className="text-xs font-black uppercase tracking-[0.16em] text-[#f0bf3c]">
+                    Verified properties • JV deals • Nigeria
+                  </span>
+                </div>
+
+                <h1 className="max-w-4xl text-4xl font-black leading-[1.04] tracking-tight sm:text-5xl lg:text-[58px]">
+                  Real estate made simple, trusted, and easy to use.
+                </h1>
+
+                <p className="mt-6 max-w-2xl text-base leading-8 text-slate-200 sm:text-lg">
+                  Find verified homes, land, commercial properties, and joint venture opportunities
+                  with clear details, simple filters, and fast contact options.
                 </p>
-              </div>
 
-              <h1 className="max-w-3xl text-3xl font-black leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-[44px]">
-                Connecting Property,
-                <br />
-                <span className="text-[#f0bf3c]">Land</span>, Investors
-                <br />& Opportunities
-              </h1>
-
-              <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">
-                Discover verified properties, joint venture deals, and
-                investment opportunities across Nigeria. Buy, sell, and invest
-                with confidence.
-              </p>
-
-              <div className="mt-8 max-w-6xl rounded-[24px] bg-white p-4 shadow-2xl">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1.1fr]">
-                  <input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    type="text"
-                    placeholder="Search properties..."
-                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
-                  />
-
-                  <select
-                    value={propertyType}
-                    onChange={(event) => setPropertyType(event.target.value)}
-                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
-                  >
-                    <option>All</option>
-                    {propertyTypeOptions.map((type) => (
-                      <option key={type}>{type}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={listingPurpose}
-                    onChange={(event) => setListingPurpose(event.target.value)}
-                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
-                    aria-label="Listing purpose"
-                  >
-                    <option>All Purposes</option>
-                    {listingPurposeOptions.map((purpose) => (
-                      <option key={purpose}>{purpose}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={locationFilter}
-                    onChange={(event) => setLocationFilter(event.target.value)}
-                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
-                  >
-                    <option value="All Locations">All Locations</option>
-                    {nigeriaLocationOptions.map((location) => (
-                      <option key={location.label} value={location.value}>
-                        {location.label}
-                      </option>
-                    ))}
-                  </select>
-
+                <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <a
                     href="#properties"
-                    className="flex h-14 items-center justify-center rounded-2xl bg-[#0d1c38] px-6 text-lg font-semibold text-white transition hover:bg-[#13284f]"
+                    onClick={() => {
+                      setPropertyType("All");
+                      setListingPurpose("All Purposes");
+                    }}
+                    className="rounded-2xl bg-[#f0bf3c] px-5 py-4 text-center text-sm font-black text-[#0d1c38] shadow-sm transition hover:bg-[#ffd45a]"
                   >
-                    Search
+                    Browse Properties
                   </a>
+
+                  <a
+                    href="#jv"
+                    onClick={() => {
+                      setPropertyType("All");
+                      setListingPurpose("All Purposes");
+                    }}
+                    className="rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-center text-sm font-black text-white backdrop-blur transition hover:bg-white/20"
+                  >
+                    View JV Deals
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => openPostModal("property")}
+                    className="rounded-2xl bg-white px-5 py-4 text-sm font-black text-[#0d1c38] shadow-sm transition hover:bg-slate-100"
+                  >
+                    List Property
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openPostModal("jv")}
+                    className="rounded-2xl border border-[#f0bf3c]/50 px-5 py-4 text-sm font-black text-[#f0bf3c] transition hover:bg-[#f0bf3c] hover:text-[#0d1c38]"
+                  >
+                    Post JV Deal
+                  </button>
                 </div>
+
+                {!usesDatabase && (
+                  <p className="mt-5 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-xs font-semibold text-slate-200 backdrop-blur">
+                    Database not connected yet. Forms will use local demo storage until Supabase environment variables are added.
+                  </p>
+                )}
               </div>
 
-              {!usesDatabase && (
-                <p className="mt-4 text-xs font-semibold text-slate-300">
-                  Database not connected yet. Forms will use local demo storage until Supabase environment variables are added.
-                </p>
-              )}
+              <div className="rounded-[32px] border border-white/10 bg-white p-5 text-[#0d1c38] shadow-2xl">
+                <div className="rounded-[26px] bg-[#f7f8fb] p-5">
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                        Smart search
+                      </p>
+                      <h2 className="mt-1 text-2xl font-black">
+                        What are you looking for?
+                      </h2>
+                    </div>
+
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
+                      User friendly
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-3">
+                    <input
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      type="text"
+                      placeholder="Search by title, location, type, document..."
+                      className="h-14 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                    />
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <select
+                        value={propertyType}
+                        onChange={(event) => setPropertyType(event.target.value)}
+                        className="h-14 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                      >
+                        <option>All</option>
+                        {propertyTypeOptions
+                          .filter((type) => type !== "Joint Venture" && type !== "Estate Development")
+                          .map((type) => (
+                            <option key={type}>{type}</option>
+                          ))}
+                      </select>
+
+                      <select
+                        value={locationFilter}
+                        onChange={(event) => setLocationFilter(event.target.value)}
+                        className="h-14 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                      >
+                        <option value="All Locations">All Locations</option>
+                        {nigeriaLocationOptions.map((location) => (
+                          <option key={location.label} value={location.value}>
+                            {location.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <a
+                        href="#properties"
+                        className="flex h-14 items-center justify-center rounded-2xl bg-[#0d1c38] px-5 text-sm font-black text-white transition hover:bg-[#13284f]"
+                      >
+                        Search Properties
+                      </a>
+
+                      <a
+                        href="#jv"
+                        onClick={() => {
+                          setPropertyType("All");
+                          setListingPurpose("All Purposes");
+                        }}
+                        className="flex h-14 items-center justify-center rounded-2xl border border-[#0d1c38] bg-white px-5 text-sm font-black text-[#0d1c38] transition hover:bg-slate-50"
+                      >
+                        See JV Deals
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">Properties show</p>
+                    <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600">
+                      <span>Bedrooms • Bathrooms • Toilets</span>
+                      <span>Price • Location • Images</span>
+                      <span>Inspection • Offer • Contact</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">JV deals show</p>
+                    <div className="mt-3 grid gap-2 text-xs font-bold text-amber-900">
+                      <span>Land size • Title status</span>
+                      <span>Structure • Sharing formula</span>
+                      <span>Developer/investor requirement</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-3xl bg-[#0d1c38] p-5 text-white">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
+                    Important rule
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">
+                    JV deals are separated from normal property listings. They will not use bedroom,
+                    bathroom, toilet, furnishing, or amenity fields unless the JV is already a developed property.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -6295,7 +6848,7 @@ export default function App() {
                 "Office Space",
                 "Shop / Retail Space",
                 "Warehouse",
-                "Joint Venture",
+                "Mixed-use",
               ].map((item) => (
                 <button
                   key={item}
@@ -6318,7 +6871,7 @@ export default function App() {
                     Advanced search
                   </p>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    {filteredListings.length} verified result{filteredListings.length === 1 ? "" : "s"} found
+                    {filteredPropertyListings.length} verified property result{filteredPropertyListings.length === 1 ? "" : "s"} found
                   </p>
                 </div>
 
@@ -6409,7 +6962,7 @@ export default function App() {
               </div>
             ) : (
               <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {filteredListings.map((listing) => (
+                {filteredPropertyListings.map((listing) => (
                   <article
                     key={listing.id}
                     className={`group overflow-hidden rounded-[28px] border bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${
@@ -6668,69 +7221,194 @@ export default function App() {
         </section>
 
         <section id="jv" className="bg-[#0d1c38] px-6 py-20 text-white lg:px-10">
-          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-            <div>
-              <div className="mb-4 flex items-center gap-3">
-                <div className="h-[3px] w-14 bg-[#f0bf3c]" />
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
-                  Joint venture deals
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+              <div>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
+                    Joint venture deals
+                  </p>
+                </div>
+
+                <h2 className="text-4xl font-black tracking-tight md:text-6xl">
+                  JV deals now have their own professional flow.
+                </h2>
+
+                <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
+                  This section is built for landowners, developers, financiers, investors,
+                  and real estate development partners. It focuses on land, documentation,
+                  project structure, contributions, and sharing formula instead of normal
+                  bedroom/bathroom property fields.
                 </p>
+
+                <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+                  <button
+                    onClick={() => openPostModal("jv")}
+                    className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-base font-black text-[#0d1c38] hover:bg-[#ffd45a]"
+                  >
+                    Submit JV Deal
+                  </button>
+
+                  <button
+                    onClick={() => setModal("investor")}
+                    className="rounded-2xl border border-white/20 px-7 py-4 text-base font-black text-white hover:bg-white/10"
+                  >
+                    Investor Access
+                  </button>
+                </div>
               </div>
 
-              <h2 className="text-4xl font-black tracking-tight md:text-6xl">
-                Connect landowners, investors, and developers.
-              </h2>
+              <div className="rounded-[32px] border border-white/10 bg-white/5 p-7 backdrop-blur">
+                <div className="rounded-[24px] bg-white p-7 text-[#0d1c38]">
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-[#d39b19]">
+                    JV required details
+                  </p>
 
-              <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-                INAMAAD helps structure discovery for joint venture
-                opportunities, where landowners, developers, and investors can
-                find better-fit partnerships.
-              </p>
-
-              <div className="mt-9 flex flex-col gap-4 sm:flex-row">
-                <button
-                  onClick={() => openPostModal("jv")}
-                  className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-base font-black text-[#0d1c38] hover:bg-[#ffd45a]"
-                >
-                  Submit JV Deal
-                </button>
-
-                <button
-                  onClick={() => setModal("investor")}
-                  className="rounded-2xl border border-white/20 px-7 py-4 text-base font-black text-white hover:bg-white/10"
-                >
-                  Investor Access
-                </button>
+                  <div className="mt-6 grid gap-4">
+                    {[
+                      ["Land details", "Size, location, title/document status"],
+                      ["Project plan", "Proposed development and project stage"],
+                      ["Contribution", "What landowner, developer, or investor provides"],
+                      ["Commercial terms", "Sharing formula, timeline, and estimated value"],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="flex items-center justify-between gap-5 rounded-2xl bg-[#f7f8fb] p-5"
+                      >
+                        <p className="text-sm font-bold text-slate-500">
+                          {label}
+                        </p>
+                        <p className="text-right text-sm font-black text-[#0d1c38]">
+                          {value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-white/10 bg-white/5 p-7 backdrop-blur">
-              <div className="rounded-[24px] bg-white p-7 text-[#0d1c38]">
-                <p className="text-sm font-black uppercase tracking-[0.2em] text-[#d39b19]">
-                  JV Profile
-                </p>
+            <div className="mt-12">
+              <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
+                    Available JV opportunities
+                  </p>
+                  <h3 className="mt-3 text-3xl font-black md:text-4xl">
+                    JV listings separated from normal properties.
+                  </h3>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+                    {filteredJvListings.length} JV deal{filteredJvListings.length === 1 ? "" : "s"} found from verified listings.
+                  </p>
+                </div>
 
-                <div className="mt-6 grid gap-4">
-                  {[
-                    ["Landowners", "Submit land for development"],
-                    ["Developers", "Find JV-ready land opportunities"],
-                    ["Investors", "Join structured real estate projects"],
-                    ["Market", "Lagos, Abuja, and emerging corridors"],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between gap-5 rounded-2xl bg-[#f7f8fb] p-5"
+                <button
+                  onClick={() => {
+                    setQuery("");
+                    setPropertyType("All");
+                    setListingPurpose("All Purposes");
+                    setAvailabilityFilter("All Availability");
+                    setLocationFilter("All Locations");
+                    setMinValueFilter("");
+                    setMaxValueFilter("");
+                  }}
+                  className="rounded-2xl border border-white/20 px-5 py-3 text-sm font-black text-white hover:bg-white/10"
+                >
+                  Clear JV Search
+                </button>
+              </div>
+
+              {filteredJvListings.length === 0 ? (
+                <div className="mt-8 rounded-[28px] border border-white/10 bg-white/5 p-8 text-center">
+                  <p className="text-xl font-black">No JV deals match this search yet.</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    Clear your filters or submit a new JV deal for review.
+                  </p>
+                  <button
+                    onClick={() => openPostModal("jv")}
+                    className="mt-5 rounded-2xl bg-[#f0bf3c] px-6 py-3 text-sm font-black text-[#0d1c38] hover:bg-[#ffd45a]"
+                  >
+                    Submit JV Deal
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredJvListings.map((listing) => (
+                    <article
+                      key={listing.id}
+                      className="rounded-[28px] border border-white/10 bg-white p-6 text-[#0d1c38] shadow-sm"
                     >
-                      <p className="text-sm font-bold text-slate-500">
-                        {label}
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                            {buildListingReference(listing.id)}
+                          </p>
+                          <h4 className="mt-2 text-xl font-black">
+                            {listing.title}
+                          </h4>
+                          <p className="mt-2 text-sm font-bold text-slate-500">
+                            {buildPublicLocationText(listing)}
+                          </p>
+                        </div>
+
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
+                          JV
+                        </span>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 text-sm">
+                        <div className="rounded-2xl bg-[#f7f8fb] p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                            Land size
+                          </p>
+                          <p className="mt-1 font-black">
+                            {listing.landSize || "Not specified"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-[#f7f8fb] p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                            Structure
+                          </p>
+                          <p className="mt-1 font-black">
+                            {listing.jvStructure || listing.category || "JV Partnership"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-[#f7f8fb] p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                            Sharing formula
+                          </p>
+                          <p className="mt-1 font-black">
+                            {listing.jvSharingFormula || "To be discussed"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="mt-5 line-clamp-3 text-sm leading-6 text-slate-600">
+                        {listing.description}
                       </p>
-                      <p className="text-right text-sm font-black text-[#0d1c38]">
-                        {value}
-                      </p>
-                    </div>
+
+                      <div className="mt-6 grid grid-cols-2 gap-3">
+                        <button
+                          onClick={() => openListing(listing)}
+                          className="rounded-2xl bg-[#0d1c38] px-4 py-3 text-sm font-black text-white hover:bg-[#13284f]"
+                        >
+                          View JV Details
+                        </button>
+
+                        <button
+                          onClick={() => shareListing(listing)}
+                          className="rounded-2xl border border-[#0d1c38] px-4 py-3 text-sm font-black text-[#0d1c38] hover:bg-slate-50"
+                        >
+                          Share
+                        </button>
+                      </div>
+                    </article>
                   ))}
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </section>
@@ -7133,6 +7811,9 @@ export default function App() {
 
                 <h2 className="mt-2 text-2xl font-black text-[#0d1c38]">
                   {modal === "signin" && "Sign in"}
+                  {modal === "forgot_password" && "Forgot password"}
+                  {modal === "reset_password" && "Set new password"}
+                  {modal === "resend_confirmation" && "Resend confirmation"}
                   {modal === "register" && "Create account"}
                   {modal === "post" && "Submit opportunity"}
                   {modal === "investor" && "Request investor access"}
@@ -7156,6 +7837,13 @@ export default function App() {
 
             {modal === "signin" && (
               <form onSubmit={handleSignIn} className="grid gap-4">
+                <div className="rounded-3xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Secure account access</p>
+                  <p className="mt-1">
+                    Sign in to manage your enquiries, listings, saved opportunities, and staff access.
+                  </p>
+                </div>
+
                 <input
                   required
                   type="email"
@@ -7181,16 +7869,155 @@ export default function App() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotPasswordForm({ email: signInForm.email });
+                        setModal("forgot_password");
+                      }}
+                      className="text-left text-sm font-black text-[#0d1c38] hover:text-[#d39b19]"
+                    >
+                      Forgot password?
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmEmailForm({ email: signInForm.email });
+                        setModal("resend_confirmation");
+                      }}
+                      className="text-left text-sm font-black text-[#0d1c38] hover:text-[#d39b19]"
+                    >
+                      Resend confirmation email
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setModal("register")}
+                    className="text-left text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
+                  >
+                    Create a new account
+                  </button>
+                </div>
+
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white hover:bg-[#132a55]">
                   Sign in
+                </button>
+              </form>
+            )}
+
+            {modal === "forgot_password" && (
+              <form onSubmit={handleForgotPassword} className="grid gap-4">
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Reset your password</p>
+                  <p className="mt-1">
+                    Enter the email connected to your INAMAAD account. We will send a secure password reset link.
+                  </p>
+                </div>
+
+                <input
+                  required
+                  type="email"
+                  value={forgotPasswordForm.email}
+                  onChange={(event) =>
+                    setForgotPasswordForm({ email: event.target.value })
+                  }
+                  placeholder="Account email address"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white hover:bg-[#132a55]">
+                  Send reset link
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setModal("register")}
-                  className="text-sm font-bold text-slate-500"
+                  onClick={() => setModal("signin")}
+                  className="text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
                 >
-                  Create a new account
+                  Back to sign in
+                </button>
+              </form>
+            )}
+
+            {modal === "resend_confirmation" && (
+              <form onSubmit={handleResendConfirmation} className="grid gap-4">
+                <div className="rounded-3xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Confirm your email</p>
+                  <p className="mt-1">
+                    If the first confirmation link expired or opened the wrong website, enter your account email and INAMAAD will send a fresh confirmation link using the correct website address.
+                  </p>
+                </div>
+
+                <input
+                  required
+                  type="email"
+                  value={confirmEmailForm.email}
+                  onChange={(event) =>
+                    setConfirmEmailForm({ email: event.target.value })
+                  }
+                  placeholder="Account email address"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white hover:bg-[#132a55]">
+                  Send confirmation link
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setModal("signin")}
+                  className="text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
+                >
+                  Back to sign in
+                </button>
+              </form>
+            )}
+
+            {modal === "reset_password" && (
+              <form onSubmit={handleUpdatePassword} className="grid gap-4">
+                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Create your new password</p>
+                  <p className="mt-1">
+                    Your reset link has been verified. Enter a strong new password to secure your account.
+                  </p>
+                </div>
+
+                <input
+                  required
+                  type="password"
+                  minLength={6}
+                  value={resetPasswordForm.password}
+                  onChange={(event) =>
+                    setResetPasswordForm({
+                      ...resetPasswordForm,
+                      password: event.target.value,
+                    })
+                  }
+                  placeholder="New password"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <input
+                  required
+                  type="password"
+                  minLength={6}
+                  value={resetPasswordForm.confirmPassword}
+                  onChange={(event) =>
+                    setResetPasswordForm({
+                      ...resetPasswordForm,
+                      confirmPassword: event.target.value,
+                    })
+                  }
+                  placeholder="Confirm new password"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white hover:bg-[#132a55]">
+                  Update password
                 </button>
               </form>
             )}
@@ -7238,8 +8065,16 @@ export default function App() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white hover:bg-[#132a55]">
                   Create account
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setModal("signin")}
+                  className="text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
+                >
+                  Already have an account? Sign in
                 </button>
               </form>
             )}

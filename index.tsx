@@ -13,6 +13,7 @@ type ModalType =
 
 type ListingStatus = "Verified" | "Pending Review";
 type LeadStatus = "New" | "Contacted" | "Closed";
+type InspectionStatus = "New" | "Scheduled" | "Completed" | "Cancelled";
 
 type Listing = {
   id: number;
@@ -65,6 +66,20 @@ type ContactMessage = {
   subject: string;
   message: string;
   status: LeadStatus;
+  createdAt: string;
+};
+
+type InspectionBooking = {
+  id: number;
+  listingId?: number | null;
+  listingTitle: string;
+  name: string;
+  email: string;
+  phone: string;
+  preferredDate: string;
+  preferredTime: string;
+  message: string;
+  status: InspectionStatus;
   createdAt: string;
 };
 
@@ -374,6 +389,13 @@ function leadStatusClass(status: LeadStatus) {
   return "bg-amber-100 text-amber-700";
 }
 
+function inspectionStatusClass(status: InspectionStatus) {
+  if (status === "Completed") return "bg-emerald-100 text-emerald-700";
+  if (status === "Scheduled") return "bg-blue-100 text-blue-700";
+  if (status === "Cancelled") return "bg-red-100 text-red-700";
+  return "bg-amber-100 text-amber-700";
+}
+
 function getTopCount(items: string[]) {
   const counts = items.reduce<Record<string, number>>((accumulator, item) => {
     const key = item || "Unknown";
@@ -460,6 +482,22 @@ function mapContactMessageRow(row: any): ContactMessage {
   };
 }
 
+function mapInspectionBookingRow(row: any): InspectionBooking {
+  return {
+    id: Number(row.id),
+    listingId: row.listing_id ? Number(row.listing_id) : null,
+    listingTitle: row.listing_title,
+    name: row.name,
+    email: row.email || "",
+    phone: row.phone,
+    preferredDate: row.preferred_date || "",
+    preferredTime: row.preferred_time || "",
+    message: row.message || "",
+    status: row.status || "New",
+    createdAt: row.created_at,
+  };
+}
+
 function listingToRow(listing: Omit<Listing, "id">) {
   return {
     title: listing.title,
@@ -489,6 +527,7 @@ export default function App() {
   );
   const [propertyViews, setPropertyViews] = useState<PropertyView[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+  const [inspectionBookings, setInspectionBookings] = useState<InspectionBooking[]>([]);
   const [modal, setModal] = useState<ModalType>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
@@ -575,6 +614,15 @@ export default function App() {
     message: "",
   });
 
+  const [inspectionForm, setInspectionForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    preferredDate: "",
+    preferredTime: "",
+    message: "",
+  });
+
   const usesDatabase = Boolean(supabase);
 
   const pendingListings = listings.filter(
@@ -595,8 +643,8 @@ export default function App() {
     0
   );
 
-  const totalLeads = investorRequests.length + propertyInquiries.length + contactMessages.length;
-  const conversionReadyLeads = propertyInquiries.length + contactMessages.length;
+  const totalLeads = investorRequests.length + propertyInquiries.length + contactMessages.length + inspectionBookings.length;
+  const conversionReadyLeads = propertyInquiries.length + contactMessages.length + inspectionBookings.length;
   const [topLocation, topLocationCount] = getTopCount(
     listings.map((listing) => listing.location.split(",")[0]?.trim() || listing.location)
   );
@@ -716,6 +764,7 @@ export default function App() {
           setPropertyInquiries([]);
           setPropertyViews([]);
           setContactMessages([]);
+          setInspectionBookings([]);
         }
       }
     );
@@ -762,6 +811,11 @@ export default function App() {
   }, [contactMessages]);
 
   useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_inspection_bookings", JSON.stringify(inspectionBookings));
+  }, [inspectionBookings]);
+
+  useEffect(() => {
     function openAdminShortcut(event: KeyboardEvent) {
       if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
         setAdminPassword("");
@@ -802,6 +856,7 @@ export default function App() {
       const storedInquiries = localStorage.getItem("inamaad_property_inquiries");
       const storedViews = localStorage.getItem("inamaad_property_views");
       const storedContactMessages = localStorage.getItem("inamaad_contact_messages");
+      const storedInspectionBookings = localStorage.getItem("inamaad_inspection_bookings");
 
       if (storedListings) {
         setListings(JSON.parse(storedListings) as Listing[]);
@@ -822,12 +877,17 @@ export default function App() {
       if (storedContactMessages) {
         setContactMessages(JSON.parse(storedContactMessages) as ContactMessage[]);
       }
+
+      if (storedInspectionBookings) {
+        setInspectionBookings(JSON.parse(storedInspectionBookings) as InspectionBooking[]);
+      }
     } catch {
       localStorage.removeItem("inamaad_listings");
       localStorage.removeItem("inamaad_investor_requests");
       localStorage.removeItem("inamaad_property_inquiries");
       localStorage.removeItem("inamaad_property_views");
       localStorage.removeItem("inamaad_contact_messages");
+      localStorage.removeItem("inamaad_inspection_bookings");
     }
   }
 
@@ -916,6 +976,22 @@ export default function App() {
     setContactMessages((data || []).map(mapContactMessageRow));
   }
 
+  async function loadDatabaseInspectionBookings() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("inspection_bookings")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setInspectionBookings((data || []).map(mapInspectionBookingRow));
+  }
+
   async function checkAdminAccess() {
     if (!supabase) return;
 
@@ -935,6 +1011,7 @@ export default function App() {
       await loadDatabasePropertyInquiries();
       await loadDatabasePropertyViews();
       await loadDatabaseContactMessages();
+      await loadDatabaseInspectionBookings();
     }
   }
 
@@ -976,6 +1053,14 @@ export default function App() {
   async function openListing(listing: Listing) {
     setSelectedListing(listing);
     setInquiryForm({ name: "", email: "", phone: "", message: "" });
+    setInspectionForm({
+      name: "",
+      email: "",
+      phone: "",
+      preferredDate: "",
+      preferredTime: "",
+      message: "",
+    });
     setModal("details");
 
     const newView: Omit<PropertyView, "id"> = {
@@ -1310,6 +1395,60 @@ export default function App() {
     showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
   }
 
+  async function submitInspectionBooking(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!selectedListing) return;
+
+    const newBooking: Omit<InspectionBooking, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      name: inspectionForm.name,
+      email: inspectionForm.email,
+      phone: inspectionForm.phone,
+      preferredDate: inspectionForm.preferredDate,
+      preferredTime: inspectionForm.preferredTime,
+      message: inspectionForm.message,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("inspection_bookings").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        name: inspectionForm.name,
+        email: inspectionForm.email || null,
+        phone: inspectionForm.phone,
+        preferred_date: inspectionForm.preferredDate || null,
+        preferred_time: inspectionForm.preferredTime || null,
+        message: inspectionForm.message || null,
+        status: "New",
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to book inspection. Check database settings.");
+        return;
+      }
+    } else {
+      setInspectionBookings((current) => [
+        { ...newBooking, id: Date.now() },
+        ...current,
+      ]);
+    }
+
+    setInspectionForm({
+      name: "",
+      email: "",
+      phone: "",
+      preferredDate: "",
+      preferredTime: "",
+      message: "",
+    });
+    showSuccess("Inspection booking sent. INAMAAD will confirm your appointment.");
+  }
+
   async function submitContactMessage(event: React.FormEvent) {
     event.preventDefault();
 
@@ -1444,6 +1583,7 @@ export default function App() {
     setPropertyInquiries([]);
     setPropertyViews([]);
     setContactMessages([]);
+    setInspectionBookings([]);
     showSuccess("Staff signed out.");
   }
 
@@ -1634,6 +1774,54 @@ export default function App() {
     showSuccess("Contact message removed.");
   }
 
+  async function updateInspectionBookingStatus(id: number, status: InspectionStatus) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("inspection_bookings")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update inspection booking status.");
+        return;
+      }
+
+      await loadDatabaseInspectionBookings();
+    } else {
+      setInspectionBookings((current) =>
+        current.map((booking) =>
+          booking.id === id ? { ...booking, status } : booking
+        )
+      );
+    }
+
+    showSuccess(`Inspection booking marked as ${status}.`);
+  }
+
+  async function deleteInspectionBooking(id: number) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("inspection_bookings")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete inspection booking.");
+        return;
+      }
+
+      await loadDatabaseInspectionBookings();
+    } else {
+      setInspectionBookings((current) =>
+        current.filter((booking) => booking.id !== id)
+      );
+    }
+
+    showSuccess("Inspection booking removed.");
+  }
+
 
   function escapeCsvValue(value: unknown) {
     const text = String(value ?? "");
@@ -1785,6 +1973,38 @@ export default function App() {
     );
   }
 
+  function exportInspectionBookingsCsv() {
+    downloadCsv(
+      "inamaad-inspection-bookings.csv",
+      [
+        "ID",
+        "Listing ID",
+        "Listing Title",
+        "Name",
+        "Email",
+        "Phone",
+        "Preferred Date",
+        "Preferred Time",
+        "Status",
+        "Message",
+        "Created At",
+      ],
+      inspectionBookings.map((booking) => [
+        booking.id,
+        booking.listingId || "",
+        booking.listingTitle,
+        booking.name,
+        booking.email || "",
+        booking.phone,
+        booking.preferredDate || "",
+        booking.preferredTime || "",
+        booking.status || "New",
+        booking.message || "",
+        booking.createdAt,
+      ])
+    );
+  }
+
   function exportPropertyViewsCsv() {
     downloadCsv(
       "inamaad-property-views.csv",
@@ -1811,6 +2031,7 @@ export default function App() {
         ["Investor requests", investorRequests.length],
         ["Property inquiries", propertyInquiries.length],
         ["Contact messages", contactMessages.length],
+        ["Inspection bookings", inspectionBookings.length],
         ["Property views", totalPropertyViews],
         ["Most viewed property", mostViewedProperty],
         ["Most viewed property count", mostViewedPropertyCount],
@@ -3470,6 +3691,86 @@ export default function App() {
                     Send property inquiry
                   </button>
                 </form>
+
+                <form
+                  onSubmit={submitInspectionBooking}
+                  className="mt-6 grid gap-4 rounded-[24px] border border-[#f0bf3c]/40 bg-[#fffaf0] p-6"
+                >
+                  <div>
+                    <p className="text-xl font-black text-[#0d1c38]">
+                      Book property inspection
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Choose a preferred date and time. INAMAAD will confirm availability before the appointment.
+                    </p>
+                  </div>
+
+                  <input
+                    required
+                    value={inspectionForm.name}
+                    onChange={(event) =>
+                      setInspectionForm({ ...inspectionForm, name: event.target.value })
+                    }
+                    placeholder="Your name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      value={inspectionForm.email}
+                      onChange={(event) =>
+                        setInspectionForm({ ...inspectionForm, email: event.target.value })
+                      }
+                      type="email"
+                      placeholder="Email address optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      required
+                      value={inspectionForm.phone}
+                      onChange={(event) =>
+                        setInspectionForm({ ...inspectionForm, phone: event.target.value })
+                      }
+                      placeholder="Phone or WhatsApp number"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      value={inspectionForm.preferredDate}
+                      onChange={(event) =>
+                        setInspectionForm({ ...inspectionForm, preferredDate: event.target.value })
+                      }
+                      type="date"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={inspectionForm.preferredTime}
+                      onChange={(event) =>
+                        setInspectionForm({ ...inspectionForm, preferredTime: event.target.value })
+                      }
+                      type="time"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <textarea
+                    value={inspectionForm.message}
+                    onChange={(event) =>
+                      setInspectionForm({ ...inspectionForm, message: event.target.value })
+                    }
+                    placeholder="Message or special inspection request"
+                    rows={3}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <button className="rounded-2xl bg-[#f0bf3c] px-6 py-4 text-sm font-black text-[#0d1c38]">
+                    Book inspection
+                  </button>
+                </form>
               </div>
             )}
 
@@ -3529,7 +3830,7 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-6">
+                <div className="grid gap-4 md:grid-cols-7">
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
                     <p className="text-2xl font-black text-[#0d1c38]">
                       {listings.length}
@@ -3556,6 +3857,13 @@ export default function App() {
                       {contactMessages.length}
                     </p>
                     <p className="text-sm text-slate-500">Contact messages</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {inspectionBookings.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Inspection bookings</p>
                   </div>
 
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
@@ -3623,7 +3931,7 @@ export default function App() {
                       <p className="text-sm text-slate-300">Total leads</p>
                       <p className="mt-2 text-3xl font-black">{totalLeads}</p>
                       <p className="mt-1 text-xs text-slate-400">
-                        Investor requests + property inquiries + contact messages
+                        Investor requests + property inquiries + contact messages + inspection bookings
                       </p>
                     </div>
 
@@ -3644,6 +3952,16 @@ export default function App() {
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
                         Direct messages from contact section
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Inspection bookings</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {inspectionBookings.length}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Property viewing appointment requests
                       </p>
                     </div>
 
@@ -3794,6 +4112,14 @@ export default function App() {
                       className="rounded-full bg-blue-700 px-5 py-3 text-xs font-black text-white"
                     >
                       Export contact messages
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportInspectionBookingsCsv}
+                      className="rounded-full bg-purple-700 px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export inspection bookings
                     </button>
                   </div>
                 </div>
@@ -3977,6 +4303,138 @@ export default function App() {
 
                               <button
                                 onClick={() => deletePropertyInquiry(inquiry.id)}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    Inspection bookings
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {inspectionBookings.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No inspection bookings yet.
+                      </p>
+                    )}
+
+                    {inspectionBookings.map((booking) => {
+                      const bookingStatus = booking.status || "New";
+                      const inspectionWhatsAppMessage = `Hello ${booking.name}, this is INAMAAD Real Estate. We received your inspection booking for ${booking.listingTitle}.`;
+
+                      return (
+                        <div
+                          key={booking.id}
+                          className="rounded-2xl border border-slate-200 p-5"
+                        >
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                                  {booking.listingTitle}
+                                </p>
+
+                                <span
+                                  className={`rounded-full px-3 py-1 text-[11px] font-black ${inspectionStatusClass(
+                                    bookingStatus
+                                  )}`}
+                                >
+                                  {bookingStatus}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 font-black text-[#0d1c38]">
+                                {booking.name}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {booking.email || "No email"} • {booking.phone}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                Preferred: {booking.preferredDate || "No date"} • {booking.preferredTime || "No time"}
+                              </p>
+
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {booking.message || "No message."}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(booking.createdAt)}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <a
+                                href={createWhatsAppLeadLink(
+                                  booking.phone,
+                                  inspectionWhatsAppMessage
+                                )}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                WhatsApp
+                              </a>
+
+                              <a
+                                href={createCallLeadLink(booking.phone)}
+                                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Call
+                              </a>
+
+                              {booking.email && (
+                                <a
+                                  href={createEmailLeadLink(
+                                    booking.email,
+                                    `INAMAAD inspection booking: ${booking.listingTitle}`
+                                  )}
+                                  className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white"
+                                >
+                                  Email
+                                </a>
+                              )}
+
+                              <button
+                                onClick={() => updateInspectionBookingStatus(booking.id, "New")}
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700"
+                              >
+                                New
+                              </button>
+
+                              <button
+                                onClick={() => updateInspectionBookingStatus(booking.id, "Scheduled")}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700"
+                              >
+                                Scheduled
+                              </button>
+
+                              <button
+                                onClick={() => updateInspectionBookingStatus(booking.id, "Completed")}
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700"
+                              >
+                                Completed
+                              </button>
+
+                              <button
+                                onClick={() => updateInspectionBookingStatus(booking.id, "Cancelled")}
+                                className="rounded-full bg-red-100 px-4 py-2 text-xs font-black text-red-700"
+                              >
+                                Cancelled
+                              </button>
+
+                              <button
+                                onClick={() => deleteInspectionBooking(booking.id)}
                                 className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
                               >
                                 Delete

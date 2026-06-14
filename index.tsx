@@ -28,6 +28,9 @@ type Listing = {
   status: ListingStatus;
   ownerName?: string;
   ownerPhone?: string;
+  documentTitle?: string;
+  documentStatus?: string;
+  documentDetails?: string;
   imageUrl?: string;
   featured?: boolean;
   featuredRank?: number;
@@ -209,6 +212,36 @@ const listingPurposeOptions = [
   "JV Partnership",
   "Off-plan",
   "Distress Sale",
+];
+
+const documentTitleOptions = [
+  "C of O / Certificate of Occupancy",
+  "R of O / Right of Occupancy",
+  "Governor's Consent",
+  "Deed of Assignment",
+  "Registered Deed",
+  "Survey Plan",
+  "Excision",
+  "Gazette",
+  "Letter of Allocation",
+  "Building Approval",
+  "Approved Layout",
+  "Deed of Lease",
+  "Power of Attorney",
+  "Probate / Letter of Administration",
+  "Family Receipt",
+  "Agreement / Contract of Sale",
+  "Processing",
+  "Not Available Yet",
+  "Other",
+];
+
+const documentStatusOptions = [
+  "Available",
+  "Verified",
+  "Processing",
+  "Pending Verification",
+  "Not Available",
 ];
 
 const investorInterestOptions = [
@@ -516,6 +549,9 @@ function mapListingRow(row: any): Listing {
     status: row.status,
     ownerName: row.owner_name || "",
     ownerPhone: row.owner_phone || "",
+    documentTitle: row.document_title || "",
+    documentStatus: row.document_status || "",
+    documentDetails: row.document_details || "",
     imageUrl: row.image_url || "",
     featured: Boolean(row.featured),
     featuredRank: Number(row.featured_rank || 0),
@@ -613,6 +649,9 @@ function listingToRow(listing: Omit<Listing, "id">) {
     status: listing.status,
     owner_name: listing.ownerName || null,
     owner_phone: listing.ownerPhone || null,
+    document_title: listing.documentTitle || null,
+    document_status: listing.documentStatus || null,
+    document_details: listing.documentDetails || null,
     image_url: listing.imageUrl || null,
     featured: Boolean(listing.featured),
     featured_rank: Number(listing.featuredRank || 0),
@@ -676,6 +715,9 @@ export default function App() {
     category: "For Sale",
     yieldText: "",
     description: "",
+    documentTitle: "C of O / Certificate of Occupancy",
+    documentStatus: "Available",
+    documentDetails: "",
     ownerName: "",
     ownerPhone: "",
   });
@@ -690,6 +732,9 @@ export default function App() {
     category: "For Sale",
     yieldText: "",
     description: "",
+    documentTitle: "C of O / Certificate of Occupancy",
+    documentStatus: "Available",
+    documentDetails: "",
     status: "Verified" as ListingStatus,
     ownerName: "",
     ownerPhone: "",
@@ -806,7 +851,7 @@ export default function App() {
         if (listing.status !== "Verified") return false;
 
         const searchText =
-          `${listing.title} ${listing.location} ${listing.type} ${listing.category}`.toLowerCase();
+          `${listing.title} ${listing.location} ${listing.type} ${listing.category} ${listing.documentTitle || ""} ${listing.documentStatus || ""}`.toLowerCase();
 
         const matchesSearch = searchText.includes(query.toLowerCase());
 
@@ -1298,6 +1343,9 @@ export default function App() {
       category: listing.category,
       yieldText: listing.yieldText,
       description: listing.description,
+      documentTitle: listing.documentTitle || "C of O / Certificate of Occupancy",
+      documentStatus: listing.documentStatus || "Available",
+      documentDetails: listing.documentDetails || "",
       status: listing.status,
       ownerName: listing.ownerName || "",
       ownerPhone: listing.ownerPhone || "",
@@ -1329,6 +1377,9 @@ export default function App() {
         category: postForm.category,
         yieldText: postForm.yieldText || "Pending investment review",
         description: postForm.description,
+        documentTitle: postForm.documentTitle,
+        documentStatus: postForm.documentStatus,
+        documentDetails: postForm.documentDetails,
         status: "Pending Review",
         ownerName: postForm.ownerName,
         ownerPhone: postForm.ownerPhone,
@@ -1374,6 +1425,9 @@ export default function App() {
         category: "For Sale",
         yieldText: "",
         description: "",
+        documentTitle: "C of O / Certificate of Occupancy",
+        documentStatus: "Available",
+        documentDetails: "",
         ownerName: "",
         ownerPhone: "",
       });
@@ -1413,6 +1467,9 @@ export default function App() {
         category: editForm.category,
         yieldText: editForm.yieldText || "Pending investment review",
         description: editForm.description,
+        documentTitle: editForm.documentTitle,
+        documentStatus: editForm.documentStatus,
+        documentDetails: editForm.documentDetails,
         status: editForm.status,
         ownerName: editForm.ownerName,
         ownerPhone: editForm.ownerPhone,
@@ -1434,6 +1491,9 @@ export default function App() {
               category: updatedListing.category,
               yieldText: updatedListing.yieldText,
               description: updatedListing.description,
+              documentTitle: updatedListing.documentTitle,
+              documentStatus: updatedListing.documentStatus,
+              documentDetails: updatedListing.documentDetails,
               status: updatedListing.status,
               ownerName: updatedListing.ownerName,
               ownerPhone: updatedListing.ownerPhone,
@@ -2166,6 +2226,9 @@ export default function App() {
         "Category",
         "Yield / Highlight",
         "Description",
+        "Document Title",
+        "Document Status",
+        "Document Details",
         "Status",
         "Owner Name",
         "Owner Phone",
@@ -2182,6 +2245,9 @@ export default function App() {
         listing.category,
         listing.yieldText,
         listing.description,
+        listing.documentTitle || "",
+        listing.documentStatus || "",
+        listing.documentDetails || "",
         listing.status,
         listing.ownerName || "",
         listing.ownerPhone || "",
@@ -3621,6 +3687,51 @@ export default function App() {
                   />
                 </div>
 
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Property document / title papers</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Add the title document buyers expect to see, for example C of O, R of O, Governor's Consent, Deed of Assignment, Survey Plan, Excision, or Gazette.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={postForm.documentTitle}
+                      onChange={(event) =>
+                        setPostForm({ ...postForm, documentTitle: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Document title"
+                    >
+                      {documentTitleOptions.map((documentTitle) => (
+                        <option key={documentTitle}>{documentTitle}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={postForm.documentStatus}
+                      onChange={(event) =>
+                        setPostForm({ ...postForm, documentStatus: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Document status"
+                    >
+                      {documentStatusOptions.map((documentStatus) => (
+                        <option key={documentStatus}>{documentStatus}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <textarea
+                    value={postForm.documentDetails}
+                    onChange={(event) =>
+                      setPostForm({ ...postForm, documentDetails: event.target.value })
+                    }
+                    placeholder="Optional document details, e.g. Survey plan available, Deed of Assignment executed, C of O processing, Gazette number, allocation file number..."
+                    rows={3}
+                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
                   <label className="text-sm font-black text-[#0d1c38]">
                     Property image
@@ -3800,6 +3911,51 @@ export default function App() {
                     <option>Verified</option>
                     <option>Pending Review</option>
                   </select>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Property document / title papers</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Keep this accurate. Examples: C of O, R of O, Governor's Consent, Deed of Assignment, Survey Plan, Excision, Gazette.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={editForm.documentTitle}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, documentTitle: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Document title"
+                    >
+                      {documentTitleOptions.map((documentTitle) => (
+                        <option key={documentTitle}>{documentTitle}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={editForm.documentStatus}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, documentStatus: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Document status"
+                    >
+                      {documentStatusOptions.map((documentStatus) => (
+                        <option key={documentStatus}>{documentStatus}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <textarea
+                    value={editForm.documentDetails}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, documentDetails: event.target.value })
+                    }
+                    placeholder="Optional document details, e.g. Survey plan available, C of O processing, registered deed number, allocation file number..."
+                    rows={3}
+                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -4052,6 +4208,25 @@ export default function App() {
                     <div className="mt-5 rounded-2xl bg-[#f7f8fb] p-5 font-bold text-slate-700">
                       {selectedListing.yieldText}
                     </div>
+
+                    {(selectedListing.documentTitle || selectedListing.documentDetails) && (
+                      <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                        <p className="font-black text-[#0d1c38]">Title document</p>
+                        <p className="mt-2">
+                          <span className="font-black">Document:</span>{" "}
+                          {selectedListing.documentTitle || "Not stated"}
+                        </p>
+                        <p>
+                          <span className="font-black">Status:</span>{" "}
+                          {selectedListing.documentStatus || "Pending"}
+                        </p>
+                        {selectedListing.documentDetails && (
+                          <p className="mt-2 text-slate-600">
+                            {selectedListing.documentDetails}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="rounded-[24px] bg-[#0d1c38] p-5 text-white">
@@ -4069,6 +4244,20 @@ export default function App() {
                         <p className="text-slate-400">Category</p>
                         <p className="font-black">
                           {selectedListing.category}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Document title</p>
+                        <p className="font-black">
+                          {selectedListing.documentTitle || "Not stated"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Document status</p>
+                        <p className="font-black text-[#f0bf3c]">
+                          {selectedListing.documentStatus || "Pending"}
                         </p>
                       </div>
 

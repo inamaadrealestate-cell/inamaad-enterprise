@@ -113,6 +113,7 @@ const supabase =
 const navLinks = [
   { label: "Home", href: "#" },
   { label: "Properties", href: "#properties" },
+  { label: "Calculator", href: "#calculator" },
   { label: "JV Deals", href: "#jv" },
   { label: "About", href: "#about" },
   { label: "Contact", href: "#contact" },
@@ -559,6 +560,12 @@ export default function App() {
   const [minValueFilter, setMinValueFilter] = useState("");
   const [maxValueFilter, setMaxValueFilter] = useState("");
   const [sortMode, setSortMode] = useState("Newest");
+  const [calculatorForm, setCalculatorForm] = useState({
+    purchasePrice: "150000000",
+    annualRent: "12000000",
+    annualGrowth: "12",
+    holdingYears: "5",
+  });
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sharedListingOpened, setSharedListingOpened] = useState(false);
@@ -693,6 +700,20 @@ export default function App() {
       .sort((first, second) => second.views - first.views)
       .slice(0, 5);
   }, [listings, viewCountByListingId]);
+
+  const calculatorPurchasePrice = Number(calculatorForm.purchasePrice || 0);
+  const calculatorAnnualRent = Number(calculatorForm.annualRent || 0);
+  const calculatorGrowthRate = Number(calculatorForm.annualGrowth || 0) / 100;
+  const calculatorYears = Math.max(Number(calculatorForm.holdingYears || 0), 0);
+  const calculatorFutureValue = calculatorPurchasePrice > 0
+    ? Math.round(calculatorPurchasePrice * Math.pow(1 + calculatorGrowthRate, calculatorYears))
+    : 0;
+  const calculatorTotalRent = Math.round(calculatorAnnualRent * calculatorYears);
+  const calculatorEstimatedGain = Math.max(calculatorFutureValue - calculatorPurchasePrice, 0);
+  const calculatorTotalReturn = calculatorEstimatedGain + calculatorTotalRent;
+  const calculatorRoi = calculatorPurchasePrice > 0
+    ? Math.round((calculatorTotalReturn / calculatorPurchasePrice) * 100)
+    : 0;
 
   const filteredListings = useMemo(() => {
     const minValue = Number(minValueFilter || 0);
@@ -2912,6 +2933,123 @@ export default function App() {
                     Speak on WhatsApp
                   </a>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="calculator" className="bg-white px-6 py-20 lg:px-10">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+              <div>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
+                    Investment calculator
+                  </p>
+                </div>
+
+                <h2 className="text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
+                  Estimate rental income, appreciation, and ROI before you invest.
+                </h2>
+
+                <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
+                  Use this quick calculator to estimate the potential return of a property opportunity. It is for planning only; final figures should be verified during due diligence.
+                </p>
+
+                <div className="mt-7 rounded-[28px] border border-amber-200 bg-amber-50 p-6 text-sm leading-6 text-amber-900">
+                  <strong>Tip:</strong> Use realistic rent and growth assumptions. For premium Lagos and Abuja locations, update the growth rate based on the specific area, title quality, demand, and infrastructure.
+                </div>
+              </div>
+
+              <div className="rounded-[32px] border border-slate-200 bg-[#f7f8fb] p-6 shadow-xl shadow-slate-200/70">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block">
+                    <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                      Purchase price / value
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={calculatorForm.purchasePrice}
+                      onChange={(event) =>
+                        setCalculatorForm({ ...calculatorForm, purchasePrice: event.target.value })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                      Expected yearly rent
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={calculatorForm.annualRent}
+                      onChange={(event) =>
+                        setCalculatorForm({ ...calculatorForm, annualRent: event.target.value })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                      Annual growth %
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={calculatorForm.annualGrowth}
+                      onChange={(event) =>
+                        setCalculatorForm({ ...calculatorForm, annualGrowth: event.target.value })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                      Holding years
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={calculatorForm.holdingYears}
+                      onChange={(event) =>
+                        setCalculatorForm({ ...calculatorForm, holdingYears: event.target.value })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  {[
+                    ["Future property value", formatNairaCompact(calculatorFutureValue)],
+                    ["Total rental income", formatNairaCompact(calculatorTotalRent)],
+                    ["Estimated capital gain", formatNairaCompact(calculatorEstimatedGain)],
+                    ["Estimated total ROI", `${calculatorRoi}%`],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-3xl bg-white p-5 shadow-sm">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                        {label}
+                      </p>
+                      <p className="mt-2 text-2xl font-black text-[#0d1c38]">
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setModal("investor")}
+                  className="mt-6 w-full rounded-2xl bg-[#0d1c38] px-7 py-4 text-sm font-black text-white hover:bg-[#13284f]"
+                >
+                  Request investor guidance
+                </button>
               </div>
             </div>
           </div>

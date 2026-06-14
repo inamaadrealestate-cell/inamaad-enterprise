@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient, type User } from "@supabase/supabase-js";
 
 type ModalType =
@@ -1561,6 +1561,8 @@ export default function App() {
   });
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
+  const autoRefreshTimerRef = useRef<number | null>(null);
   const [sharedListingOpened, setSharedListingOpened] = useState(false);
 
   const [user, setUser] = useState<User | null>(null);
@@ -2272,6 +2274,62 @@ export default function App() {
     localStorage.setItem("inamaad_staff_notifications", JSON.stringify(staffNotifications));
   }, [staffNotifications]);
 
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    const handleAnyWebsiteClick = () => {
+      // Refresh after ANY click/tap, including disabled buttons, modal clicks,
+      // empty space clicks, touch taps, and clicks where React handlers stop bubbling.
+      // Capture-phase pointer events make this stronger than a normal onClick.
+      scheduleAutoRefresh(250);
+    };
+
+    const clickEvents: Array<keyof WindowEventMap> = [
+      "pointerdown",
+      "mousedown",
+      "touchstart",
+      "click",
+    ];
+
+    clickEvents.forEach((eventName) => {
+      window.addEventListener(eventName, handleAnyWebsiteClick, true);
+      document.addEventListener(eventName, handleAnyWebsiteClick, true);
+    });
+
+    return () => {
+      clickEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, handleAnyWebsiteClick, true);
+        document.removeEventListener(eventName, handleAnyWebsiteClick, true);
+      });
+
+      if (autoRefreshTimerRef.current) {
+        window.clearTimeout(autoRefreshTimerRef.current);
+      }
+    };
+  }, [user, adminUnlocked]);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    const autoRefreshChannel = supabase
+      .channel("inamaad-live-refresh")
+      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "property_images" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "investor_requests" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "property_inquiries" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "property_offers" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "jv_applications" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "contact_messages" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "inspection_bookings" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff_notifications" }, () => scheduleAutoRefresh(350))
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(autoRefreshChannel);
+    };
+  }, [user, adminUnlocked]);
+
   useEffect(() => {
     function openAdminShortcut(event: KeyboardEvent) {
       if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
@@ -2301,9 +2359,27 @@ export default function App() {
     openListing(listing);
   }, [listings, sharedListingOpened]);
 
+  function scheduleAutoRefresh(delay = 350) {
+    if (!supabase) return;
+
+    // Throttle, do not debounce. The previous version kept resetting the timer,
+    // so fast clicking could prevent refresh from happening. This version makes
+    // sure the first click schedules a refresh and later clicks do not cancel it.
+    if (autoRefreshTimerRef.current) return;
+
+    autoRefreshTimerRef.current = window.setTimeout(() => {
+      autoRefreshTimerRef.current = null;
+      void refreshAllData();
+    }, delay);
+  }
+
   function showSuccess(message: string) {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(""), 4500);
+
+    if (supabase) {
+      scheduleAutoRefresh(1100);
+    }
   }
 
   function loadLocalData() {
@@ -2568,6 +2644,37 @@ export default function App() {
     }
 
     setStaffMembers((data || []).map(mapStaffMemberRow));
+  }
+
+
+  async function refreshAllData() {
+    if (!supabase) return;
+
+    setIsRefreshingData(true);
+
+    try {
+      await Promise.all([
+        loadDatabaseListings(),
+        loadDatabasePropertyImages(),
+        loadDatabasePropertyViews(),
+      ]);
+
+      if (user || adminUnlocked) {
+        await Promise.all([
+          loadDatabaseInvestorRequests(),
+          loadDatabasePropertyInquiries(),
+          loadDatabaseContactMessages(),
+          loadDatabaseInspectionBookings(),
+          loadDatabasePropertyOffers(),
+          loadDatabaseJvApplications(),
+          loadDatabaseStaffNotifications(),
+          loadDatabaseAdminActivityLogs(),
+          loadDatabaseStaffMembers(),
+        ]);
+      }
+    } finally {
+      setIsRefreshingData(false);
+    }
   }
 
   async function checkAdminAccess() {
@@ -6945,6 +7052,12 @@ export default function App() {
       {successMessage && (
         <div className="fixed left-1/2 top-24 z-[130] w-[90%] max-w-md -translate-x-1/2 rounded-2xl bg-[#0d1c38] px-5 py-4 text-center text-sm font-bold text-white shadow-2xl">
           {successMessage}
+        </div>
+      )}
+
+      {isRefreshingData && (
+        <div className="fixed right-6 top-24 z-[130] rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#0d1c38] shadow-xl">
+          Syncing latest data...
         </div>
       )}
 

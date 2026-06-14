@@ -13,6 +13,7 @@ type ModalType =
 
 type ListingStatus = "Verified" | "Pending Review";
 type LeadStatus = "New" | "Contacted" | "Closed";
+type LeadPriority = "Low" | "Normal" | "High" | "Urgent";
 type InspectionStatus = "New" | "Scheduled" | "Completed" | "Cancelled";
 type LeadKind = "investor_requests" | "property_inquiries" | "contact_messages" | "inspection_bookings";
 
@@ -56,6 +57,9 @@ type InvestorRequest = {
   status: LeadStatus;
   assignedToEmail?: string;
   staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
   createdAt: string;
 };
 
@@ -70,6 +74,9 @@ type PropertyInquiry = {
   status: LeadStatus;
   assignedToEmail?: string;
   staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
   createdAt: string;
 };
 
@@ -83,6 +90,9 @@ type ContactMessage = {
   status: LeadStatus;
   assignedToEmail?: string;
   staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
   createdAt: string;
 };
 
@@ -99,6 +109,9 @@ type InspectionBooking = {
   status: InspectionStatus;
   assignedToEmail?: string;
   staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
   createdAt: string;
 };
 
@@ -645,6 +658,9 @@ function mapInvestorRow(row: any): InvestorRequest {
     status: row.status || "New",
     assignedToEmail: row.assigned_to_email || "",
     staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
     createdAt: row.created_at,
   };
 }
@@ -661,6 +677,9 @@ function mapPropertyInquiryRow(row: any): PropertyInquiry {
     status: row.status || "New",
     assignedToEmail: row.assigned_to_email || "",
     staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
     createdAt: row.created_at,
   };
 }
@@ -685,6 +704,9 @@ function mapContactMessageRow(row: any): ContactMessage {
     status: row.status || "New",
     assignedToEmail: row.assigned_to_email || "",
     staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
     createdAt: row.created_at,
   };
 }
@@ -703,6 +725,9 @@ function mapInspectionBookingRow(row: any): InspectionBooking {
     status: row.status || "New",
     assignedToEmail: row.assigned_to_email || "",
     staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
     createdAt: row.created_at,
   };
 }
@@ -2898,7 +2923,7 @@ export default function App() {
   function updateLocalLeadDraft(
     kind: LeadKind,
     id: number,
-    changes: { assignedToEmail?: string; staffNotes?: string }
+    changes: { assignedToEmail?: string; staffNotes?: string; priority?: LeadPriority; followUpDate?: string; lastContactedAt?: string }
   ) {
     if (kind === "investor_requests") {
       setInvestorRequests((current) =>
@@ -3005,11 +3030,73 @@ export default function App() {
     showSuccess("Staff notes saved.");
   }
 
+  async function saveLeadFollowUpDetails(
+    kind: LeadKind,
+    id: number,
+    priority: LeadPriority,
+    followUpDate: string,
+    lastContactedAt: string
+  ) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update follow-up reminders.");
+      return;
+    }
+
+    const cleanFollowUpDate = followUpDate || null;
+    const cleanLastContactedAt = lastContactedAt || null;
+
+    if (supabase) {
+      const { error } = await supabase
+        .from(kind)
+        .update({
+          priority,
+          follow_up_date: cleanFollowUpDate,
+          last_contacted_at: cleanLastContactedAt,
+        })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to save follow-up details.");
+        return;
+      }
+
+      await reloadLeadKind(kind);
+    } else {
+      updateLocalLeadDraft(kind, id, {
+        priority,
+        followUpDate,
+        lastContactedAt,
+      });
+    }
+
+    await createAdminActivityLog(
+      "Updated lead follow-up",
+      getLeadKindLabel(kind),
+      String(id),
+      `Priority: ${priority}. Follow-up: ${followUpDate || "none"}. Last contacted: ${lastContactedAt ? formatDate(lastContactedAt) : "not set"}.`
+    );
+
+    showSuccess("Follow-up details saved.");
+  }
+
+  function markLeadContactedToday(
+    kind: LeadKind,
+    id: number,
+    priority: LeadPriority,
+    followUpDate: string
+  ) {
+    saveLeadFollowUpDetails(kind, id, priority, followUpDate, new Date().toISOString());
+  }
+
   function renderLeadAssignmentControls(
     kind: LeadKind,
     id: number,
     assignedToEmail?: string,
-    staffNotes?: string
+    staffNotes?: string,
+    priority: LeadPriority = "Normal",
+    followUpDate = "",
+    lastContactedAt = ""
   ) {
     return (
       <div className="mt-4 rounded-2xl border border-slate-200 bg-[#f7f8fb] p-4">
@@ -3046,6 +3133,86 @@ export default function App() {
               </p>
             )}
           </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Priority
+            </span>
+            <select
+              value={priority || "Normal"}
+              onChange={(event) =>
+                updateLocalLeadDraft(kind, id, {
+                  priority: event.target.value as LeadPriority,
+                })
+              }
+              disabled={!canManageLeads}
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              <option value="Low">Low</option>
+              <option value="Normal">Normal</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Follow-up date
+            </span>
+            <input
+              type="date"
+              value={followUpDate || ""}
+              onChange={(event) =>
+                updateLocalLeadDraft(kind, id, { followUpDate: event.target.value })
+              }
+              disabled={!canManageLeads}
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            />
+          </label>
+
+          <div className="rounded-2xl bg-white p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Last contacted
+            </p>
+            <p className="mt-2 text-sm font-black text-[#0d1c38]">
+              {lastContactedAt ? formatDate(lastContactedAt) : "Not contacted yet"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            onClick={() =>
+              saveLeadFollowUpDetails(
+                kind,
+                id,
+                priority || "Normal",
+                followUpDate || "",
+                lastContactedAt || ""
+              )
+            }
+            disabled={!canManageLeads}
+            className="rounded-full bg-[#d49613] px-5 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            Save follow-up
+          </button>
+
+          <button
+            onClick={() =>
+              markLeadContactedToday(
+                kind,
+                id,
+                priority || "Normal",
+                followUpDate || ""
+              )
+            }
+            disabled={!canManageLeads}
+            className="rounded-full bg-emerald-600 px-5 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            Mark contacted today
+          </button>
         </div>
 
         <label className="mt-3 block">
@@ -6355,7 +6522,10 @@ export default function App() {
                                 "property_inquiries",
                                 inquiry.id,
                                 inquiry.assignedToEmail,
-                                inquiry.staffNotes
+                                inquiry.staffNotes,
+                                inquiry.priority || "Normal",
+                                inquiry.followUpDate || "",
+                                inquiry.lastContactedAt || ""
                               )}
                             </div>
 
@@ -6500,7 +6670,10 @@ export default function App() {
                                 "inspection_bookings",
                                 booking.id,
                                 booking.assignedToEmail,
-                                booking.staffNotes
+                                booking.staffNotes,
+                                booking.priority || "Normal",
+                                booking.followUpDate || "",
+                                booking.lastContactedAt || ""
                               )}
                             </div>
 
@@ -6640,7 +6813,10 @@ export default function App() {
                                 "contact_messages",
                                 message.id,
                                 message.assignedToEmail,
-                                message.staffNotes
+                                message.staffNotes,
+                                message.priority || "Normal",
+                                message.followUpDate || "",
+                                message.lastContactedAt || ""
                               )}
                             </div>
 
@@ -6778,7 +6954,10 @@ export default function App() {
                                 "investor_requests",
                                 request.id,
                                 request.assignedToEmail,
-                                request.staffNotes
+                                request.staffNotes,
+                                request.priority || "Normal",
+                                request.followUpDate || "",
+                                request.lastContactedAt || ""
                               )}
                             </div>
 
@@ -6922,3 +7101,5 @@ export default function App() {
     </div>
   );
 }
+
+// Follow-up reminders upgrade: priority, follow_up_date, last_contacted_at.

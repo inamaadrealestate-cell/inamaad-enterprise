@@ -16,7 +16,13 @@ type AvailabilityStatus = "Available" | "Reserved" | "Sold" | "Rented" | "Leased
 type LeadStatus = "New" | "Contacted" | "Closed";
 type LeadPriority = "Low" | "Normal" | "High" | "Urgent";
 type InspectionStatus = "New" | "Scheduled" | "Completed" | "Cancelled";
-type LeadKind = "investor_requests" | "property_inquiries" | "contact_messages" | "inspection_bookings";
+type OfferStatus = "New" | "Reviewing" | "Accepted" | "Rejected" | "Closed";
+type LeadKind =
+  | "investor_requests"
+  | "property_inquiries"
+  | "property_offers"
+  | "contact_messages"
+  | "inspection_bookings";
 
 type Listing = {
   id: number;
@@ -111,6 +117,25 @@ type InspectionBooking = {
   preferredTime: string;
   message: string;
   status: InspectionStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
+  createdAt: string;
+};
+
+type PropertyOffer = {
+  id: number;
+  listingId?: number | null;
+  listingTitle: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  offerAmount: string;
+  paymentPlan: string;
+  message: string;
+  status: OfferStatus;
   assignedToEmail?: string;
   staffNotes?: string;
   priority?: LeadPriority;
@@ -663,6 +688,14 @@ function inspectionStatusClass(status: InspectionStatus) {
   return "bg-amber-100 text-amber-700";
 }
 
+function offerStatusClass(status: OfferStatus) {
+  if (status === "Accepted") return "bg-emerald-100 text-emerald-700";
+  if (status === "Reviewing") return "bg-blue-100 text-blue-700";
+  if (status === "Rejected") return "bg-red-100 text-red-700";
+  if (status === "Closed") return "bg-slate-200 text-slate-700";
+  return "bg-amber-100 text-amber-700";
+}
+
 function getTopCount(items: string[]) {
   const counts = items.reduce<Record<string, number>>((accumulator, item) => {
     const key = item || "Unknown";
@@ -798,6 +831,27 @@ function mapInspectionBookingRow(row: any): InspectionBooking {
   };
 }
 
+function mapPropertyOfferRow(row: any): PropertyOffer {
+  return {
+    id: Number(row.id),
+    listingId: row.listing_id ? Number(row.listing_id) : null,
+    listingTitle: row.listing_title,
+    buyerName: row.buyer_name,
+    buyerEmail: row.buyer_email || "",
+    buyerPhone: row.buyer_phone,
+    offerAmount: row.offer_amount || "",
+    paymentPlan: row.payment_plan || "",
+    message: row.message || "",
+    status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
+    createdAt: row.created_at,
+  };
+}
+
 function mapStaffNotificationRow(row: any): StaffNotification {
   return {
     id: Number(row.id),
@@ -896,6 +950,7 @@ export default function App() {
   const [propertyViews, setPropertyViews] = useState<PropertyView[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [inspectionBookings, setInspectionBookings] = useState<InspectionBooking[]>([]);
+  const [propertyOffers, setPropertyOffers] = useState<PropertyOffer[]>([]);
   const [staffNotifications, setStaffNotifications] = useState<StaffNotification[]>([]);
   const [adminActivityLogs, setAdminActivityLogs] = useState<AdminActivityLog[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -1029,6 +1084,15 @@ export default function App() {
     message: "",
   });
 
+  const [offerForm, setOfferForm] = useState({
+    buyerName: "",
+    buyerEmail: "",
+    buyerPhone: "",
+    offerAmount: "",
+    paymentPlan: "Full payment",
+    message: "",
+  });
+
   const usesDatabase = Boolean(supabase);
 
   const pendingListings = listings.filter(
@@ -1049,8 +1113,8 @@ export default function App() {
     0
   );
 
-  const totalLeads = investorRequests.length + propertyInquiries.length + contactMessages.length + inspectionBookings.length;
-  const conversionReadyLeads = propertyInquiries.length + contactMessages.length + inspectionBookings.length;
+  const totalLeads = investorRequests.length + propertyInquiries.length + propertyOffers.length + contactMessages.length + inspectionBookings.length;
+  const conversionReadyLeads = propertyInquiries.length + propertyOffers.length + contactMessages.length + inspectionBookings.length;
   const unreadNotifications = staffNotifications.filter((notification) => !notification.isRead).length;
   const currentStaffMember = staffMembers.find((member) => member.email === user?.email);
   const currentStaffRole: StaffRole = usesDatabase
@@ -1090,6 +1154,21 @@ export default function App() {
         lastContactedAt: inquiry.lastContactedAt || "",
         assignedToEmail: inquiry.assignedToEmail || "",
         createdAt: inquiry.createdAt,
+      })),
+      ...propertyOffers.map((offer) => ({
+        id: offer.id,
+        kind: "property_offers" as LeadKind,
+        source: "Property offer",
+        title: offer.listingTitle,
+        name: offer.buyerName,
+        phone: offer.buyerPhone,
+        email: offer.buyerEmail,
+        status: offer.status || "New",
+        priority: offer.priority || "Normal",
+        followUpDate: offer.followUpDate || "",
+        lastContactedAt: offer.lastContactedAt || "",
+        assignedToEmail: offer.assignedToEmail || "",
+        createdAt: offer.createdAt,
       })),
       ...inspectionBookings.map((booking) => ({
         id: booking.id,
@@ -1155,7 +1234,7 @@ export default function App() {
 
         return priorityOrder[second.priority] - priorityOrder[first.priority];
       });
-  }, [propertyInquiries, inspectionBookings, contactMessages, investorRequests]);
+  }, [propertyInquiries, propertyOffers, inspectionBookings, contactMessages, investorRequests]);
 
   const overdueFollowUps = leadFollowUpItems.filter(
     (item) => item.followUpDate && item.followUpDate < todayKey
@@ -1417,6 +1496,7 @@ export default function App() {
       const storedViews = localStorage.getItem("inamaad_property_views");
       const storedContactMessages = localStorage.getItem("inamaad_contact_messages");
       const storedInspectionBookings = localStorage.getItem("inamaad_inspection_bookings");
+      const storedPropertyOffers = localStorage.getItem("inamaad_property_offers");
       const storedStaffNotifications = localStorage.getItem("inamaad_staff_notifications");
 
       if (storedListings) {
@@ -1443,6 +1523,10 @@ export default function App() {
         setInspectionBookings(JSON.parse(storedInspectionBookings) as InspectionBooking[]);
       }
 
+      if (storedPropertyOffers) {
+        setPropertyOffers(JSON.parse(storedPropertyOffers) as PropertyOffer[]);
+      }
+
       if (storedStaffNotifications) {
         setStaffNotifications(JSON.parse(storedStaffNotifications) as StaffNotification[]);
       }
@@ -1453,6 +1537,7 @@ export default function App() {
       localStorage.removeItem("inamaad_property_views");
       localStorage.removeItem("inamaad_contact_messages");
       localStorage.removeItem("inamaad_inspection_bookings");
+      localStorage.removeItem("inamaad_property_offers");
       localStorage.removeItem("inamaad_staff_notifications");
     }
   }
@@ -1558,6 +1643,22 @@ export default function App() {
     setInspectionBookings((data || []).map(mapInspectionBookingRow));
   }
 
+  async function loadDatabasePropertyOffers() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("property_offers")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setPropertyOffers((data || []).map(mapPropertyOfferRow));
+  }
+
   async function loadDatabaseStaffNotifications() {
     if (!supabase) return;
 
@@ -1627,6 +1728,7 @@ export default function App() {
       await loadDatabasePropertyViews();
       await loadDatabaseContactMessages();
       await loadDatabaseInspectionBookings();
+      await loadDatabasePropertyOffers();
       await loadDatabaseStaffNotifications();
       await loadDatabaseAdminActivityLogs();
       await loadDatabaseStaffMembers();
@@ -2247,6 +2349,68 @@ export default function App() {
     showSuccess("Inspection booking sent. INAMAAD will confirm your appointment.");
   }
 
+  async function submitPropertyOffer(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!selectedListing) return;
+
+    const formattedOfferAmount = formatPriceInput(offerForm.offerAmount) || offerForm.offerAmount;
+
+    const newOffer: Omit<PropertyOffer, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      buyerName: offerForm.buyerName,
+      buyerEmail: offerForm.buyerEmail,
+      buyerPhone: offerForm.buyerPhone,
+      offerAmount: formattedOfferAmount,
+      paymentPlan: offerForm.paymentPlan,
+      message: offerForm.message,
+      status: "New",
+      priority: "High",
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("property_offers").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        buyer_name: offerForm.buyerName,
+        buyer_email: offerForm.buyerEmail || null,
+        buyer_phone: offerForm.buyerPhone,
+        offer_amount: formattedOfferAmount || null,
+        payment_plan: offerForm.paymentPlan || null,
+        message: offerForm.message || null,
+        status: "New",
+        priority: "High",
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit offer. Check database settings.");
+        return;
+      }
+    } else {
+      setPropertyOffers((current) => [{ ...newOffer, id: Date.now() }, ...current]);
+    }
+
+    await createStaffNotification(
+      "New property offer",
+      `${offerForm.buyerName} made an offer/reservation request for ${selectedListing.title}${formattedOfferAmount ? ` at ${formattedOfferAmount}` : ""}.`,
+      "Property Offer"
+    );
+
+    setOfferForm({
+      buyerName: "",
+      buyerEmail: "",
+      buyerPhone: "",
+      offerAmount: "",
+      paymentPlan: "Full payment",
+      message: "",
+    });
+
+    showSuccess("Offer/reservation request sent. INAMAAD will review and contact you shortly.");
+  }
+
   async function submitContactMessage(event: React.FormEvent) {
     event.preventDefault();
 
@@ -2388,6 +2552,7 @@ export default function App() {
     setPropertyViews([]);
     setContactMessages([]);
     setInspectionBookings([]);
+    setPropertyOffers([]);
     setStaffNotifications([]);
     setAdminActivityLogs([]);
     setStaffMembers([]);
@@ -3023,6 +3188,78 @@ export default function App() {
     showSuccess("Contact message removed.");
   }
 
+  async function updatePropertyOfferStatus(id: number, status: OfferStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update offer status.");
+      return;
+    }
+
+    const offerToUpdate = propertyOffers.find((offer) => offer.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("property_offers")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update offer status.");
+        return;
+      }
+
+      await loadDatabasePropertyOffers();
+    } else {
+      setPropertyOffers((current) =>
+        current.map((offer) => (offer.id === id ? { ...offer, status } : offer))
+      );
+    }
+
+    await createAdminActivityLog(
+      `Marked property offer ${status}`,
+      "Property Offer",
+      String(id),
+      offerToUpdate ? `${offerToUpdate.buyerName} / ${offerToUpdate.listingTitle}` : "Property offer status updated."
+    );
+
+    showSuccess(`Property offer marked as ${status}.`);
+  }
+
+  async function deletePropertyOffer(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete offers.");
+      return;
+    }
+
+    const offerToDelete = propertyOffers.find((offer) => offer.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("property_offers")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete property offer.");
+        return;
+      }
+
+      await loadDatabasePropertyOffers();
+    } else {
+      setPropertyOffers((current) => current.filter((offer) => offer.id !== id));
+    }
+
+    await createAdminActivityLog(
+      "Deleted property offer",
+      "Property Offer",
+      String(id),
+      offerToDelete ? `${offerToDelete.buyerName} / ${offerToDelete.listingTitle}` : "Property offer deleted."
+    );
+
+    showSuccess("Property offer removed.");
+  }
+
   async function updateInspectionBookingStatus(id: number, status: InspectionStatus) {
     if (!canManageLeads) {
       showSuccess("Your role cannot update inspection booking status.");
@@ -3107,6 +3344,7 @@ export default function App() {
   function getLeadKindLabel(kind: LeadKind) {
     if (kind === "investor_requests") return "Investor Request";
     if (kind === "property_inquiries") return "Property Inquiry";
+    if (kind === "property_offers") return "Property Offer";
     if (kind === "contact_messages") return "Contact Message";
     return "Inspection Booking";
   }
@@ -3114,6 +3352,7 @@ export default function App() {
   async function reloadLeadKind(kind: LeadKind) {
     if (kind === "investor_requests") await loadDatabaseInvestorRequests();
     if (kind === "property_inquiries") await loadDatabasePropertyInquiries();
+    if (kind === "property_offers") await loadDatabasePropertyOffers();
     if (kind === "contact_messages") await loadDatabaseContactMessages();
     if (kind === "inspection_bookings") await loadDatabaseInspectionBookings();
   }
@@ -3135,6 +3374,14 @@ export default function App() {
       setPropertyInquiries((current) =>
         current.map((inquiry) =>
           inquiry.id === id ? { ...inquiry, ...changes } : inquiry
+        )
+      );
+    }
+
+    if (kind === "property_offers") {
+      setPropertyOffers((current) =>
+        current.map((offer) =>
+          offer.id === id ? { ...offer, ...changes } : offer
         )
       );
     }
@@ -3714,6 +3961,7 @@ export default function App() {
         ["Verified property value", verifiedPropertyValue],
         ["Investor requests", investorRequests.length],
         ["Property inquiries", propertyInquiries.length],
+        ["Property offers", propertyOffers.length],
         ["Contact messages", contactMessages.length],
         ["Inspection bookings", inspectionBookings.length],
         ["Property views", totalPropertyViews],
@@ -6060,6 +6308,95 @@ export default function App() {
                     Book inspection
                   </button>
                 </form>
+
+                <form
+                  onSubmit={submitPropertyOffer}
+                  className="mt-6 grid gap-4 rounded-[24px] border border-emerald-200 bg-emerald-50 p-6"
+                >
+                  <div>
+                    <p className="text-xl font-black text-[#0d1c38]">
+                      Make offer / reserve property
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Send a serious offer or reservation request for this listing. INAMAAD staff will review it before any commitment.
+                    </p>
+                  </div>
+
+                  <input
+                    required
+                    value={offerForm.buyerName}
+                    onChange={(event) =>
+                      setOfferForm({ ...offerForm, buyerName: event.target.value })
+                    }
+                    placeholder="Buyer name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      value={offerForm.buyerEmail}
+                      onChange={(event) =>
+                        setOfferForm({ ...offerForm, buyerEmail: event.target.value })
+                      }
+                      type="email"
+                      placeholder="Email address optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      required
+                      value={offerForm.buyerPhone}
+                      onChange={(event) =>
+                        setOfferForm({ ...offerForm, buyerPhone: event.target.value })
+                      }
+                      placeholder="Phone or WhatsApp number"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      value={offerForm.offerAmount}
+                      onChange={(event) =>
+                        setOfferForm({
+                          ...offerForm,
+                          offerAmount: formatPriceInput(event.target.value),
+                        })
+                      }
+                      placeholder="Offer amount e.g. ₦150,000,000"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={offerForm.paymentPlan}
+                      onChange={(event) =>
+                        setOfferForm({ ...offerForm, paymentPlan: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    >
+                      <option>Full payment</option>
+                      <option>Installment payment</option>
+                      <option>Reservation deposit</option>
+                      <option>Mortgage / bank finance</option>
+                      <option>Joint venture proposal</option>
+                      <option>Negotiable</option>
+                    </select>
+                  </div>
+
+                  <textarea
+                    value={offerForm.message}
+                    onChange={(event) =>
+                      setOfferForm({ ...offerForm, message: event.target.value })
+                    }
+                    placeholder="Offer terms, reservation timeline, payment plan, or special condition"
+                    rows={3}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <button className="rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-black text-white">
+                    Submit offer / reserve interest
+                  </button>
+                </form>
               </div>
             )}
 
@@ -6126,7 +6463,7 @@ export default function App() {
                   </p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-9">
+                <div className="grid gap-4 md:grid-cols-10">
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
                     <p className="text-2xl font-black text-[#0d1c38]">
                       {unreadNotifications}
@@ -6160,6 +6497,13 @@ export default function App() {
                       {propertyInquiries.length}
                     </p>
                     <p className="text-sm text-slate-500">Property inquiries</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {propertyOffers.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Property offers</p>
                   </div>
 
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
@@ -6649,7 +6993,7 @@ export default function App() {
                       <p className="text-sm text-slate-300">Total leads</p>
                       <p className="mt-2 text-3xl font-black">{totalLeads}</p>
                       <p className="mt-1 text-xs text-slate-400">
-                        Investor requests + property inquiries + contact messages + inspection bookings
+                        Investor requests + property inquiries + offers + contact messages + inspection bookings
                       </p>
                     </div>
 
@@ -6660,6 +7004,16 @@ export default function App() {
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
                         Buyer leads from listing pages
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Property offers</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {propertyOffers.length}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Serious offer and reservation requests
                       </p>
                     </div>
 
@@ -7048,6 +7402,124 @@ export default function App() {
                                 disabled={!canDeleteLeads}
                                 className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    Property offers / reservations
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {propertyOffers.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No property offers yet.
+                      </p>
+                    )}
+
+                    {propertyOffers.map((offer) => {
+                      const offerStatus = offer.status || "New";
+                      const offerWhatsAppMessage = `Hello ${offer.buyerName}, this is INAMAAD Real Estate. We received your offer/reservation request for ${offer.listingTitle}.`;
+
+                      return (
+                        <div key={offer.id} className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5">
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                                  {offer.listingTitle}
+                                </p>
+
+                                <span className={`rounded-full px-3 py-1 text-[11px] font-black ${offerStatusClass(offerStatus)}`}>
+                                  {offerStatus}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 font-black text-[#0d1c38]">
+                                {offer.buyerName}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {offer.buyerEmail || "No email"} • {offer.buyerPhone}
+                              </p>
+
+                              <p className="mt-2 text-sm font-black text-emerald-700">
+                                Offer: {offer.offerAmount || "Not stated"} • {offer.paymentPlan || "No payment plan"}
+                              </p>
+
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {offer.message || "No extra offer terms."}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(offer.createdAt)}
+                              </p>
+
+                              {renderLeadAssignmentControls(
+                                "property_offers",
+                                offer.id,
+                                offer.assignedToEmail,
+                                offer.staffNotes,
+                                offer.priority || "High",
+                                offer.followUpDate || "",
+                                offer.lastContactedAt || ""
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <a
+                                href={createWhatsAppLeadLink(offer.buyerPhone, offerWhatsAppMessage)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                WhatsApp
+                              </a>
+
+                              <a
+                                href={createCallLeadLink(offer.buyerPhone)}
+                                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Call
+                              </a>
+
+                              {offer.buyerEmail && (
+                                <a
+                                  href={createEmailLeadLink(offer.buyerEmail, `INAMAAD offer: ${offer.listingTitle}`)}
+                                  className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white"
+                                >
+                                  Email
+                                </a>
+                              )}
+
+                              <button onClick={() => updatePropertyOfferStatus(offer.id, "New")} disabled={!canManageLeads} className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                New
+                              </button>
+
+                              <button onClick={() => updatePropertyOfferStatus(offer.id, "Reviewing")} disabled={!canManageLeads} className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Reviewing
+                              </button>
+
+                              <button onClick={() => updatePropertyOfferStatus(offer.id, "Accepted")} disabled={!canManageLeads} className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Accepted
+                              </button>
+
+                              <button onClick={() => updatePropertyOfferStatus(offer.id, "Rejected")} disabled={!canManageLeads} className="rounded-full bg-red-100 px-4 py-2 text-xs font-black text-red-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Rejected
+                              </button>
+
+                              <button onClick={() => updatePropertyOfferStatus(offer.id, "Closed")} disabled={!canManageLeads} className="rounded-full bg-slate-200 px-4 py-2 text-xs font-black text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Closed
+                              </button>
+
+                              <button onClick={() => deletePropertyOffer(offer.id)} disabled={!canDeleteLeads} className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
                                 Delete
                               </button>
                             </div>

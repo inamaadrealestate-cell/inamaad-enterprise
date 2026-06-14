@@ -58,6 +58,17 @@ type Listing = {
   furnishingStatus?: string;
   propertyCondition?: string;
   amenities?: string;
+  neighborhoodOverview?: string;
+  roadAccess?: string;
+  powerSupply?: string;
+  waterSupply?: string;
+  securityFeatures?: string;
+  nearbySchools?: string;
+  nearbyHospitals?: string;
+  nearbyMalls?: string;
+  nearbyTransport?: string;
+  distanceToMajorRoad?: string;
+  estateFeatures?: string;
   type: string;
   category: string;
   yieldText: string;
@@ -872,6 +883,17 @@ function mapListingRow(row: any): Listing {
     furnishingStatus: row.furnishing_status || "Not Specified",
     propertyCondition: row.property_condition || "Not Specified",
     amenities: row.amenities || "",
+    neighborhoodOverview: row.neighborhood_overview || "",
+    roadAccess: row.road_access || "",
+    powerSupply: row.power_supply || "",
+    waterSupply: row.water_supply || "",
+    securityFeatures: row.security_features || "",
+    nearbySchools: row.nearby_schools || "",
+    nearbyHospitals: row.nearby_hospitals || "",
+    nearbyMalls: row.nearby_malls || "",
+    nearbyTransport: row.nearby_transport || "",
+    distanceToMajorRoad: row.distance_to_major_road || "",
+    estateFeatures: row.estate_features || "",
     type: row.type,
     category: row.category,
     yieldText: row.yield_text,
@@ -1085,6 +1107,17 @@ function listingToRow(listing: Omit<Listing, "id">) {
     furnishing_status: listing.furnishingStatus || "Not Specified",
     property_condition: listing.propertyCondition || "Not Specified",
     amenities: listing.amenities || null,
+    neighborhood_overview: listing.neighborhoodOverview || null,
+    road_access: listing.roadAccess || null,
+    power_supply: listing.powerSupply || null,
+    water_supply: listing.waterSupply || null,
+    security_features: listing.securityFeatures || null,
+    nearby_schools: listing.nearbySchools || null,
+    nearby_hospitals: listing.nearbyHospitals || null,
+    nearby_malls: listing.nearbyMalls || null,
+    nearby_transport: listing.nearbyTransport || null,
+    distance_to_major_road: listing.distanceToMajorRoad || null,
+    estate_features: listing.estateFeatures || null,
     type: listing.type,
     category: listing.category,
     yield_text: listing.yieldText,
@@ -1224,6 +1257,17 @@ export default function App() {
     furnishingStatus: "Not Specified",
     propertyCondition: "Not Specified",
     amenities: "",
+    neighborhoodOverview: "",
+    roadAccess: "",
+    powerSupply: "",
+    waterSupply: "",
+    securityFeatures: "",
+    nearbySchools: "",
+    nearbyHospitals: "",
+    nearbyMalls: "",
+    nearbyTransport: "",
+    distanceToMajorRoad: "",
+    estateFeatures: "",
     type: "Residential",
     category: "For Sale",
     availabilityStatus: "Available" as AvailabilityStatus,
@@ -1275,6 +1319,17 @@ export default function App() {
     furnishingStatus: "Not Specified",
     propertyCondition: "Not Specified",
     amenities: "",
+    neighborhoodOverview: "",
+    roadAccess: "",
+    powerSupply: "",
+    waterSupply: "",
+    securityFeatures: "",
+    nearbySchools: "",
+    nearbyHospitals: "",
+    nearbyMalls: "",
+    nearbyTransport: "",
+    distanceToMajorRoad: "",
+    estateFeatures: "",
     type: "Residential",
     category: "For Sale",
     availabilityStatus: "Available" as AvailabilityStatus,
@@ -2300,6 +2355,17 @@ export default function App() {
       furnishingStatus: listing.furnishingStatus || "Not Specified",
       propertyCondition: listing.propertyCondition || "Not Specified",
       amenities: listing.amenities || "",
+      neighborhoodOverview: listing.neighborhoodOverview || "",
+      roadAccess: listing.roadAccess || "",
+      powerSupply: listing.powerSupply || "",
+      waterSupply: listing.waterSupply || "",
+      securityFeatures: listing.securityFeatures || "",
+      nearbySchools: listing.nearbySchools || "",
+      nearbyHospitals: listing.nearbyHospitals || "",
+      nearbyMalls: listing.nearbyMalls || "",
+      nearbyTransport: listing.nearbyTransport || "",
+      distanceToMajorRoad: listing.distanceToMajorRoad || "",
+      estateFeatures: listing.estateFeatures || "",
       type: listing.type,
       category: listing.category,
       availabilityStatus: listing.availabilityStatus || "Available",
@@ -2378,6 +2444,17 @@ export default function App() {
         furnishingStatus: postForm.furnishingStatus,
         propertyCondition: postForm.propertyCondition,
         amenities: postForm.amenities,
+        neighborhoodOverview: postForm.neighborhoodOverview,
+        roadAccess: postForm.roadAccess,
+        powerSupply: postForm.powerSupply,
+        waterSupply: postForm.waterSupply,
+        securityFeatures: postForm.securityFeatures,
+        nearbySchools: postForm.nearbySchools,
+        nearbyHospitals: postForm.nearbyHospitals,
+        nearbyMalls: postForm.nearbyMalls,
+        nearbyTransport: postForm.nearbyTransport,
+        distanceToMajorRoad: postForm.distanceToMajorRoad,
+        estateFeatures: postForm.estateFeatures,
         type: postForm.type,
         category: postForm.category,
         availabilityStatus: postForm.availabilityStatus,
@@ -2476,6 +2553,17 @@ export default function App() {
         furnishingStatus: "Not Specified",
         propertyCondition: "Not Specified",
         amenities: "",
+        neighborhoodOverview: "",
+        roadAccess: "",
+        powerSupply: "",
+        waterSupply: "",
+        securityFeatures: "",
+        nearbySchools: "",
+        nearbyHospitals: "",
+        nearbyMalls: "",
+        nearbyTransport: "",
+        distanceToMajorRoad: "",
+        estateFeatures: "",
         type: "Residential",
         category: "For Sale",
         availabilityStatus: "Available" as AvailabilityStatus,
@@ -2563,6 +2651,17 @@ export default function App() {
         furnishingStatus: editForm.furnishingStatus,
         propertyCondition: editForm.propertyCondition,
         amenities: editForm.amenities,
+        neighborhoodOverview: editForm.neighborhoodOverview,
+        roadAccess: editForm.roadAccess,
+        powerSupply: editForm.powerSupply,
+        waterSupply: editForm.waterSupply,
+        securityFeatures: editForm.securityFeatures,
+        nearbySchools: editForm.nearbySchools,
+        nearbyHospitals: editForm.nearbyHospitals,
+        nearbyMalls: editForm.nearbyMalls,
+        nearbyTransport: editForm.nearbyTransport,
+        distanceToMajorRoad: editForm.distanceToMajorRoad,
+        estateFeatures: editForm.estateFeatures,
         type: editForm.type,
         category: editForm.category,
         availabilityStatus: editForm.availabilityStatus as AvailabilityStatus,
@@ -2625,6 +2724,17 @@ export default function App() {
               furnishingStatus: updatedListing.furnishingStatus,
               propertyCondition: updatedListing.propertyCondition,
               amenities: updatedListing.amenities,
+              neighborhoodOverview: updatedListing.neighborhoodOverview,
+              roadAccess: updatedListing.roadAccess,
+              powerSupply: updatedListing.powerSupply,
+              waterSupply: updatedListing.waterSupply,
+              securityFeatures: updatedListing.securityFeatures,
+              nearbySchools: updatedListing.nearbySchools,
+              nearbyHospitals: updatedListing.nearbyHospitals,
+              nearbyMalls: updatedListing.nearbyMalls,
+              nearbyTransport: updatedListing.nearbyTransport,
+              distanceToMajorRoad: updatedListing.distanceToMajorRoad,
+              estateFeatures: updatedListing.estateFeatures,
               type: updatedListing.type,
               category: updatedListing.category,
               availabilityStatus: updatedListing.availabilityStatus,
@@ -6091,6 +6201,160 @@ export default function App() {
                 </div>
 
                 <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Neighborhood and infrastructure</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Add environment details buyers ask for before inspection. Use short, clear examples.
+                  </p>
+
+                  <textarea
+                    value={postForm.neighborhoodOverview}
+                    onChange={(event) => setPostForm({ ...postForm, neighborhoodOverview: event.target.value })}
+                    placeholder="Neighborhood overview, e.g. Quiet gated estate close to schools, malls, and major access roads."
+                    className="mt-4 min-h-[96px] w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={postForm.roadAccess}
+                      onChange={(event) => setPostForm({ ...postForm, roadAccess: event.target.value })}
+                      placeholder="Road access, e.g. tarred road, interlocked estate road"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.distanceToMajorRoad}
+                      onChange={(event) => setPostForm({ ...postForm, distanceToMajorRoad: event.target.value })}
+                      placeholder="Distance to major road, e.g. 3 minutes to expressway"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.powerSupply}
+                      onChange={(event) => setPostForm({ ...postForm, powerSupply: event.target.value })}
+                      placeholder="Power supply, e.g. 18 hours average, transformer available"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.waterSupply}
+                      onChange={(event) => setPostForm({ ...postForm, waterSupply: event.target.value })}
+                      placeholder="Water supply, e.g. borehole, treated estate water"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.securityFeatures}
+                      onChange={(event) => setPostForm({ ...postForm, securityFeatures: event.target.value })}
+                      placeholder="Security, e.g. gated estate, CCTV, armed security"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.estateFeatures}
+                      onChange={(event) => setPostForm({ ...postForm, estateFeatures: event.target.value })}
+                      placeholder="Estate features, e.g. drainage, streetlights, gym, playground"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.nearbySchools}
+                      onChange={(event) => setPostForm({ ...postForm, nearbySchools: event.target.value })}
+                      placeholder="Nearby schools, e.g. 5 mins to Greensprings / Nile University"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.nearbyHospitals}
+                      onChange={(event) => setPostForm({ ...postForm, nearbyHospitals: event.target.value })}
+                      placeholder="Nearby hospitals, e.g. 7 mins to Evercare / National Hospital"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.nearbyMalls}
+                      onChange={(event) => setPostForm({ ...postForm, nearbyMalls: event.target.value })}
+                      placeholder="Nearby malls/markets, e.g. 10 mins to Novare Mall"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.nearbyTransport}
+                      onChange={(event) => setPostForm({ ...postForm, nearbyTransport: event.target.value })}
+                      placeholder="Nearby transport, e.g. BRT, airport road, expressway access"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Neighborhood and infrastructure</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Update road, power, security, and nearby infrastructure details for this listing.
+                  </p>
+
+                  <textarea
+                    value={editForm.neighborhoodOverview}
+                    onChange={(event) => setEditForm({ ...editForm, neighborhoodOverview: event.target.value })}
+                    placeholder="Neighborhood overview, e.g. Quiet gated estate close to schools, malls, and major access roads."
+                    className="mt-4 min-h-[96px] w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={editForm.roadAccess}
+                      onChange={(event) => setEditForm({ ...editForm, roadAccess: event.target.value })}
+                      placeholder="Road access, e.g. tarred road, interlocked estate road"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.distanceToMajorRoad}
+                      onChange={(event) => setEditForm({ ...editForm, distanceToMajorRoad: event.target.value })}
+                      placeholder="Distance to major road, e.g. 3 minutes to expressway"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.powerSupply}
+                      onChange={(event) => setEditForm({ ...editForm, powerSupply: event.target.value })}
+                      placeholder="Power supply, e.g. 18 hours average, transformer available"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.waterSupply}
+                      onChange={(event) => setEditForm({ ...editForm, waterSupply: event.target.value })}
+                      placeholder="Water supply, e.g. borehole, treated estate water"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.securityFeatures}
+                      onChange={(event) => setEditForm({ ...editForm, securityFeatures: event.target.value })}
+                      placeholder="Security, e.g. gated estate, CCTV, armed security"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.estateFeatures}
+                      onChange={(event) => setEditForm({ ...editForm, estateFeatures: event.target.value })}
+                      placeholder="Estate features, e.g. drainage, streetlights, gym, playground"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.nearbySchools}
+                      onChange={(event) => setEditForm({ ...editForm, nearbySchools: event.target.value })}
+                      placeholder="Nearby schools, e.g. 5 mins to Greensprings / Nile University"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.nearbyHospitals}
+                      onChange={(event) => setEditForm({ ...editForm, nearbyHospitals: event.target.value })}
+                      placeholder="Nearby hospitals, e.g. 7 mins to Evercare / National Hospital"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.nearbyMalls}
+                      onChange={(event) => setEditForm({ ...editForm, nearbyMalls: event.target.value })}
+                      placeholder="Nearby malls/markets, e.g. 10 mins to Novare Mall"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.nearbyTransport}
+                      onChange={(event) => setEditForm({ ...editForm, nearbyTransport: event.target.value })}
+                      placeholder="Nearby transport, e.g. BRT, airport road, expressway access"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
                   <p className="text-sm font-black text-[#0d1c38]">Property document / title papers</p>
                   <p className="mt-1 text-xs leading-5 text-slate-500">
                     Add the title document buyers expect to see, for example C of O, R of O, Governor's Consent, Deed of Assignment, Survey Plan, Excision, or Gazette.
@@ -7223,6 +7487,27 @@ export default function App() {
                         {selectedListing.amenities && (
                           <p className="mt-4 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Amenities:</span> {selectedListing.amenities}</p>
                         )}
+                      </div>
+                    )}
+
+                    {(selectedListing.neighborhoodOverview || selectedListing.roadAccess || selectedListing.powerSupply || selectedListing.waterSupply || selectedListing.securityFeatures || selectedListing.nearbySchools || selectedListing.nearbyHospitals || selectedListing.nearbyMalls || selectedListing.nearbyTransport || selectedListing.distanceToMajorRoad || selectedListing.estateFeatures) && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+                        <p className="font-black text-[#0d1c38]">Neighborhood and infrastructure</p>
+                        {selectedListing.neighborhoodOverview && (
+                          <p className="mt-3 text-sm leading-6 text-slate-600">{selectedListing.neighborhoodOverview}</p>
+                        )}
+                        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                          {selectedListing.roadAccess ? <p><span className="font-black">Road access:</span> {selectedListing.roadAccess}</p> : null}
+                          {selectedListing.distanceToMajorRoad ? <p><span className="font-black">Major road:</span> {selectedListing.distanceToMajorRoad}</p> : null}
+                          {selectedListing.powerSupply ? <p><span className="font-black">Power supply:</span> {selectedListing.powerSupply}</p> : null}
+                          {selectedListing.waterSupply ? <p><span className="font-black">Water supply:</span> {selectedListing.waterSupply}</p> : null}
+                          {selectedListing.securityFeatures ? <p><span className="font-black">Security:</span> {selectedListing.securityFeatures}</p> : null}
+                          {selectedListing.estateFeatures ? <p><span className="font-black">Estate features:</span> {selectedListing.estateFeatures}</p> : null}
+                          {selectedListing.nearbySchools ? <p><span className="font-black">Schools:</span> {selectedListing.nearbySchools}</p> : null}
+                          {selectedListing.nearbyHospitals ? <p><span className="font-black">Hospitals:</span> {selectedListing.nearbyHospitals}</p> : null}
+                          {selectedListing.nearbyMalls ? <p><span className="font-black">Malls / markets:</span> {selectedListing.nearbyMalls}</p> : null}
+                          {selectedListing.nearbyTransport ? <p><span className="font-black">Transport:</span> {selectedListing.nearbyTransport}</p> : null}
+                        </div>
                       </div>
                     )}
 
@@ -9269,3 +9554,5 @@ export default function App() {
 // Availability status upgrade: listings now support Available, Reserved, Sold, Rented, Leased, and Off Market badges plus staff controls.
 
 // Property specifications upgrade: bedrooms, bathrooms, toilets, parking, sizes, furnishing, condition, and amenities are now supported.
+
+// Neighborhood and infrastructure upgrade: road access, power, water, security, nearby schools/hospitals/malls/transport, estate features, and neighborhood overview are now supported.

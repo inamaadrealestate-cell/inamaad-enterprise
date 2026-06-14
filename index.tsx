@@ -109,6 +109,16 @@ type StaffNotification = {
   createdAt: string;
 };
 
+type AdminActivityLog = {
+  id: number;
+  adminEmail: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  details: string;
+  createdAt: string;
+};
+
 const WHATSAPP_NUMBER = "2348106350486";
 const LOCAL_ADMIN_PASSWORD = "admin123";
 
@@ -674,6 +684,18 @@ function mapStaffNotificationRow(row: any): StaffNotification {
   };
 }
 
+function mapAdminActivityLogRow(row: any): AdminActivityLog {
+  return {
+    id: Number(row.id),
+    adminEmail: row.admin_email || "Unknown staff",
+    action: row.action || "Activity",
+    targetType: row.target_type || "General",
+    targetId: row.target_id || "",
+    details: row.details || "",
+    createdAt: row.created_at,
+  };
+}
+
 function listingToRow(listing: Omit<Listing, "id">) {
   return {
     title: listing.title,
@@ -737,6 +759,7 @@ export default function App() {
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [inspectionBookings, setInspectionBookings] = useState<InspectionBooking[]>([]);
   const [staffNotifications, setStaffNotifications] = useState<StaffNotification[]>([]);
+  const [adminActivityLogs, setAdminActivityLogs] = useState<AdminActivityLog[]>([]);
   const [modal, setModal] = useState<ModalType>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
@@ -1018,6 +1041,7 @@ export default function App() {
           setContactMessages([]);
           setInspectionBookings([]);
           setStaffNotifications([]);
+          setAdminActivityLogs([]);
         }
       }
     );
@@ -1272,6 +1296,23 @@ export default function App() {
     setStaffNotifications((data || []).map(mapStaffNotificationRow));
   }
 
+  async function loadDatabaseAdminActivityLogs() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("admin_activity_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setAdminActivityLogs((data || []).map(mapAdminActivityLogRow));
+  }
+
   async function checkAdminAccess() {
     if (!supabase) return;
 
@@ -1293,6 +1334,7 @@ export default function App() {
       await loadDatabaseContactMessages();
       await loadDatabaseInspectionBookings();
       await loadDatabaseStaffNotifications();
+      await loadDatabaseAdminActivityLogs();
     }
   }
 
@@ -1371,6 +1413,13 @@ export default function App() {
       showSuccess("Unable to open document. Make sure you are signed in as admin.");
       return;
     }
+
+    await createAdminActivityLog(
+      "Opened secure title document",
+      "Listing Document",
+      documentPath,
+      "Staff generated a temporary signed URL for an uploaded title document."
+    );
 
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
@@ -1693,6 +1742,13 @@ export default function App() {
         );
       }
 
+      await createAdminActivityLog(
+        "Edited property listing",
+        "Listing",
+        String(editingListing.id),
+        `${updatedListing.title} updated. Status: ${updatedListing.status}. Verification: ${verificationSummary(updatedListing)}.`
+      );
+
       setEditImageFile(null);
       setEditDocumentFile(null);
       setEditingListing(null);
@@ -2008,7 +2064,47 @@ export default function App() {
     setContactMessages([]);
     setInspectionBookings([]);
     setStaffNotifications([]);
+    setAdminActivityLogs([]);
     showSuccess("Staff signed out.");
+  }
+
+  async function createAdminActivityLog(
+    action: string,
+    targetType = "General",
+    targetId = "",
+    details = ""
+  ) {
+    const newLog: Omit<AdminActivityLog, "id"> = {
+      adminEmail: user?.email || adminEmail || "Local demo admin",
+      action,
+      targetType,
+      targetId,
+      details,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase && user) {
+      const { error } = await supabase.from("admin_activity_logs").insert({
+        admin_email: user.email,
+        action,
+        target_type: targetType,
+        target_id: targetId,
+        details,
+      });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      await loadDatabaseAdminActivityLogs();
+      return;
+    }
+
+    setAdminActivityLogs((current) => [
+      { ...newLog, id: Date.now() },
+      ...current.slice(0, 49),
+    ]);
   }
 
   async function createStaffNotification(
@@ -2150,10 +2246,19 @@ export default function App() {
       );
     }
 
+    await createAdminActivityLog(
+      "Approved property listing",
+      "Listing",
+      String(id),
+      listingToApprove ? `${listingToApprove.title} was approved and made public.` : "Listing approved."
+    );
+
     showSuccess("Listing approved.");
   }
 
   async function deleteListing(id: number) {
+    const listingToDelete = listings.find((listing) => listing.id === id);
+
     if (supabase) {
       const { error } = await supabase.from("listings").delete().eq("id", id);
 
@@ -2168,10 +2273,19 @@ export default function App() {
       setListings((current) => current.filter((listing) => listing.id !== id));
     }
 
+    await createAdminActivityLog(
+      "Deleted property listing",
+      "Listing",
+      String(id),
+      listingToDelete ? `${listingToDelete.title} was deleted.` : "Listing deleted."
+    );
+
     showSuccess("Listing deleted.");
   }
 
   async function updateInvestorRequestStatus(id: number, status: LeadStatus) {
+    const requestToUpdate = investorRequests.find((request) => request.id === id);
+
     if (supabase) {
       const { error } = await supabase
         .from("investor_requests")
@@ -2193,10 +2307,19 @@ export default function App() {
       );
     }
 
+    await createAdminActivityLog(
+      `Marked investor request ${status}`,
+      "Investor Request",
+      String(id),
+      requestToUpdate ? `${requestToUpdate.name} / ${requestToUpdate.interest}` : "Investor request status updated."
+    );
+
     showSuccess(`Investor request marked as ${status}.`);
   }
 
   async function updatePropertyInquiryStatus(id: number, status: LeadStatus) {
+    const inquiryToUpdate = propertyInquiries.find((inquiry) => inquiry.id === id);
+
     if (supabase) {
       const { error } = await supabase
         .from("property_inquiries")
@@ -2218,10 +2341,19 @@ export default function App() {
       );
     }
 
+    await createAdminActivityLog(
+      `Marked property inquiry ${status}`,
+      "Property Inquiry",
+      String(id),
+      inquiryToUpdate ? `${inquiryToUpdate.name} / ${inquiryToUpdate.listingTitle}` : "Property inquiry status updated."
+    );
+
     showSuccess(`Property inquiry marked as ${status}.`);
   }
 
   async function deleteInvestorRequest(id: number) {
+    const requestToDelete = investorRequests.find((request) => request.id === id);
+
     if (supabase) {
       const { error } = await supabase
         .from("investor_requests")
@@ -2241,10 +2373,19 @@ export default function App() {
       );
     }
 
+    await createAdminActivityLog(
+      "Deleted investor request",
+      "Investor Request",
+      String(id),
+      requestToDelete ? `${requestToDelete.name} / ${requestToDelete.interest}` : "Investor request deleted."
+    );
+
     showSuccess("Investor request removed.");
   }
 
   async function deletePropertyInquiry(id: number) {
+    const inquiryToDelete = propertyInquiries.find((inquiry) => inquiry.id === id);
+
     if (supabase) {
       const { error } = await supabase
         .from("property_inquiries")
@@ -2264,10 +2405,19 @@ export default function App() {
       );
     }
 
+    await createAdminActivityLog(
+      "Deleted property inquiry",
+      "Property Inquiry",
+      String(id),
+      inquiryToDelete ? `${inquiryToDelete.name} / ${inquiryToDelete.listingTitle}` : "Property inquiry deleted."
+    );
+
     showSuccess("Property inquiry removed.");
   }
 
   async function updateContactMessageStatus(id: number, status: LeadStatus) {
+    const messageToUpdate = contactMessages.find((message) => message.id === id);
+
     if (supabase) {
       const { error } = await supabase
         .from("contact_messages")
@@ -2289,10 +2439,19 @@ export default function App() {
       );
     }
 
+    await createAdminActivityLog(
+      `Marked contact message ${status}`,
+      "Contact Message",
+      String(id),
+      messageToUpdate ? `${messageToUpdate.name} / ${messageToUpdate.subject}` : "Contact message status updated."
+    );
+
     showSuccess(`Contact message marked as ${status}.`);
   }
 
   async function deleteContactMessage(id: number) {
+    const messageToDelete = contactMessages.find((message) => message.id === id);
+
     if (supabase) {
       const { error } = await supabase
         .from("contact_messages")
@@ -2312,10 +2471,19 @@ export default function App() {
       );
     }
 
+    await createAdminActivityLog(
+      "Deleted contact message",
+      "Contact Message",
+      String(id),
+      messageToDelete ? `${messageToDelete.name} / ${messageToDelete.subject}` : "Contact message deleted."
+    );
+
     showSuccess("Contact message removed.");
   }
 
   async function updateInspectionBookingStatus(id: number, status: InspectionStatus) {
+    const bookingToUpdate = inspectionBookings.find((booking) => booking.id === id);
+
     if (supabase) {
       const { error } = await supabase
         .from("inspection_bookings")
@@ -2337,10 +2505,19 @@ export default function App() {
       );
     }
 
+    await createAdminActivityLog(
+      `Marked inspection booking ${status}`,
+      "Inspection Booking",
+      String(id),
+      bookingToUpdate ? `${bookingToUpdate.name} / ${bookingToUpdate.listingTitle}` : "Inspection booking status updated."
+    );
+
     showSuccess(`Inspection booking marked as ${status}.`);
   }
 
   async function deleteInspectionBooking(id: number) {
+    const bookingToDelete = inspectionBookings.find((booking) => booking.id === id);
+
     if (supabase) {
       const { error } = await supabase
         .from("inspection_bookings")
@@ -4991,6 +5168,66 @@ export default function App() {
                     ))}
                   </div>
                 </div>
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Admin audit log
+                      </p>
+                      <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                        Staff activity history
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        Track approvals, edits, deletions, lead status changes, and secure document access.
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-[#0d1c38] px-5 py-2 text-xs font-black text-white">
+                      {adminActivityLogs.length} records
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-3">
+                    {adminActivityLogs.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No admin activity recorded yet. Staff actions will appear here.
+                      </p>
+                    )}
+
+                    {adminActivityLogs.slice(0, 15).map((log) => (
+                      <div
+                        key={log.id}
+                        className="rounded-2xl border border-slate-200 bg-[#f7f8fb] p-5"
+                      >
+                        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+                          <div>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="rounded-full bg-[#0d1c38] px-3 py-1 text-[11px] font-black text-white">
+                                {log.targetType}
+                              </span>
+                              <span className="rounded-full bg-[#f0bf3c] px-3 py-1 text-[11px] font-black text-[#0d1c38]">
+                                {log.adminEmail}
+                              </span>
+                            </div>
+
+                            <p className="mt-3 font-black text-[#0d1c38]">
+                              {log.action}
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                              {log.details || "No extra details."}
+                            </p>
+                            <p className="mt-2 text-xs font-bold text-slate-400">
+                              {formatDate(log.createdAt)}
+                              {log.targetId ? ` • ID: ${log.targetId}` : ""}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
 
                 <div className="rounded-[2rem] bg-[#0d1c38] p-6 text-white shadow-2xl shadow-slate-900/10">
                   <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">

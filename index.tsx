@@ -521,6 +521,23 @@ function buildListingShareText(listing: Listing) {
   )}`;
 }
 
+function extractPropertyDocumentPath(documentFileUrl: string) {
+  if (!documentFileUrl) return "";
+
+  const cleanValue = documentFileUrl.split("?")[0];
+  const bucketMarker = "property-documents/";
+
+  if (cleanValue.includes(bucketMarker)) {
+    return decodeURIComponent(cleanValue.split(bucketMarker).pop() || "");
+  }
+
+  if (!cleanValue.includes("/")) {
+    return cleanValue;
+  }
+
+  return decodeURIComponent(cleanValue.split("/").pop() || "");
+}
+
 function leadStatusClass(status: LeadStatus) {
   if (status === "Closed") return "bg-emerald-100 text-emerald-700";
   if (status === "Contacted") return "bg-blue-100 text-blue-700";
@@ -1324,11 +1341,38 @@ export default function App() {
       throw error;
     }
 
-    const { data } = supabase.storage
-      .from("property-documents")
-      .getPublicUrl(safeFileName);
+    return safeFileName;
+  }
 
-    return data.publicUrl;
+  async function openSecurePropertyDocument(documentFileUrl?: string) {
+    if (!documentFileUrl) {
+      showSuccess("No title document file has been uploaded for this listing.");
+      return;
+    }
+
+    if (!supabase || !user) {
+      showSuccess("Only signed-in staff can open uploaded title documents.");
+      return;
+    }
+
+    const documentPath = extractPropertyDocumentPath(documentFileUrl);
+
+    if (!documentPath) {
+      showSuccess("Unable to find the secure document path.");
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from("property-documents")
+      .createSignedUrl(documentPath, 300);
+
+    if (error || !data?.signedUrl) {
+      console.error(error);
+      showSuccess("Unable to open document. Make sure you are signed in as admin.");
+      return;
+    }
+
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
   function imageFileToBase64(file: File) {
@@ -4123,17 +4167,16 @@ export default function App() {
                       Replace title document file
                     </label>
                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Leave empty to keep the current document. Upload PDF, JPG, PNG, or WEBP under 10MB.
+                      Leave empty to keep the current document. Upload PDF, JPG, PNG, or WEBP under 10MB. The file is stored privately and only staff can open it. The file is stored privately and only staff can open it.
                     </p>
                     {editForm.documentFileUrl && !editDocumentFile && (
-                      <a
-                        href={editForm.documentFileUrl}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => openSecurePropertyDocument(editForm.documentFileUrl)}
                         className="mt-4 inline-flex rounded-2xl bg-[#0d1c38] px-4 py-3 text-xs font-black text-white"
                       >
-                        View current document
-                      </a>
+                        Open secure document
+                      </button>
                     )}
                     <input
                       type="file"
@@ -4508,14 +4551,9 @@ export default function App() {
                           </p>
                         )}
                         {selectedListing.documentFileUrl && (
-                          <a
-                            href={selectedListing.documentFileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-4 inline-flex rounded-2xl bg-[#0d1c38] px-4 py-3 text-xs font-black text-white"
-                          >
-                            View uploaded title document
-                          </a>
+                          <div className="mt-4 rounded-2xl border border-amber-200 bg-white p-4 text-xs font-bold text-slate-600">
+                            Uploaded title document is securely stored. Public users can see the document type and verification status, but only signed-in staff can open the actual file.
+                          </div>
                         )}
                       </div>
                     )}

@@ -79,6 +79,13 @@ type Listing = {
   availableFrom?: string;
   ownerName?: string;
   ownerPhone?: string;
+  contactRole?: string;
+  companyName?: string;
+  contactEmail?: string;
+  contactWhatsapp?: string;
+  contactAddress?: string;
+  publicContactVisibility?: string;
+  mandateStatus?: string;
   documentTitle?: string;
   documentStatus?: string;
   documentDetails?: string;
@@ -392,6 +399,30 @@ const availabilityStatusOptions: AvailabilityStatus[] = [
   "Off Market",
 ];
 
+const contactRoleOptions = [
+  "Owner",
+  "Agent",
+  "Developer",
+  "Landlord",
+  "Company",
+  "Mandate Holder",
+];
+
+const publicContactVisibilityOptions = [
+  "Hide Phone",
+  "Show Phone",
+  "Show WhatsApp",
+  "Show Email",
+  "Show All",
+];
+
+const mandateStatusOptions = [
+  "Not Confirmed",
+  "Direct Owner",
+  "Authorized Agent",
+  "Developer Mandate",
+  "Company Mandate",
+];
 
 const documentTitleOptions = [
   "C of O / Certificate of Occupancy",
@@ -843,6 +874,37 @@ function buildExactLocationText(listing: Listing) {
   return buildPublicLocationText(listing);
 }
 
+function cleanPhoneForLink(phone?: string) {
+  return (phone || "").replace(/[^0-9]/g, "");
+}
+
+function normalizeNigeriaWhatsApp(phone?: string) {
+  const cleaned = cleanPhoneForLink(phone);
+  if (!cleaned) return "";
+  if (cleaned.startsWith("234")) return cleaned;
+  if (cleaned.startsWith("0")) return `234${cleaned.slice(1)}`;
+  return cleaned;
+}
+
+function canShowPublicPhone(listing: Listing) {
+  const visibility = listing.publicContactVisibility || "Hide Phone";
+  return visibility === "Show Phone" || visibility === "Show All";
+}
+
+function canShowPublicWhatsapp(listing: Listing) {
+  const visibility = listing.publicContactVisibility || "Hide Phone";
+  return visibility === "Show WhatsApp" || visibility === "Show All";
+}
+
+function canShowPublicEmail(listing: Listing) {
+  const visibility = listing.publicContactVisibility || "Hide Phone";
+  return visibility === "Show Email" || visibility === "Show All";
+}
+
+function getListingContactName(listing: Listing) {
+  return listing.companyName || listing.ownerName || "Not provided";
+}
+
 function buildListingLocationValue(form: { stateName?: string; cityArea?: string; location?: string }) {
   const parts = [form.cityArea, form.stateName].filter(Boolean);
   return parts.length ? parts.join(", ") : form.location || "Nigeria";
@@ -904,6 +966,13 @@ function mapListingRow(row: any): Listing {
     availableFrom: row.available_from || "",
     ownerName: row.owner_name || "",
     ownerPhone: row.owner_phone || "",
+    contactRole: row.contact_role || "Owner",
+    companyName: row.company_name || "",
+    contactEmail: row.contact_email || "",
+    contactWhatsapp: row.contact_whatsapp || "",
+    contactAddress: row.contact_address || "",
+    publicContactVisibility: row.public_contact_visibility || "Hide Phone",
+    mandateStatus: row.mandate_status || "Not Confirmed",
     documentTitle: row.document_title || "",
     documentStatus: row.document_status || "",
     documentDetails: row.document_details || "",
@@ -1128,6 +1197,13 @@ function listingToRow(listing: Omit<Listing, "id">) {
     available_from: listing.availableFrom || null,
     owner_name: listing.ownerName || null,
     owner_phone: listing.ownerPhone || null,
+    contact_role: listing.contactRole || "Owner",
+    company_name: listing.companyName || null,
+    contact_email: listing.contactEmail || null,
+    contact_whatsapp: listing.contactWhatsapp || null,
+    contact_address: listing.contactAddress || null,
+    public_contact_visibility: listing.publicContactVisibility || "Hide Phone",
+    mandate_status: listing.mandateStatus || "Not Confirmed",
     document_title: listing.documentTitle || null,
     document_status: listing.documentStatus || null,
     document_details: listing.documentDetails || null,
@@ -1281,6 +1357,13 @@ export default function App() {
     documentFileUrl: "",
     ownerName: "",
     ownerPhone: "",
+    contactRole: "Owner",
+    companyName: "",
+    contactEmail: "",
+    contactWhatsapp: "",
+    contactAddress: "",
+    publicContactVisibility: "Hide Phone",
+    mandateStatus: "Not Confirmed",
   });
 
   const [postImageFile, setPostImageFile] = useState<File | null>(null);
@@ -1350,6 +1433,13 @@ export default function App() {
     status: "Verified" as ListingStatus,
     ownerName: "",
     ownerPhone: "",
+    contactRole: "Owner",
+    companyName: "",
+    contactEmail: "",
+    contactWhatsapp: "",
+    contactAddress: "",
+    publicContactVisibility: "Hide Phone",
+    mandateStatus: "Not Confirmed",
     imageUrl: "",
     featured: false,
     featuredRank: "0",
@@ -2386,6 +2476,13 @@ export default function App() {
       status: listing.status,
       ownerName: listing.ownerName || "",
       ownerPhone: listing.ownerPhone || "",
+      contactRole: listing.contactRole || "Owner",
+      companyName: listing.companyName || "",
+      contactEmail: listing.contactEmail || "",
+      contactWhatsapp: listing.contactWhatsapp || "",
+      contactAddress: listing.contactAddress || "",
+      publicContactVisibility: listing.publicContactVisibility || "Hide Phone",
+      mandateStatus: listing.mandateStatus || "Not Confirmed",
       imageUrl: listing.imageUrl || "",
       featured: Boolean(listing.featured),
       featuredRank: String(listing.featuredRank || 0),
@@ -2475,6 +2572,13 @@ export default function App() {
         status: "Pending Review",
         ownerName: postForm.ownerName,
         ownerPhone: postForm.ownerPhone,
+        contactRole: postForm.contactRole,
+        companyName: postForm.companyName,
+        contactEmail: postForm.contactEmail,
+        contactWhatsapp: postForm.contactWhatsapp,
+        contactAddress: postForm.contactAddress,
+        publicContactVisibility: postForm.publicContactVisibility,
+        mandateStatus: postForm.mandateStatus,
         imageUrl,
         featured: false,
         featuredRank: 0,
@@ -2577,6 +2681,13 @@ export default function App() {
         documentFileUrl: "",
         ownerName: "",
         ownerPhone: "",
+        contactRole: "Owner",
+        companyName: "",
+        contactEmail: "",
+        contactWhatsapp: "",
+        contactAddress: "",
+        publicContactVisibility: "Hide Phone",
+        mandateStatus: "Not Confirmed",
       });
       setPostImageFile(null);
       setPostGalleryFiles([]);
@@ -2682,6 +2793,13 @@ export default function App() {
         status: editForm.status,
         ownerName: editForm.ownerName,
         ownerPhone: editForm.ownerPhone,
+        contactRole: editForm.contactRole,
+        companyName: editForm.companyName,
+        contactEmail: editForm.contactEmail,
+        contactWhatsapp: editForm.contactWhatsapp,
+        contactAddress: editForm.contactAddress,
+        publicContactVisibility: editForm.publicContactVisibility,
+        mandateStatus: editForm.mandateStatus,
         imageUrl,
         featured: Boolean(editForm.featured),
         featuredRank: Number(editForm.featuredRank || 0),
@@ -2755,6 +2873,13 @@ export default function App() {
               status: updatedListing.status,
               ownerName: updatedListing.ownerName,
               ownerPhone: updatedListing.ownerPhone,
+              contactRole: updatedListing.contactRole,
+              companyName: updatedListing.companyName,
+              contactEmail: updatedListing.contactEmail,
+              contactWhatsapp: updatedListing.contactWhatsapp,
+              contactAddress: updatedListing.contactAddress,
+              publicContactVisibility: updatedListing.publicContactVisibility,
+              mandateStatus: updatedListing.mandateStatus,
               imageUrl: updatedListing.imageUrl,
               featured: updatedListing.featured,
               featuredRank: updatedListing.featuredRank,
@@ -4370,8 +4495,15 @@ export default function App() {
         "Availability Status",
         "Availability Note",
         "Available From",
-        "Owner Name",
+        "Contact Role",
+        "Company Name",
+        "Owner / Contact Name",
         "Owner Phone",
+        "Contact WhatsApp",
+        "Contact Email",
+        "Contact Address",
+        "Public Contact Visibility",
+        "Mandate Status",
         "Image URL",
         "Created At",
       ],
@@ -4403,8 +4535,15 @@ export default function App() {
         listing.availabilityStatus || "Available",
         listing.availabilityNote || "",
         listing.availableFrom || "",
+        listing.contactRole || "Owner",
+        listing.companyName || "",
         listing.ownerName || "",
         listing.ownerPhone || "",
+        listing.contactWhatsapp || "",
+        listing.contactEmail || "",
+        listing.contactAddress || "",
+        listing.publicContactVisibility || "Hide Phone",
+        listing.mandateStatus || "Not Confirmed",
         listing.imageUrl || "",
         listing.createdAt || "",
       ])
@@ -6483,30 +6622,93 @@ export default function App() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <input
-                    value={postForm.ownerName}
-                    onChange={(event) =>
-                      setPostForm({
-                        ...postForm,
-                        ownerName: event.target.value,
-                      })
-                    }
-                    placeholder="Owner/developer name, e.g. INAMAAD Homes Ltd"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Owner / agent / developer contact profile</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Record who submitted the property and how the public should see contact details. Keep phone hidden if INAMAAD should handle the lead first.
+                  </p>
 
-                  <input
-                    value={postForm.ownerPhone}
-                    onChange={(event) =>
-                      setPostForm({
-                        ...postForm,
-                        ownerPhone: event.target.value,
-                      })
-                    }
-                    placeholder="Phone number, e.g. 08106350486"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={postForm.contactRole}
+                      onChange={(event) => setPostForm({ ...postForm, contactRole: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Contact role"
+                    >
+                      {contactRoleOptions.map((role) => (
+                        <option key={role}>{role}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={postForm.mandateStatus}
+                      onChange={(event) => setPostForm({ ...postForm, mandateStatus: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Mandate status"
+                    >
+                      {mandateStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={postForm.ownerName}
+                      onChange={(event) => setPostForm({ ...postForm, ownerName: event.target.value })}
+                      placeholder="Contact person, e.g. Musa Abdullahi"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.companyName}
+                      onChange={(event) => setPostForm({ ...postForm, companyName: event.target.value })}
+                      placeholder="Company / developer name, e.g. INAMAAD Homes Ltd"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.ownerPhone}
+                      onChange={(event) => setPostForm({ ...postForm, ownerPhone: event.target.value })}
+                      placeholder="Phone number, e.g. 08106350486"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.contactWhatsapp}
+                      onChange={(event) => setPostForm({ ...postForm, contactWhatsapp: event.target.value })}
+                      placeholder="WhatsApp number, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.contactEmail}
+                      onChange={(event) => setPostForm({ ...postForm, contactEmail: event.target.value })}
+                      placeholder="Contact email, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={postForm.publicContactVisibility}
+                      onChange={(event) => setPostForm({ ...postForm, publicContactVisibility: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Public contact visibility"
+                    >
+                      {publicContactVisibilityOptions.map((visibility) => (
+                        <option key={visibility}>{visibility}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      value={postForm.contactAddress}
+                      onChange={(event) => setPostForm({ ...postForm, contactAddress: event.target.value })}
+                      placeholder="Contact office/address, optional. Keep private for staff use unless you choose Show All."
+                      rows={3}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Public contact setting: {postForm.publicContactVisibility}. Staff can always see the full contact profile.
+                  </p>
                 </div>
 
                 <button
@@ -7176,24 +7378,93 @@ export default function App() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <input
-                    value={editForm.ownerName}
-                    onChange={(event) =>
-                      setEditForm({ ...editForm, ownerName: event.target.value })
-                    }
-                    placeholder="Owner/developer name, e.g. INAMAAD Homes Ltd"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Owner / agent / developer contact profile</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Staff can update mandate status and choose what contact details public visitors may see.
+                  </p>
 
-                  <input
-                    value={editForm.ownerPhone}
-                    onChange={(event) =>
-                      setEditForm({ ...editForm, ownerPhone: event.target.value })
-                    }
-                    placeholder="Phone number, e.g. 08106350486"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={editForm.contactRole}
+                      onChange={(event) => setEditForm({ ...editForm, contactRole: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Contact role"
+                    >
+                      {contactRoleOptions.map((role) => (
+                        <option key={role}>{role}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={editForm.mandateStatus}
+                      onChange={(event) => setEditForm({ ...editForm, mandateStatus: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Mandate status"
+                    >
+                      {mandateStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={editForm.ownerName}
+                      onChange={(event) => setEditForm({ ...editForm, ownerName: event.target.value })}
+                      placeholder="Contact person, e.g. Musa Abdullahi"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.companyName}
+                      onChange={(event) => setEditForm({ ...editForm, companyName: event.target.value })}
+                      placeholder="Company / developer name, e.g. INAMAAD Homes Ltd"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.ownerPhone}
+                      onChange={(event) => setEditForm({ ...editForm, ownerPhone: event.target.value })}
+                      placeholder="Phone number, e.g. 08106350486"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.contactWhatsapp}
+                      onChange={(event) => setEditForm({ ...editForm, contactWhatsapp: event.target.value })}
+                      placeholder="WhatsApp number, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.contactEmail}
+                      onChange={(event) => setEditForm({ ...editForm, contactEmail: event.target.value })}
+                      placeholder="Contact email, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={editForm.publicContactVisibility}
+                      onChange={(event) => setEditForm({ ...editForm, publicContactVisibility: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Public contact visibility"
+                    >
+                      {publicContactVisibilityOptions.map((visibility) => (
+                        <option key={visibility}>{visibility}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      value={editForm.contactAddress}
+                      onChange={(event) => setEditForm({ ...editForm, contactAddress: event.target.value })}
+                      placeholder="Contact office/address, optional. Keep private unless visibility is Show All."
+                      rows={3}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Public contact setting: {editForm.publicContactVisibility}. Staff can always see the full contact profile.
+                  </p>
                 </div>
 
                 <button
@@ -7534,6 +7805,51 @@ export default function App() {
                         )}
                       </div>
                     )}
+
+                    {(selectedListing.ownerName || selectedListing.companyName || selectedListing.contactRole || selectedListing.contactEmail || selectedListing.ownerPhone || selectedListing.contactWhatsapp) && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-700">
+                        <p className="font-black text-[#0d1c38]">Owner / agent / developer profile</p>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <p><span className="font-black">Role:</span> {selectedListing.contactRole || "Owner"}</p>
+                          <p><span className="font-black">Mandate:</span> {selectedListing.mandateStatus || "Not Confirmed"}</p>
+                          <p><span className="font-black">Name:</span> {getListingContactName(selectedListing)}</p>
+                          {selectedListing.companyName ? <p><span className="font-black">Company:</span> {selectedListing.companyName}</p> : null}
+                        </div>
+
+                        {selectedListing.publicContactVisibility === "Hide Phone" || !selectedListing.publicContactVisibility ? (
+                          <div className="mt-4 rounded-2xl bg-[#f7f8fb] p-4 text-xs font-bold text-slate-600">
+                            Direct contact is hidden. Use Request Access, Make Offer, or Book Inspection so INAMAAD can qualify and protect the lead.
+                          </div>
+                        ) : (
+                          <div className="mt-4 flex flex-wrap gap-3">
+                            {canShowPublicPhone(selectedListing) && selectedListing.ownerPhone ? (
+                              <a href={`tel:${cleanPhoneForLink(selectedListing.ownerPhone)}`} className="rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white">
+                                Call contact
+                              </a>
+                            ) : null}
+                            {canShowPublicWhatsapp(selectedListing) && (selectedListing.contactWhatsapp || selectedListing.ownerPhone) ? (
+                              <a
+                                href={`https://wa.me/${normalizeNigeriaWhatsApp(selectedListing.contactWhatsapp || selectedListing.ownerPhone)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                WhatsApp contact
+                              </a>
+                            ) : null}
+                            {canShowPublicEmail(selectedListing) && selectedListing.contactEmail ? (
+                              <a href={`mailto:${selectedListing.contactEmail}`} className="rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-[#0d1c38]">
+                                Email contact
+                              </a>
+                            ) : null}
+                          </div>
+                        )}
+
+                        {selectedListing.publicContactVisibility === "Show All" && selectedListing.contactAddress ? (
+                          <p className="mt-4 text-sm text-slate-600"><span className="font-black text-[#0d1c38]">Office/address:</span> {selectedListing.contactAddress}</p>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
 
                   <div className="rounded-[24px] bg-[#0d1c38] p-5 text-white">
@@ -7556,6 +7872,16 @@ export default function App() {
                         <p className="text-slate-400">Category</p>
                         <p className="font-black">
                           {selectedListing.category}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Contact role</p>
+                        <p className="font-black">
+                          {selectedListing.contactRole || "Owner"}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {selectedListing.mandateStatus || "Not Confirmed"}
                         </p>
                       </div>
 
@@ -8739,8 +9065,8 @@ export default function App() {
                             </p>
 
                             <p className="mt-2 text-sm text-slate-500">
-                              Owner: {listing.ownerName || "Not provided"} •{" "}
-                              {listing.ownerPhone || "No phone"}
+                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"} •{" "}
+                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"} • {listing.mandateStatus || "Not Confirmed"}
                             </p>
                           </div>
 
@@ -9556,3 +9882,5 @@ export default function App() {
 // Property specifications upgrade: bedrooms, bathrooms, toilets, parking, sizes, furnishing, condition, and amenities are now supported.
 
 // Neighborhood and infrastructure upgrade: road access, power, water, security, nearby schools/hospitals/malls/transport, estate features, and neighborhood overview are now supported.
+
+// Owner/agent/developer contact profile upgrade: contact role, company, email, WhatsApp, visibility, address, and mandate status are now supported.

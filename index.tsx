@@ -70,6 +70,13 @@ type Listing = {
   jvEstimatedProjectCost?: string;
   jvCompletionTimeline?: string;
   jvTerms?: string;
+  jvFeasibilityStudyUrl?: string;
+  jvArchitecturalConceptUrl?: string;
+  jvEstateLayoutUrl?: string;
+  jvBoqUrl?: string;
+  jvProposalDocumentUrl?: string;
+  jvLandTitleStatus?: "Not Reviewed" | "Under Review" | "Verified" | "Rejected";
+  jvDevelopmentApprovalStatus?: "Not Required" | "Not Reviewed" | "Under Review" | "Approved" | "Rejected";
   neighborhoodOverview?: string;
   roadAccess?: string;
   powerSupply?: string;
@@ -418,6 +425,21 @@ const jvProjectStageOptions = [
   "Under Negotiation",
   "Under Construction",
   "Completed Project",
+];
+
+const jvLandTitleStatusOptions = [
+  "Not Reviewed",
+  "Under Review",
+  "Verified",
+  "Rejected",
+];
+
+const jvDevelopmentApprovalStatusOptions = [
+  "Not Required",
+  "Not Reviewed",
+  "Under Review",
+  "Approved",
+  "Rejected",
 ];
 
 function isJointVentureListing(input: { type?: string; category?: string }) {
@@ -1076,6 +1098,13 @@ function mapListingRow(row: any): Listing {
     jvEstimatedProjectCost: row.jv_estimated_project_cost || "",
     jvCompletionTimeline: row.jv_completion_timeline || "",
     jvTerms: row.jv_terms || "",
+    jvFeasibilityStudyUrl: row.jv_feasibility_study_url || "",
+    jvArchitecturalConceptUrl: row.jv_architectural_concept_url || "",
+    jvEstateLayoutUrl: row.jv_estate_layout_url || "",
+    jvBoqUrl: row.jv_boq_url || "",
+    jvProposalDocumentUrl: row.jv_proposal_document_url || "",
+    jvLandTitleStatus: row.jv_land_title_status || "Not Reviewed",
+    jvDevelopmentApprovalStatus: row.jv_development_approval_status || "Not Reviewed",
     neighborhoodOverview: row.neighborhood_overview || "",
     roadAccess: row.road_access || "",
     powerSupply: row.power_supply || "",
@@ -1349,6 +1378,13 @@ function listingToRow(listing: Omit<Listing, "id">) {
     jv_estimated_project_cost: listing.jvEstimatedProjectCost || null,
     jv_completion_timeline: listing.jvCompletionTimeline || null,
     jv_terms: listing.jvTerms || null,
+    jv_feasibility_study_url: listing.jvFeasibilityStudyUrl || null,
+    jv_architectural_concept_url: listing.jvArchitecturalConceptUrl || null,
+    jv_estate_layout_url: listing.jvEstateLayoutUrl || null,
+    jv_boq_url: listing.jvBoqUrl || null,
+    jv_proposal_document_url: listing.jvProposalDocumentUrl || null,
+    jv_land_title_status: listing.jvLandTitleStatus || "Not Reviewed",
+    jv_development_approval_status: listing.jvDevelopmentApprovalStatus || "Not Reviewed",
     neighborhood_overview: listing.neighborhoodOverview || null,
     road_access: listing.roadAccess || null,
     power_supply: listing.powerSupply || null,
@@ -1526,6 +1562,13 @@ export default function App() {
     jvEstimatedProjectCost: "",
     jvCompletionTimeline: "",
     jvTerms: "",
+    jvFeasibilityStudyUrl: "",
+    jvArchitecturalConceptUrl: "",
+    jvEstateLayoutUrl: "",
+    jvBoqUrl: "",
+    jvProposalDocumentUrl: "",
+    jvLandTitleStatus: "Not Reviewed",
+    jvDevelopmentApprovalStatus: "Not Reviewed",
     neighborhoodOverview: "",
     roadAccess: "",
     powerSupply: "",
@@ -1572,46 +1615,6 @@ export default function App() {
   const [postGalleryFiles, setPostGalleryFiles] = useState<File[]>([]);
   const [postDocumentFile, setPostDocumentFile] = useState<File | null>(null);
 
-  function openPropertySubmissionForm() {
-    setPostForm((current) => ({
-      ...current,
-      type: current.type === "Joint Venture" || current.type === "Estate Development" ? "Residential" : current.type,
-      category: current.category === "Joint Venture" || current.category === "JV Partnership" ? "For Sale" : current.category,
-      price: current.price === "JV Partnership" ? "" : current.price,
-    }));
-    setModal("post");
-  }
-
-  function openJvSubmissionForm() {
-    setPostForm((current) => ({
-      ...current,
-      type: "Joint Venture",
-      category: "JV Partnership",
-      price: current.price === "JV Partnership" ? "" : current.price,
-      bedrooms: "",
-      bathrooms: "",
-      toilets: "",
-      parkingSpaces: "",
-      propertySize: "",
-      furnishingStatus: "Not Specified",
-      propertyCondition: "Not Specified",
-      amenities: "",
-      agencyFee: "",
-      legalFee: "",
-      serviceCharge: "",
-      cautionFee: "",
-      surveyFee: "",
-      developmentFee: "",
-      paymentPlanAvailable: false,
-      installmentDetails: "",
-      availabilityStatus: "Available",
-      yieldText: current.yieldText || "JV partnership opportunity for landowner, developer, and investor collaboration",
-      jvStructure: current.jvStructure || "Landowner + Developer JV",
-      jvProjectStage: current.jvProjectStage || "Land Available",
-    }));
-    setModal("post");
-  }
-
   const [editForm, setEditForm] = useState({
     title: "",
     location: "",
@@ -1654,6 +1657,13 @@ export default function App() {
     jvEstimatedProjectCost: "",
     jvCompletionTimeline: "",
     jvTerms: "",
+    jvFeasibilityStudyUrl: "",
+    jvArchitecturalConceptUrl: "",
+    jvEstateLayoutUrl: "",
+    jvBoqUrl: "",
+    jvProposalDocumentUrl: "",
+    jvLandTitleStatus: "Not Reviewed",
+    jvDevelopmentApprovalStatus: "Not Reviewed",
     neighborhoodOverview: "",
     roadAccess: "",
     powerSupply: "",
@@ -1712,6 +1722,11 @@ export default function App() {
   const [editIdentityDocumentFile, setEditIdentityDocumentFile] = useState<File | null>(null);
   const [editCacDocumentFile, setEditCacDocumentFile] = useState<File | null>(null);
   const [editMandateDocumentFile, setEditMandateDocumentFile] = useState<File | null>(null);
+  const [editJvFeasibilityStudyFile, setEditJvFeasibilityStudyFile] = useState<File | null>(null);
+  const [editJvArchitecturalConceptFile, setEditJvArchitecturalConceptFile] = useState<File | null>(null);
+  const [editJvEstateLayoutFile, setEditJvEstateLayoutFile] = useState<File | null>(null);
+  const [editJvBoqFile, setEditJvBoqFile] = useState<File | null>(null);
+  const [editJvProposalDocumentFile, setEditJvProposalDocumentFile] = useState<File | null>(null);
 
   const [investorForm, setInvestorForm] = useState({
     name: "",
@@ -2708,6 +2723,76 @@ export default function App() {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
+  async function uploadJvDocument(file: File, folder: string) {
+    if (!supabase) return "";
+
+    if (!canOpenDocuments) {
+      showSuccess("Your role cannot upload JV due-diligence documents.");
+      return "";
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const safeFileName = `${folder}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("jv-documents")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return safeFileName;
+  }
+
+  async function openSecureJvDocument(documentFileUrl?: string, label = "JV document") {
+    if (!canOpenDocuments) {
+      showSuccess("Your role cannot open JV due-diligence documents.");
+      return;
+    }
+
+    if (!documentFileUrl) {
+      showSuccess(`No ${label} has been uploaded for this JV deal.`);
+      return;
+    }
+
+    if (!supabase || !user) {
+      showSuccess("Only signed-in senior staff can open JV due-diligence documents.");
+      return;
+    }
+
+    const documentPath = extractStorageObjectPath(documentFileUrl, "jv-documents");
+
+    if (!documentPath) {
+      showSuccess("Unable to find the secure JV document path.");
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from("jv-documents")
+      .createSignedUrl(documentPath, 300);
+
+    if (error || !data?.signedUrl) {
+      console.error(error);
+      showSuccess("Unable to open JV document. Make sure you are signed in as senior staff.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      `Opened secure ${label}`,
+      "JV Document",
+      documentPath,
+      `Staff generated a temporary signed URL for ${label}.`
+    );
+
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
   function imageFileToBase64(file: File) {
     return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -2809,6 +2894,11 @@ export default function App() {
     setEditIdentityDocumentFile(null);
     setEditCacDocumentFile(null);
     setEditMandateDocumentFile(null);
+    setEditJvFeasibilityStudyFile(null);
+    setEditJvArchitecturalConceptFile(null);
+    setEditJvEstateLayoutFile(null);
+    setEditJvBoqFile(null);
+    setEditJvProposalDocumentFile(null);
     setEditForm({
       title: listing.title,
       location: listing.location,
@@ -2851,6 +2941,13 @@ export default function App() {
       jvEstimatedProjectCost: listing.jvEstimatedProjectCost || "",
       jvCompletionTimeline: listing.jvCompletionTimeline || "",
       jvTerms: listing.jvTerms || "",
+      jvFeasibilityStudyUrl: listing.jvFeasibilityStudyUrl || "",
+      jvArchitecturalConceptUrl: listing.jvArchitecturalConceptUrl || "",
+      jvEstateLayoutUrl: listing.jvEstateLayoutUrl || "",
+      jvBoqUrl: listing.jvBoqUrl || "",
+      jvProposalDocumentUrl: listing.jvProposalDocumentUrl || "",
+      jvLandTitleStatus: listing.jvLandTitleStatus || "Not Reviewed",
+      jvDevelopmentApprovalStatus: listing.jvDevelopmentApprovalStatus || "Not Reviewed",
       neighborhoodOverview: listing.neighborhoodOverview || "",
       roadAccess: listing.roadAccess || "",
       powerSupply: listing.powerSupply || "",
@@ -2966,6 +3063,13 @@ export default function App() {
         jvEstimatedProjectCost: postForm.jvEstimatedProjectCost,
         jvCompletionTimeline: postForm.jvCompletionTimeline,
         jvTerms: postForm.jvTerms,
+        jvFeasibilityStudyUrl: postForm.jvFeasibilityStudyUrl,
+        jvArchitecturalConceptUrl: postForm.jvArchitecturalConceptUrl,
+        jvEstateLayoutUrl: postForm.jvEstateLayoutUrl,
+        jvBoqUrl: postForm.jvBoqUrl,
+        jvProposalDocumentUrl: postForm.jvProposalDocumentUrl,
+        jvLandTitleStatus: postForm.jvLandTitleStatus as Listing["jvLandTitleStatus"],
+        jvDevelopmentApprovalStatus: postForm.jvDevelopmentApprovalStatus as Listing["jvDevelopmentApprovalStatus"],
         neighborhoodOverview: postForm.neighborhoodOverview,
         roadAccess: postForm.roadAccess,
         powerSupply: postForm.powerSupply,
@@ -3187,6 +3291,36 @@ export default function App() {
           : await imageFileToBase64(editMandateDocumentFile)
         : editForm.mandateDocumentUrl;
 
+      const jvFeasibilityStudyUrl = editJvFeasibilityStudyFile
+        ? supabase
+          ? await uploadJvDocument(editJvFeasibilityStudyFile, "feasibility-study")
+          : await imageFileToBase64(editJvFeasibilityStudyFile)
+        : editForm.jvFeasibilityStudyUrl;
+
+      const jvArchitecturalConceptUrl = editJvArchitecturalConceptFile
+        ? supabase
+          ? await uploadJvDocument(editJvArchitecturalConceptFile, "architectural-concept")
+          : await imageFileToBase64(editJvArchitecturalConceptFile)
+        : editForm.jvArchitecturalConceptUrl;
+
+      const jvEstateLayoutUrl = editJvEstateLayoutFile
+        ? supabase
+          ? await uploadJvDocument(editJvEstateLayoutFile, "estate-layout")
+          : await imageFileToBase64(editJvEstateLayoutFile)
+        : editForm.jvEstateLayoutUrl;
+
+      const jvBoqUrl = editJvBoqFile
+        ? supabase
+          ? await uploadJvDocument(editJvBoqFile, "boq-costing")
+          : await imageFileToBase64(editJvBoqFile)
+        : editForm.jvBoqUrl;
+
+      const jvProposalDocumentUrl = editJvProposalDocumentFile
+        ? supabase
+          ? await uploadJvDocument(editJvProposalDocumentFile, "proposal")
+          : await imageFileToBase64(editJvProposalDocumentFile)
+        : editForm.jvProposalDocumentUrl;
+
       const updatedListing: Listing = {
         ...editingListing,
         title: editForm.title,
@@ -3231,6 +3365,13 @@ export default function App() {
         jvEstimatedProjectCost: editForm.jvEstimatedProjectCost,
         jvCompletionTimeline: editForm.jvCompletionTimeline,
         jvTerms: editForm.jvTerms,
+        jvFeasibilityStudyUrl,
+        jvArchitecturalConceptUrl,
+        jvEstateLayoutUrl,
+        jvBoqUrl,
+        jvProposalDocumentUrl,
+        jvLandTitleStatus: editForm.jvLandTitleStatus as Listing["jvLandTitleStatus"],
+        jvDevelopmentApprovalStatus: editForm.jvDevelopmentApprovalStatus as Listing["jvDevelopmentApprovalStatus"],
         neighborhoodOverview: editForm.neighborhoodOverview,
         roadAccess: editForm.roadAccess,
         powerSupply: editForm.powerSupply,
@@ -3320,6 +3461,23 @@ export default function App() {
               furnishingStatus: updatedListing.furnishingStatus,
               propertyCondition: updatedListing.propertyCondition,
               amenities: updatedListing.amenities,
+              jvStructure: updatedListing.jvStructure,
+              jvLandContribution: updatedListing.jvLandContribution,
+              jvDeveloperRequirement: updatedListing.jvDeveloperRequirement,
+              jvInvestorRequirement: updatedListing.jvInvestorRequirement,
+              jvSharingFormula: updatedListing.jvSharingFormula,
+              jvProjectStage: updatedListing.jvProjectStage,
+              jvExpectedUnits: updatedListing.jvExpectedUnits,
+              jvEstimatedProjectCost: updatedListing.jvEstimatedProjectCost,
+              jvCompletionTimeline: updatedListing.jvCompletionTimeline,
+              jvTerms: updatedListing.jvTerms,
+              jvFeasibilityStudyUrl: updatedListing.jvFeasibilityStudyUrl,
+              jvArchitecturalConceptUrl: updatedListing.jvArchitecturalConceptUrl,
+              jvEstateLayoutUrl: updatedListing.jvEstateLayoutUrl,
+              jvBoqUrl: updatedListing.jvBoqUrl,
+              jvProposalDocumentUrl: updatedListing.jvProposalDocumentUrl,
+              jvLandTitleStatus: updatedListing.jvLandTitleStatus,
+              jvDevelopmentApprovalStatus: updatedListing.jvDevelopmentApprovalStatus,
               neighborhoodOverview: updatedListing.neighborhoodOverview,
               roadAccess: updatedListing.roadAccess,
               powerSupply: updatedListing.powerSupply,
@@ -3358,6 +3516,15 @@ export default function App() {
               contactAddress: updatedListing.contactAddress,
               publicContactVisibility: updatedListing.publicContactVisibility,
               mandateStatus: updatedListing.mandateStatus,
+              identityType: updatedListing.identityType,
+              identityNumber: updatedListing.identityNumber,
+              companyRegistrationNumber: updatedListing.companyRegistrationNumber,
+              mandateDocumentStatus: updatedListing.mandateDocumentStatus,
+              contactProfileVerified: updatedListing.contactProfileVerified,
+              contactVerificationNotes: updatedListing.contactVerificationNotes,
+              identityDocumentUrl: updatedListing.identityDocumentUrl,
+              cacDocumentUrl: updatedListing.cacDocumentUrl,
+              mandateDocumentUrl: updatedListing.mandateDocumentUrl,
               imageUrl: updatedListing.imageUrl,
               featured: updatedListing.featured,
               featuredRank: updatedListing.featuredRank,
@@ -3398,6 +3565,14 @@ export default function App() {
       setEditImageFile(null);
       setEditGalleryFiles([]);
       setEditDocumentFile(null);
+      setEditIdentityDocumentFile(null);
+      setEditCacDocumentFile(null);
+      setEditMandateDocumentFile(null);
+      setEditJvFeasibilityStudyFile(null);
+      setEditJvArchitecturalConceptFile(null);
+      setEditJvEstateLayoutFile(null);
+      setEditJvBoqFile(null);
+      setEditJvProposalDocumentFile(null);
       setEditingListing(null);
       setModal("admin");
       showSuccess("Listing updated successfully.");
@@ -5632,7 +5807,7 @@ export default function App() {
               </div>
 
               <button
-                onClick={openPropertySubmissionForm}
+                onClick={() => setModal("post")}
                 className="w-fit rounded-2xl bg-[#0d1c38] px-7 py-4 text-base font-bold text-white shadow-sm transition hover:bg-[#13284f]"
               >
                 Submit Property
@@ -6046,7 +6221,7 @@ export default function App() {
 
               <div className="mt-9 flex flex-col gap-4 sm:flex-row">
                 <button
-                  onClick={openJvSubmissionForm}
+                  onClick={() => setModal("post")}
                   className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-base font-black text-[#0d1c38] hover:bg-[#ffd45a]"
                 >
                   Submit JV Deal
@@ -6597,40 +6772,13 @@ export default function App() {
 
             {modal === "post" && (
               <form onSubmit={submitListing} className="grid gap-4">
-                <div className="grid rounded-2xl bg-slate-100 p-1 text-sm font-black text-[#0d1c38] md:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={openPropertySubmissionForm}
-                    className={`rounded-xl px-5 py-3 transition ${!isJointVentureListing(postForm) ? "bg-white shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
-                  >
-                    Property listing
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openJvSubmissionForm}
-                    className={`rounded-xl px-5 py-3 transition ${isJointVentureListing(postForm) ? "bg-white shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
-                  >
-                    JV deal / development partnership
-                  </button>
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Need help? Use examples like these:</p>
+                  <p className="mt-2"><span className="font-black">Title:</span> 4 Bedroom Smart Duplex in Lekki Phase 1</p>
+                  <p><span className="font-black">Investment highlight:</span> Estimated 14% yearly appreciation with strong rental demand</p>
+                  <p><span className="font-black">Opportunity:</span> A verified property in a fast-growing location, suitable for rental income, resale value, or long-term investment.</p>
+                  <p className="mt-2 rounded-xl bg-white px-3 py-2 text-slate-600"><span className="font-black text-[#0d1c38]">Quick guide:</span> choose the building/asset under Property type, then choose For Sale, For Rent, Short Let, Lease, Investment, or JV under Listing purpose.</p>
                 </div>
-
-                {isJointVentureListing(postForm) ? (
-                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
-                    <p className="font-black text-[#0d1c38]">JV deal mode is active.</p>
-                    <p className="mt-2"><span className="font-black">Title:</span> Joint Venture Estate Development in Gwarinpa</p>
-                    <p><span className="font-black">JV highlight:</span> Landowner + developer partnership with agreed sharing formula.</p>
-                    <p><span className="font-black">Opportunity:</span> Describe land contribution, project stage, expected units, developer/investor requirement, sharing formula, timeline, and exit plan.</p>
-                    <p className="mt-2 rounded-xl bg-white px-3 py-2 text-slate-600"><span className="font-black text-[#0d1c38]">Important:</span> JV deals do not require bedrooms, bathrooms, furnishing, or normal property amenities. Those fields are removed in JV mode.</p>
-                  </div>
-                ) : (
-                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
-                    <p className="font-black text-[#0d1c38]">Property listing mode is active.</p>
-                    <p className="mt-2"><span className="font-black">Title:</span> 4 Bedroom Smart Duplex in Lekki Phase 1</p>
-                    <p><span className="font-black">Investment highlight:</span> Estimated 14% yearly appreciation with strong rental demand</p>
-                    <p><span className="font-black">Opportunity:</span> A verified property in a fast-growing location, suitable for rental income, resale value, or long-term investment.</p>
-                    <p className="mt-2 rounded-xl bg-white px-3 py-2 text-slate-600"><span className="font-black text-[#0d1c38]">Quick guide:</span> choose the building/asset under Property type, then choose For Sale, For Rent, Short Let, Lease, or Investment under Listing purpose.</p>
-                  </div>
-                )}
                 <div className="grid gap-4 md:grid-cols-2">
                   <input
                     required
@@ -6638,7 +6786,7 @@ export default function App() {
                     onChange={(event) =>
                       setPostForm({ ...postForm, title: event.target.value })
                     }
-                    placeholder={isJointVentureListing(postForm) ? "JV title, e.g. Joint Venture Estate Development in Gwarinpa" : "Property title, e.g. 4 Bedroom Terrace Duplex in Lekki Phase 1"}
+                    placeholder="Property title, e.g. 4 Bedroom Terrace Duplex in Lekki Phase 1"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
@@ -6748,7 +6896,7 @@ export default function App() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
                     <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                      {isJointVentureListing(postForm) ? "Expected JV/project value" : "Price currency"}
+                      Price currency
                     </label>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
@@ -6764,7 +6912,7 @@ export default function App() {
                             price: formatPriceInput(event.target.value),
                           })
                         }
-                        placeholder={isJointVentureListing(postForm) ? "Expected project value, e.g. 1500000000" : "Enter amount, e.g. 50000000"}
+                        placeholder="Enter amount, e.g. 50000000"
                         className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
                       />
                     </div>
@@ -6775,22 +6923,9 @@ export default function App() {
 
                   <select
                     value={postForm.type}
-                    onChange={(event) => {
-                      const selectedType = event.target.value;
-                      const switchedToJv = selectedType === "Joint Venture" || selectedType === "Estate Development";
-                      setPostForm({
-                        ...postForm,
-                        type: selectedType,
-                        category: switchedToJv ? "JV Partnership" : postForm.category,
-                        bedrooms: switchedToJv ? "" : postForm.bedrooms,
-                        bathrooms: switchedToJv ? "" : postForm.bathrooms,
-                        toilets: switchedToJv ? "" : postForm.toilets,
-                        parkingSpaces: switchedToJv ? "" : postForm.parkingSpaces,
-                        furnishingStatus: switchedToJv ? "Not Specified" : postForm.furnishingStatus,
-                        propertyCondition: switchedToJv ? "Not Specified" : postForm.propertyCondition,
-                        amenities: switchedToJv ? "" : postForm.amenities,
-                      });
-                    }}
+                    onChange={(event) =>
+                      setPostForm({ ...postForm, type: event.target.value })
+                    }
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     aria-label="Property type"
                   >
@@ -6800,8 +6935,7 @@ export default function App() {
                   </select>
                 </div>
 
-                {!isJointVentureListing(postForm) && (
-                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
                   <p className="text-sm font-black text-[#0d1c38]">Price breakdown and payment details</p>
                   <p className="mt-1 text-xs leading-5 text-slate-600">
                     Add extra Nigerian real estate costs. The total estimated cost is calculated automatically from property price plus fees.
@@ -6862,23 +6996,15 @@ export default function App() {
                   />
                 </div>
 
-                )}
-
                 <div className="grid gap-4 md:grid-cols-2">
                   <select
                     value={postForm.category}
-                    onChange={(event) => {
-                      const selectedPurpose = event.target.value;
+                    onChange={(event) =>
                       setPostForm({
                         ...postForm,
-                        category: selectedPurpose,
-                        type: selectedPurpose === "Joint Venture" || selectedPurpose === "JV Partnership" ? "Joint Venture" : postForm.type,
-                        bedrooms: selectedPurpose === "Joint Venture" || selectedPurpose === "JV Partnership" ? "" : postForm.bedrooms,
-                        bathrooms: selectedPurpose === "Joint Venture" || selectedPurpose === "JV Partnership" ? "" : postForm.bathrooms,
-                        toilets: selectedPurpose === "Joint Venture" || selectedPurpose === "JV Partnership" ? "" : postForm.toilets,
-                        parkingSpaces: selectedPurpose === "Joint Venture" || selectedPurpose === "JV Partnership" ? "" : postForm.parkingSpaces,
-                      });
-                    }}
+                        category: event.target.value,
+                      })
+                    }
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     aria-label="Listing purpose"
                   >
@@ -7879,6 +8005,81 @@ export default function App() {
                       placeholder="JV terms and notes, e.g. required due diligence, legal structure, approvals, exit plan, profit-sharing terms"
                       className="mt-4 min-h-[110px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
+
+                    <div className="mt-5 rounded-3xl border border-amber-300 bg-white p-5">
+                      <p className="text-sm font-black text-[#0d1c38]">JV due-diligence documents</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        Staff-only files for serious JV review. Upload feasibility study, concept drawings, layout, BOQ/costing, and proposal documents. Public users only see review status, not the private files.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <select
+                          value={editForm.jvLandTitleStatus}
+                          onChange={(event) => setEditForm({ ...editForm, jvLandTitleStatus: event.target.value })}
+                          className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="JV land title status"
+                        >
+                          {jvLandTitleStatusOptions.map((status) => (<option key={status}>{status}</option>))}
+                        </select>
+
+                        <select
+                          value={editForm.jvDevelopmentApprovalStatus}
+                          onChange={(event) => setEditForm({ ...editForm, jvDevelopmentApprovalStatus: event.target.value })}
+                          className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="JV development approval status"
+                        >
+                          {jvDevelopmentApprovalStatusOptions.map((status) => (<option key={status}>{status}</option>))}
+                        </select>
+                      </div>
+
+                      {[
+                        ["Feasibility study", editJvFeasibilityStudyFile, setEditJvFeasibilityStudyFile, editForm.jvFeasibilityStudyUrl, "feasibility study"],
+                        ["Architectural concept", editJvArchitecturalConceptFile, setEditJvArchitecturalConceptFile, editForm.jvArchitecturalConceptUrl, "architectural concept"],
+                        ["Estate layout", editJvEstateLayoutFile, setEditJvEstateLayoutFile, editForm.jvEstateLayoutUrl, "estate layout"],
+                        ["BOQ / project costing", editJvBoqFile, setEditJvBoqFile, editForm.jvBoqUrl, "BOQ / project costing"],
+                        ["JV proposal document", editJvProposalDocumentFile, setEditJvProposalDocumentFile, editForm.jvProposalDocumentUrl, "JV proposal document"],
+                      ].map(([label, selectedFile, setFile, existingUrl, secureLabel]) => (
+                        <div key={String(label)} className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <p className="text-sm font-black text-[#0d1c38]">{String(label)}</p>
+                              <p className="mt-1 text-xs text-slate-500">PDF, JPG, PNG, WEBP. Private to senior staff.</p>
+                              {selectedFile instanceof File ? (
+                                <p className="mt-1 text-xs font-bold text-emerald-700">Selected: {selectedFile.name}</p>
+                              ) : existingUrl ? (
+                                <p className="mt-1 text-xs font-bold text-emerald-700">Uploaded securely</p>
+                              ) : (
+                                <p className="mt-1 text-xs text-slate-500">No file uploaded yet</p>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <label className="cursor-pointer rounded-full bg-white px-4 py-2 text-xs font-black text-[#0d1c38] ring-1 ring-amber-200">
+                                Upload
+                                <input
+                                  type="file"
+                                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                                  className="hidden"
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0] || null;
+                                    (setFile as React.Dispatch<React.SetStateAction<File | null>>)(file);
+                                  }}
+                                />
+                              </label>
+
+                              <button
+                                type="button"
+                                onClick={() => openSecureJvDocument(String(existingUrl || ""), String(secureLabel))}
+                                className="rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                disabled={!existingUrl || !canOpenDocuments}
+                              >
+                                {canOpenDocuments ? "Open secure file" : "Locked"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
@@ -8671,6 +8872,15 @@ export default function App() {
                         {selectedListing.jvInvestorRequirement ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Investor requirement:</span> {selectedListing.jvInvestorRequirement}</p> : null}
                         {selectedListing.jvSharingFormula ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Sharing formula:</span> {selectedListing.jvSharingFormula}</p> : null}
                         {selectedListing.jvTerms ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">JV terms:</span> {selectedListing.jvTerms}</p> : null}
+
+                        <div className="mt-4 rounded-2xl bg-white p-4">
+                          <p className="text-sm font-black text-[#0d1c38]">JV due diligence status</p>
+                          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                            <p><span className="font-black">Land title review:</span> {selectedListing.jvLandTitleStatus || "Not Reviewed"}</p>
+                            <p><span className="font-black">Development approval:</span> {selectedListing.jvDevelopmentApprovalStatus || "Not Reviewed"}</p>
+                          </div>
+                          <p className="mt-3 text-xs leading-5 text-slate-500">Private JV documents are reviewed by INAMAAD staff and are not displayed publicly.</p>
+                        </div>
                       </div>
                     ) : (selectedListing.bedrooms || selectedListing.bathrooms || selectedListing.toilets || selectedListing.parkingSpaces || selectedListing.landSize || selectedListing.propertySize || selectedListing.furnishingStatus || selectedListing.propertyCondition || selectedListing.amenities) && (
                       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
@@ -11047,5 +11257,3 @@ export default function App() {
 // Owner/agent/developer contact profile upgrade: contact role, company, email, WhatsApp, visibility, address, and mandate status are now supported.
 
 // JV upgrade: JV listings now use project structure, landowner/developer/investor requirements, sharing formula, stage, expected units, project cost, and timeline instead of bedroom/bathroom fields.
-
-// Professional JV form separation upgrade: Submit Property and Submit JV Deal now open separate modes, and JV mode hides bedroom/bathroom/furnishing fields.

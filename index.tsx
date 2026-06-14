@@ -119,8 +119,25 @@ type AdminActivityLog = {
   createdAt: string;
 };
 
+type StaffRole = "Super Admin" | "Admin" | "Manager" | "Agent" | "Viewer";
+
+type StaffMember = {
+  email: string;
+  fullName: string;
+  role: StaffRole;
+  isActive: boolean;
+  createdAt: string;
+};
+
 const WHATSAPP_NUMBER = "2348106350486";
 const LOCAL_ADMIN_PASSWORD = "admin123";
+const staffRoleOptions: StaffRole[] = [
+  "Super Admin",
+  "Admin",
+  "Manager",
+  "Agent",
+  "Viewer",
+];
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_KEY =
@@ -696,6 +713,16 @@ function mapAdminActivityLogRow(row: any): AdminActivityLog {
   };
 }
 
+function mapStaffMemberRow(row: any): StaffMember {
+  return {
+    email: row.email || "",
+    fullName: row.full_name || "",
+    role: (row.role || "Admin") as StaffRole,
+    isActive: Boolean(row.is_active),
+    createdAt: row.created_at || "",
+  };
+}
+
 function listingToRow(listing: Omit<Listing, "id">) {
   return {
     title: listing.title,
@@ -760,6 +787,7 @@ export default function App() {
   const [inspectionBookings, setInspectionBookings] = useState<InspectionBooking[]>([]);
   const [staffNotifications, setStaffNotifications] = useState<StaffNotification[]>([]);
   const [adminActivityLogs, setAdminActivityLogs] = useState<AdminActivityLog[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [modal, setModal] = useState<ModalType>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
@@ -785,6 +813,11 @@ export default function App() {
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
+  const [staffForm, setStaffForm] = useState({
+    email: "",
+    fullName: "",
+    role: "Agent" as StaffRole,
+  });
 
   const [signInForm, setSignInForm] = useState({
     email: "",
@@ -901,6 +934,9 @@ export default function App() {
   const totalLeads = investorRequests.length + propertyInquiries.length + contactMessages.length + inspectionBookings.length;
   const conversionReadyLeads = propertyInquiries.length + contactMessages.length + inspectionBookings.length;
   const unreadNotifications = staffNotifications.filter((notification) => !notification.isRead).length;
+  const currentStaffMember = staffMembers.find((member) => member.email === user?.email);
+  const isSuperAdmin = !usesDatabase || currentStaffMember?.role === "Super Admin";
+  const activeStaffCount = staffMembers.filter((member) => member.isActive).length;
   const [topLocation, topLocationCount] = getTopCount(
     listings.map((listing) => listing.location.split(",")[0]?.trim() || listing.location)
   );
@@ -1313,6 +1349,22 @@ export default function App() {
     setAdminActivityLogs((data || []).map(mapAdminActivityLogRow));
   }
 
+  async function loadDatabaseStaffMembers() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("admin_users")
+      .select("email, full_name, role, is_active, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setStaffMembers((data || []).map(mapStaffMemberRow));
+  }
+
   async function checkAdminAccess() {
     if (!supabase) return;
 
@@ -1335,6 +1387,7 @@ export default function App() {
       await loadDatabaseInspectionBookings();
       await loadDatabaseStaffNotifications();
       await loadDatabaseAdminActivityLogs();
+      await loadDatabaseStaffMembers();
     }
   }
 
@@ -2065,6 +2118,7 @@ export default function App() {
     setInspectionBookings([]);
     setStaffNotifications([]);
     setAdminActivityLogs([]);
+    setStaffMembers([]);
     showSuccess("Staff signed out.");
   }
 
@@ -2105,6 +2159,182 @@ export default function App() {
       { ...newLog, id: Date.now() },
       ...current.slice(0, 49),
     ]);
+  }
+
+  async function addStaffMember(event: React.FormEvent) {
+    event.preventDefault();
+
+    const email = staffForm.email.trim().toLowerCase();
+    const fullName = staffForm.fullName.trim();
+
+    if (!email) {
+      showSuccess("Enter the staff email address.");
+      return;
+    }
+
+    if (!isSuperAdmin) {
+      showSuccess("Only Super Admin can add staff members.");
+      return;
+    }
+
+    if (!supabase || !user) {
+      const newStaff: StaffMember = {
+        email,
+        fullName,
+        role: staffForm.role,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+      setStaffMembers((current) => [
+        newStaff,
+        ...current.filter((member) => member.email !== email),
+      ]);
+      setStaffForm({ email: "", fullName: "", role: "Agent" });
+      showSuccess("Demo staff member added.");
+      return;
+    }
+
+    const { error } = await supabase.from("admin_users").insert({
+      email,
+      full_name: fullName || null,
+      role: staffForm.role,
+      is_active: true,
+    });
+
+    if (error) {
+      console.error(error);
+      showSuccess(
+        error.message || "Unable to add staff member. Make sure you are Super Admin."
+      );
+      return;
+    }
+
+    await createAdminActivityLog(
+      "Staff member added",
+      "Staff",
+      email,
+      `${fullName || email} was added as ${staffForm.role}.`
+    );
+    await loadDatabaseStaffMembers();
+    setStaffForm({ email: "", fullName: "", role: "Agent" });
+    showSuccess(
+      "Staff member added. Also create their login password in Supabase Authentication > Users."
+    );
+  }
+
+  async function updateStaffMemberRole(email: string, role: StaffRole) {
+    if (!isSuperAdmin) {
+      showSuccess("Only Super Admin can change staff roles.");
+      return;
+    }
+
+    if (!supabase || !user) {
+      setStaffMembers((current) =>
+        current.map((member) =>
+          member.email === email ? { ...member, role } : member
+        )
+      );
+      return;
+    }
+
+    const { error } = await supabase
+      .from("admin_users")
+      .update({ role })
+      .eq("email", email);
+
+    if (error) {
+      console.error(error);
+      showSuccess(error.message || "Unable to update staff role.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      "Staff role updated",
+      "Staff",
+      email,
+      `${email} role changed to ${role}.`
+    );
+    await loadDatabaseStaffMembers();
+    showSuccess("Staff role updated.");
+  }
+
+  async function toggleStaffMemberActive(email: string, isActive: boolean) {
+    if (!isSuperAdmin) {
+      showSuccess("Only Super Admin can activate or deactivate staff.");
+      return;
+    }
+
+    if (email === user?.email && !isActive) {
+      showSuccess("You cannot deactivate your own active staff account.");
+      return;
+    }
+
+    if (!supabase || !user) {
+      setStaffMembers((current) =>
+        current.map((member) =>
+          member.email === email ? { ...member, isActive } : member
+        )
+      );
+      return;
+    }
+
+    const { error } = await supabase
+      .from("admin_users")
+      .update({ is_active: isActive })
+      .eq("email", email);
+
+    if (error) {
+      console.error(error);
+      showSuccess(error.message || "Unable to update staff access.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      isActive ? "Staff activated" : "Staff deactivated",
+      "Staff",
+      email,
+      `${email} access changed to ${isActive ? "Active" : "Inactive"}.`
+    );
+    await loadDatabaseStaffMembers();
+    showSuccess(isActive ? "Staff member activated." : "Staff member deactivated.");
+  }
+
+  async function deleteStaffMember(email: string) {
+    if (!isSuperAdmin) {
+      showSuccess("Only Super Admin can remove staff members.");
+      return;
+    }
+
+    if (email === user?.email) {
+      showSuccess("You cannot remove your own staff account.");
+      return;
+    }
+
+    if (!window.confirm(`Remove ${email} from staff access?`)) return;
+
+    if (!supabase || !user) {
+      setStaffMembers((current) =>
+        current.filter((member) => member.email !== email)
+      );
+      return;
+    }
+
+    const { error } = await supabase.from("admin_users").delete().eq("email", email);
+
+    if (error) {
+      console.error(error);
+      showSuccess(error.message || "Unable to remove staff member.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      "Staff member removed",
+      "Staff",
+      email,
+      `${email} was removed from admin_users.`
+    );
+    await loadDatabaseStaffMembers();
+    showSuccess("Staff member removed.");
   }
 
   async function createStaffNotification(
@@ -5025,12 +5255,19 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-8">
+                <div className="grid gap-4 md:grid-cols-9">
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
                     <p className="text-2xl font-black text-[#0d1c38]">
                       {unreadNotifications}
                     </p>
                     <p className="text-sm text-slate-500">New alerts</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {activeStaffCount}
+                    </p>
+                    <p className="text-sm text-slate-500">Active staff</p>
                   </div>
 
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
@@ -5221,6 +5458,166 @@ export default function App() {
                               {formatDate(log.createdAt)}
                               {log.targetId ? ` • ID: ${log.targetId}` : ""}
                             </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Staff management
+                      </p>
+                      <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                        Admin users and roles
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                        Add staff emails, assign roles, deactivate access, and keep your INAMAAD operations controlled. New staff must also exist in Supabase Authentication so they can log in with a password.
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-[#0d1c38] px-5 py-2 text-xs font-black text-white">
+                      {staffMembers.length} staff
+                    </span>
+                  </div>
+
+                  {!isSuperAdmin && (
+                    <p className="mt-5 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-700">
+                      Your current role is {currentStaffMember?.role || "Staff"}. Only Super Admin can add, remove, activate, or change staff roles.
+                    </p>
+                  )}
+
+                  <form onSubmit={addStaffMember} className="mt-5 grid gap-3 rounded-2xl bg-[#f7f8fb] p-5 md:grid-cols-4">
+                    <input
+                      type="text"
+                      value={staffForm.fullName}
+                      onChange={(event) =>
+                        setStaffForm({ ...staffForm, fullName: event.target.value })
+                      }
+                      placeholder="Full name, e.g. Aisha Bello"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      disabled={!isSuperAdmin}
+                    />
+
+                    <input
+                      type="email"
+                      value={staffForm.email}
+                      onChange={(event) =>
+                        setStaffForm({ ...staffForm, email: event.target.value })
+                      }
+                      placeholder="staff@email.com"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      disabled={!isSuperAdmin}
+                    />
+
+                    <select
+                      value={staffForm.role}
+                      onChange={(event) =>
+                        setStaffForm({
+                          ...staffForm,
+                          role: event.target.value as StaffRole,
+                        })
+                      }
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      disabled={!isSuperAdmin}
+                    >
+                      {staffRoleOptions.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="submit"
+                      disabled={!isSuperAdmin}
+                      className="rounded-2xl bg-[#0d1c38] px-5 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                    >
+                      Add staff
+                    </button>
+                  </form>
+
+                  <div className="mt-5 grid gap-3">
+                    {staffMembers.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No staff members loaded yet. Make sure the staff management SQL policies were run.
+                      </p>
+                    )}
+
+                    {staffMembers.map((member) => (
+                      <div
+                        key={member.email}
+                        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                      >
+                        <div className="grid gap-4 md:grid-cols-[1.3fr_0.9fr_1.2fr] md:items-center">
+                          <div>
+                            <p className="font-black text-[#0d1c38]">
+                              {member.fullName || member.email}
+                            </p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              {member.email}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <span className="rounded-full bg-[#f0bf3c] px-3 py-1 text-[11px] font-black text-[#0d1c38]">
+                                {member.role}
+                              </span>
+                              <span
+                                className={`rounded-full px-3 py-1 text-[11px] font-black ${
+                                  member.isActive
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {member.isActive ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <select
+                            value={member.role}
+                            onChange={(event) =>
+                              updateStaffMemberRole(
+                                member.email,
+                                event.target.value as StaffRole
+                              )
+                            }
+                            className="rounded-2xl border border-slate-200 px-5 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                            disabled={!isSuperAdmin}
+                          >
+                            {staffRoleOptions.map((role) => (
+                              <option key={role} value={role}>
+                                {role}
+                              </option>
+                            ))}
+                          </select>
+
+                          <div className="flex flex-wrap gap-2 md:justify-end">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleStaffMemberActive(member.email, !member.isActive)
+                              }
+                              disabled={!isSuperAdmin || member.email === user?.email}
+                              className={`rounded-full px-4 py-2 text-xs font-black disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 ${
+                                member.isActive
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-emerald-100 text-emerald-700"
+                              }`}
+                            >
+                              {member.isActive ? "Deactivate" : "Activate"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => deleteStaffMember(member.email)}
+                              disabled={!isSuperAdmin || member.email === user?.email}
+                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                            >
+                              Remove
+                            </button>
                           </div>
                         </div>
                       </div>

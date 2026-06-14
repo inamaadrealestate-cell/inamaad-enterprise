@@ -40,6 +40,15 @@ type Listing = {
   showVideoPublicly?: boolean;
   price: string;
   value: number;
+  agencyFee?: string;
+  legalFee?: string;
+  serviceCharge?: string;
+  cautionFee?: string;
+  surveyFee?: string;
+  developmentFee?: string;
+  totalEstimatedCost?: string;
+  paymentPlanAvailable?: boolean;
+  installmentDetails?: string;
   bedrooms?: number | null;
   bathrooms?: number | null;
   toilets?: number | null;
@@ -666,6 +675,44 @@ function formatPricePreview(value: string) {
   return `${formatNairaFull(numericValue)} (${formatNairaCompact(numericValue)})`;
 }
 
+type PriceBreakdownInput = {
+  price?: string;
+  agencyFee?: string;
+  legalFee?: string;
+  serviceCharge?: string;
+  cautionFee?: string;
+  surveyFee?: string;
+  developmentFee?: string;
+};
+
+function calculateTotalEstimatedCost(input: PriceBreakdownInput) {
+  const total = [
+    input.price,
+    input.agencyFee,
+    input.legalFee,
+    input.serviceCharge,
+    input.cautionFee,
+    input.surveyFee,
+    input.developmentFee,
+  ].reduce((sum, item) => sum + currencyToValue(String(item || "")), 0);
+
+  return total > 0 ? formatNairaFull(total) : "";
+}
+
+function hasPriceBreakdown(listing: Listing) {
+  return Boolean(
+    listing.agencyFee ||
+      listing.legalFee ||
+      listing.serviceCharge ||
+      listing.cautionFee ||
+      listing.surveyFee ||
+      listing.developmentFee ||
+      listing.totalEstimatedCost ||
+      listing.paymentPlanAvailable ||
+      listing.installmentDetails
+  );
+}
+
 function formatNairaCompact(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "₦0";
 
@@ -807,6 +854,15 @@ function mapListingRow(row: any): Listing {
     showVideoPublicly: row.show_video_publicly !== false,
     price: row.price,
     value: Number(row.value || 0),
+    agencyFee: row.agency_fee || "",
+    legalFee: row.legal_fee || "",
+    serviceCharge: row.service_charge || "",
+    cautionFee: row.caution_fee || "",
+    surveyFee: row.survey_fee || "",
+    developmentFee: row.development_fee || "",
+    totalEstimatedCost: row.total_estimated_cost || "",
+    paymentPlanAvailable: Boolean(row.payment_plan_available),
+    installmentDetails: row.installment_details || "",
     bedrooms: row.bedrooms == null ? undefined : Number(row.bedrooms),
     bathrooms: row.bathrooms == null ? undefined : Number(row.bathrooms),
     toilets: row.toilets == null ? undefined : Number(row.toilets),
@@ -1011,6 +1067,15 @@ function listingToRow(listing: Omit<Listing, "id">) {
     show_video_publicly: listing.showVideoPublicly !== false,
     price: listing.price,
     value: listing.value,
+    agency_fee: listing.agencyFee || null,
+    legal_fee: listing.legalFee || null,
+    service_charge: listing.serviceCharge || null,
+    caution_fee: listing.cautionFee || null,
+    survey_fee: listing.surveyFee || null,
+    development_fee: listing.developmentFee || null,
+    total_estimated_cost: listing.totalEstimatedCost || calculateTotalEstimatedCost(listing),
+    payment_plan_available: Boolean(listing.paymentPlanAvailable),
+    installment_details: listing.installmentDetails || null,
     bedrooms: listing.bedrooms || null,
     bathrooms: listing.bathrooms || null,
     toilets: listing.toilets || null,
@@ -1141,6 +1206,15 @@ export default function App() {
     droneVideoUrl: "",
     showVideoPublicly: true,
     price: "",
+    agencyFee: "",
+    legalFee: "",
+    serviceCharge: "",
+    cautionFee: "",
+    surveyFee: "",
+    developmentFee: "",
+    totalEstimatedCost: "",
+    paymentPlanAvailable: false,
+    installmentDetails: "",
     bedrooms: "",
     bathrooms: "",
     toilets: "",
@@ -1183,6 +1257,15 @@ export default function App() {
     droneVideoUrl: "",
     showVideoPublicly: true,
     price: "",
+    agencyFee: "",
+    legalFee: "",
+    serviceCharge: "",
+    cautionFee: "",
+    surveyFee: "",
+    developmentFee: "",
+    totalEstimatedCost: "",
+    paymentPlanAvailable: false,
+    installmentDetails: "",
     bedrooms: "",
     bathrooms: "",
     toilets: "",
@@ -2199,6 +2282,15 @@ export default function App() {
       droneVideoUrl: listing.droneVideoUrl || "",
       showVideoPublicly: listing.showVideoPublicly !== false,
       price: listing.price,
+      agencyFee: listing.agencyFee || "",
+      legalFee: listing.legalFee || "",
+      serviceCharge: listing.serviceCharge || "",
+      cautionFee: listing.cautionFee || "",
+      surveyFee: listing.surveyFee || "",
+      developmentFee: listing.developmentFee || "",
+      totalEstimatedCost: listing.totalEstimatedCost || calculateTotalEstimatedCost(listing),
+      paymentPlanAvailable: Boolean(listing.paymentPlanAvailable),
+      installmentDetails: listing.installmentDetails || "",
       bedrooms: listing.bedrooms ? String(listing.bedrooms) : "",
       bathrooms: listing.bathrooms ? String(listing.bathrooms) : "",
       toilets: listing.toilets ? String(listing.toilets) : "",
@@ -2268,6 +2360,15 @@ export default function App() {
         showVideoPublicly: postForm.showVideoPublicly,
         price: postForm.price,
         value: currencyToValue(postForm.price),
+        agencyFee: postForm.agencyFee,
+        legalFee: postForm.legalFee,
+        serviceCharge: postForm.serviceCharge,
+        cautionFee: postForm.cautionFee,
+        surveyFee: postForm.surveyFee,
+        developmentFee: postForm.developmentFee,
+        totalEstimatedCost: calculateTotalEstimatedCost(postForm),
+        paymentPlanAvailable: postForm.paymentPlanAvailable,
+        installmentDetails: postForm.installmentDetails,
         bedrooms: postForm.bedrooms ? Number(postForm.bedrooms) : undefined,
         bathrooms: postForm.bathrooms ? Number(postForm.bathrooms) : undefined,
         toilets: postForm.toilets ? Number(postForm.toilets) : undefined,
@@ -2357,6 +2458,15 @@ export default function App() {
         droneVideoUrl: "",
         showVideoPublicly: true,
         price: "",
+        agencyFee: "",
+        legalFee: "",
+        serviceCharge: "",
+        cautionFee: "",
+        surveyFee: "",
+        developmentFee: "",
+        totalEstimatedCost: "",
+        paymentPlanAvailable: false,
+        installmentDetails: "",
         bedrooms: "",
         bathrooms: "",
         toilets: "",
@@ -2435,6 +2545,15 @@ export default function App() {
         showVideoPublicly: editForm.showVideoPublicly,
         price: editForm.price,
         value: currencyToValue(editForm.price),
+        agencyFee: editForm.agencyFee,
+        legalFee: editForm.legalFee,
+        serviceCharge: editForm.serviceCharge,
+        cautionFee: editForm.cautionFee,
+        surveyFee: editForm.surveyFee,
+        developmentFee: editForm.developmentFee,
+        totalEstimatedCost: calculateTotalEstimatedCost(editForm),
+        paymentPlanAvailable: editForm.paymentPlanAvailable,
+        installmentDetails: editForm.installmentDetails,
         bedrooms: editForm.bedrooms ? Number(editForm.bedrooms) : undefined,
         bathrooms: editForm.bathrooms ? Number(editForm.bathrooms) : undefined,
         toilets: editForm.toilets ? Number(editForm.toilets) : undefined,
@@ -2488,6 +2607,15 @@ export default function App() {
               showVideoPublicly: updatedListing.showVideoPublicly,
               price: updatedListing.price,
               value: updatedListing.value,
+              agencyFee: updatedListing.agencyFee,
+              legalFee: updatedListing.legalFee,
+              serviceCharge: updatedListing.serviceCharge,
+              cautionFee: updatedListing.cautionFee,
+              surveyFee: updatedListing.surveyFee,
+              developmentFee: updatedListing.developmentFee,
+              totalEstimatedCost: updatedListing.totalEstimatedCost,
+              paymentPlanAvailable: updatedListing.paymentPlanAvailable,
+              installmentDetails: updatedListing.installmentDetails,
               bedrooms: updatedListing.bedrooms,
               bathrooms: updatedListing.bathrooms,
               toilets: updatedListing.toilets,
@@ -4111,6 +4239,15 @@ export default function App() {
         "Location",
         "Price",
         "Numeric Value",
+        "Agency Fee",
+        "Legal / Documentation Fee",
+        "Service Charge",
+        "Caution Fee",
+        "Survey Fee",
+        "Development Fee",
+        "Total Estimated Cost",
+        "Payment Plan Available",
+        "Installment Details",
         "Type",
         "Category",
         "Yield / Highlight",
@@ -4135,6 +4272,15 @@ export default function App() {
         listing.location,
         listing.price,
         listing.value,
+        listing.agencyFee || "",
+        listing.legalFee || "",
+        listing.serviceCharge || "",
+        listing.cautionFee || "",
+        listing.surveyFee || "",
+        listing.developmentFee || "",
+        listing.totalEstimatedCost || calculateTotalEstimatedCost(listing),
+        listing.paymentPlanAvailable ? "Yes" : "No",
+        listing.installmentDetails || "",
         listing.type,
         listing.category,
         listing.yieldText,
@@ -5728,6 +5874,67 @@ export default function App() {
                   </select>
                 </div>
 
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Price breakdown and payment details</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    Add extra Nigerian real estate costs. The total estimated cost is calculated automatically from property price plus fees.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    {[
+                      ["agencyFee", "Agency fee, e.g. 5000000"],
+                      ["legalFee", "Legal / documentation fee, e.g. 2500000"],
+                      ["serviceCharge", "Service charge, optional"],
+                      ["cautionFee", "Caution fee, optional"],
+                      ["surveyFee", "Survey fee, optional"],
+                      ["developmentFee", "Development fee, optional"],
+                    ].map(([field, placeholder]) => (
+                      <div key={field} className="rounded-2xl border border-amber-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
+                        <label className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                          {placeholder.split(",")[0]}
+                        </label>
+                        <div className="mt-2 flex items-center gap-3">
+                          <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">₦</span>
+                          <input
+                            inputMode="numeric"
+                            value={postForm[field as keyof typeof postForm] as string}
+                            onChange={(event) =>
+                              setPostForm({
+                                ...postForm,
+                                [field]: formatPriceInput(event.target.value),
+                              })
+                            }
+                            placeholder={placeholder}
+                            className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-[#0d1c38] p-4 text-white">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f0bf3c]">Auto total estimated cost</p>
+                    <p className="mt-2 text-2xl font-black">{calculateTotalEstimatedCost(postForm) || "₦0"}</p>
+                    <p className="mt-1 text-xs text-slate-300">Property price + agency + legal/documentation + service + caution + survey + development fees.</p>
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={postForm.paymentPlanAvailable}
+                      onChange={(event) => setPostForm({ ...postForm, paymentPlanAvailable: event.target.checked })}
+                    />
+                    Payment plan / installment is available
+                  </label>
+
+                  <textarea
+                    value={postForm.installmentDetails}
+                    onChange={(event) => setPostForm({ ...postForm, installmentDetails: event.target.value })}
+                    placeholder="Installment details, e.g. 30% initial deposit, balance over 6 months"
+                    className="mt-4 min-h-[90px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <select
                     value={postForm.category}
@@ -6212,6 +6419,67 @@ export default function App() {
                       <option key={type}>{type}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Price breakdown and payment details</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    Add extra Nigerian real estate costs. The total estimated cost is calculated automatically from property price plus fees.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    {[
+                      ["agencyFee", "Agency fee, e.g. 5000000"],
+                      ["legalFee", "Legal / documentation fee, e.g. 2500000"],
+                      ["serviceCharge", "Service charge, optional"],
+                      ["cautionFee", "Caution fee, optional"],
+                      ["surveyFee", "Survey fee, optional"],
+                      ["developmentFee", "Development fee, optional"],
+                    ].map(([field, placeholder]) => (
+                      <div key={field} className="rounded-2xl border border-amber-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
+                        <label className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                          {placeholder.split(",")[0]}
+                        </label>
+                        <div className="mt-2 flex items-center gap-3">
+                          <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">₦</span>
+                          <input
+                            inputMode="numeric"
+                            value={editForm[field as keyof typeof editForm] as string}
+                            onChange={(event) =>
+                              setEditForm({
+                                ...editForm,
+                                [field]: formatPriceInput(event.target.value),
+                              })
+                            }
+                            placeholder={placeholder}
+                            className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-[#0d1c38] p-4 text-white">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f0bf3c]">Auto total estimated cost</p>
+                    <p className="mt-2 text-2xl font-black">{calculateTotalEstimatedCost(editForm) || "₦0"}</p>
+                    <p className="mt-1 text-xs text-slate-300">Property price + agency + legal/documentation + service + caution + survey + development fees.</p>
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={editForm.paymentPlanAvailable}
+                      onChange={(event) => setEditForm({ ...editForm, paymentPlanAvailable: event.target.checked })}
+                    />
+                    Payment plan / installment is available
+                  </label>
+
+                  <textarea
+                    value={editForm.installmentDetails}
+                    onChange={(event) => setEditForm({ ...editForm, installmentDetails: event.target.value })}
+                    placeholder="Installment details, e.g. 30% initial deposit, balance over 6 months"
+                    className="mt-4 min-h-[90px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -6844,6 +7112,32 @@ export default function App() {
                       {selectedListing.price}
                     </p>
 
+                    {hasPriceBreakdown(selectedListing) && (
+                      <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                        <p className="font-black text-[#0d1c38]">Price breakdown</p>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          {selectedListing.agencyFee ? <p><span className="font-black">Agency fee:</span> {selectedListing.agencyFee}</p> : null}
+                          {selectedListing.legalFee ? <p><span className="font-black">Legal / documentation:</span> {selectedListing.legalFee}</p> : null}
+                          {selectedListing.serviceCharge ? <p><span className="font-black">Service charge:</span> {selectedListing.serviceCharge}</p> : null}
+                          {selectedListing.cautionFee ? <p><span className="font-black">Caution fee:</span> {selectedListing.cautionFee}</p> : null}
+                          {selectedListing.surveyFee ? <p><span className="font-black">Survey fee:</span> {selectedListing.surveyFee}</p> : null}
+                          {selectedListing.developmentFee ? <p><span className="font-black">Development fee:</span> {selectedListing.developmentFee}</p> : null}
+                        </div>
+                        <div className="mt-4 rounded-2xl bg-white p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Total estimated cost</p>
+                          <p className="mt-1 text-2xl font-black text-[#0d1c38]">
+                            {selectedListing.totalEstimatedCost || calculateTotalEstimatedCost(selectedListing)}
+                          </p>
+                        </div>
+                        {selectedListing.paymentPlanAvailable ? (
+                          <div className="mt-4 rounded-2xl bg-[#0d1c38] p-4 text-white">
+                            <p className="font-black text-[#f0bf3c]">Payment plan available</p>
+                            {selectedListing.installmentDetails ? <p className="mt-2 text-sm leading-6 text-slate-200">{selectedListing.installmentDetails}</p> : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+
                     <p className="mt-4 text-base leading-8 text-slate-600">
                       {selectedListing.description}
                     </p>
@@ -6979,6 +7273,15 @@ export default function App() {
                           {selectedListing.category}
                         </p>
                       </div>
+
+                      {hasPriceBreakdown(selectedListing) && (
+                        <div>
+                          <p className="text-slate-400">Estimated total cost</p>
+                          <p className="font-black text-[#f0bf3c]">
+                            {selectedListing.totalEstimatedCost || calculateTotalEstimatedCost(selectedListing)}
+                          </p>
+                        </div>
+                      )}
 
 
                       {(selectedListing.videoUrl || selectedListing.virtualTourUrl || selectedListing.droneVideoUrl) && (

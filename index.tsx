@@ -19,6 +19,8 @@ type LeadPriority = "Low" | "Normal" | "High" | "Urgent";
 type InspectionStatus = "New" | "Scheduled" | "Completed" | "Cancelled";
 type OfferStatus = "New" | "Reviewing" | "Accepted" | "Rejected" | "Closed";
 type JVApplicationStatus = "New" | "Reviewing" | "Shortlisted" | "Accepted" | "Rejected" | "Closed";
+type JVDocumentReviewStatus = "Not Reviewed" | "Under Review" | "Verified" | "Rejected";
+type JVRiskLevel = "Low" | "Normal" | "High" | "Critical";
 type LeadKind =
   | "investor_requests"
   | "property_inquiries"
@@ -159,6 +161,14 @@ type InvestorRequest = {
   priority?: LeadPriority;
   followUpDate?: string;
   lastContactedAt?: string;
+  experienceRating?: number;
+  financialCapacityRating?: number;
+  trackRecordRating?: number;
+  documentReviewStatus?: JVDocumentReviewStatus;
+  riskLevel?: JVRiskLevel;
+  evaluationNotes?: string;
+  evaluatedByEmail?: string;
+  evaluatedAt?: string;
   createdAt: string;
 };
 
@@ -1317,6 +1327,14 @@ function mapJVApplicationRow(row: any): JVApplication {
     priority: row.priority || "Normal",
     followUpDate: row.follow_up_date || "",
     lastContactedAt: row.last_contacted_at || "",
+    experienceRating: Number(row.experience_rating || 0),
+    financialCapacityRating: Number(row.financial_capacity_rating || 0),
+    trackRecordRating: Number(row.track_record_rating || 0),
+    documentReviewStatus: row.document_review_status || "Not Reviewed",
+    riskLevel: row.risk_level || "Normal",
+    evaluationNotes: row.evaluation_notes || "",
+    evaluatedByEmail: row.evaluated_by_email || "",
+    evaluatedAt: row.evaluated_at || "",
     createdAt: row.created_at,
   };
 }
@@ -4879,6 +4897,81 @@ export default function App() {
     showSuccess(`JV application marked as ${status}.`);
   }
 
+
+
+  function jvEvaluationScore(application: JVApplication) {
+    return (
+      Number(application.experienceRating || 0) +
+      Number(application.financialCapacityRating || 0) +
+      Number(application.trackRecordRating || 0)
+    );
+  }
+
+  function jvEvaluationScoreClass(score: number) {
+    if (score >= 12) return "bg-emerald-100 text-emerald-700";
+    if (score >= 8) return "bg-blue-100 text-blue-700";
+    if (score >= 4) return "bg-amber-100 text-amber-700";
+    return "bg-red-100 text-red-700";
+  }
+
+  async function saveJvApplicationEvaluation(application: JVApplication) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot evaluate JV applications.");
+      return;
+    }
+
+    const evaluatedAt = new Date().toISOString();
+    const evaluatedByEmail = user?.email || adminEmail || "Local demo admin";
+    const score = jvEvaluationScore(application);
+
+    const payload = {
+      experience_rating: Number(application.experienceRating || 0),
+      financial_capacity_rating: Number(application.financialCapacityRating || 0),
+      track_record_rating: Number(application.trackRecordRating || 0),
+      document_review_status: application.documentReviewStatus || "Not Reviewed",
+      risk_level: application.riskLevel || "Normal",
+      evaluation_notes: application.evaluationNotes || null,
+      evaluated_by_email: evaluatedByEmail,
+      evaluated_at: evaluatedAt,
+    };
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("jv_applications")
+        .update(payload)
+        .eq("id", application.id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to save JV evaluation scorecard.");
+        return;
+      }
+
+      await loadDatabaseJvApplications();
+    } else {
+      setJvApplications((current) =>
+        current.map((item) =>
+          item.id === application.id
+            ? {
+                ...item,
+                evaluatedByEmail,
+                evaluatedAt,
+              }
+            : item
+        )
+      );
+    }
+
+    await createAdminActivityLog(
+      "Saved JV applicant evaluation",
+      "JV Application",
+      String(application.id),
+      `${application.applicantName} scored ${score}/15. Risk: ${application.riskLevel || "Normal"}. Document review: ${application.documentReviewStatus || "Not Reviewed"}.`
+    );
+
+    showSuccess(`JV evaluation saved. Score: ${score}/15.`);
+  }
+
   async function deleteJvApplication(id: number) {
     if (!canDeleteLeads) {
       showSuccess("Your role cannot delete JV applications.");
@@ -4947,7 +5040,7 @@ export default function App() {
   function updateLocalLeadDraft(
     kind: LeadKind,
     id: number,
-    changes: { assignedToEmail?: string; staffNotes?: string; priority?: LeadPriority; followUpDate?: string; lastContactedAt?: string }
+    changes: any
   ) {
     if (kind === "investor_requests") {
       setInvestorRequests((current) =>
@@ -10680,6 +10773,170 @@ export default function App() {
                                 application.followUpDate || "",
                                 application.lastContactedAt || ""
                               )}
+
+                              <div className="mt-4 rounded-2xl border border-purple-200 bg-white p-4">
+                                <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+                                  <div>
+                                    <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">
+                                      JV partner evaluation scorecard
+                                    </p>
+                                    <p className="mt-1 text-sm font-bold text-slate-500">
+                                      Score applicants before shortlisting or accepting JV partners.
+                                    </p>
+                                  </div>
+
+                                  <span className={`w-fit rounded-full px-4 py-2 text-xs font-black ${jvEvaluationScoreClass(jvEvaluationScore(application))}`}>
+                                    Score {jvEvaluationScore(application)}/15
+                                  </span>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                                  <label className="block">
+                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                      Experience rating
+                                    </span>
+                                    <select
+                                      value={application.experienceRating || 0}
+                                      onChange={(event) =>
+                                        updateLocalLeadDraft("jv_applications", application.id, {
+                                          experienceRating: Number(event.target.value),
+                                        })
+                                      }
+                                      disabled={!canManageLeads}
+                                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                      {[0, 1, 2, 3, 4, 5].map((rating) => (
+                                        <option key={rating} value={rating}>
+                                          {rating}/5
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <label className="block">
+                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                      Financial capacity
+                                    </span>
+                                    <select
+                                      value={application.financialCapacityRating || 0}
+                                      onChange={(event) =>
+                                        updateLocalLeadDraft("jv_applications", application.id, {
+                                          financialCapacityRating: Number(event.target.value),
+                                        })
+                                      }
+                                      disabled={!canManageLeads}
+                                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                      {[0, 1, 2, 3, 4, 5].map((rating) => (
+                                        <option key={rating} value={rating}>
+                                          {rating}/5
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <label className="block">
+                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                      Track record
+                                    </span>
+                                    <select
+                                      value={application.trackRecordRating || 0}
+                                      onChange={(event) =>
+                                        updateLocalLeadDraft("jv_applications", application.id, {
+                                          trackRecordRating: Number(event.target.value),
+                                        })
+                                      }
+                                      disabled={!canManageLeads}
+                                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                      {[0, 1, 2, 3, 4, 5].map((rating) => (
+                                        <option key={rating} value={rating}>
+                                          {rating}/5
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                  <label className="block">
+                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                      Document review status
+                                    </span>
+                                    <select
+                                      value={application.documentReviewStatus || "Not Reviewed"}
+                                      onChange={(event) =>
+                                        updateLocalLeadDraft("jv_applications", application.id, {
+                                          documentReviewStatus: event.target.value as JVDocumentReviewStatus,
+                                        })
+                                      }
+                                      disabled={!canManageLeads}
+                                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                      <option value="Not Reviewed">Not Reviewed</option>
+                                      <option value="Under Review">Under Review</option>
+                                      <option value="Verified">Verified</option>
+                                      <option value="Rejected">Rejected</option>
+                                    </select>
+                                  </label>
+
+                                  <label className="block">
+                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                      Risk level
+                                    </span>
+                                    <select
+                                      value={application.riskLevel || "Normal"}
+                                      onChange={(event) =>
+                                        updateLocalLeadDraft("jv_applications", application.id, {
+                                          riskLevel: event.target.value as JVRiskLevel,
+                                        })
+                                      }
+                                      disabled={!canManageLeads}
+                                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                      <option value="Low">Low</option>
+                                      <option value="Normal">Normal</option>
+                                      <option value="High">High</option>
+                                      <option value="Critical">Critical</option>
+                                    </select>
+                                  </label>
+                                </div>
+
+                                <label className="mt-4 block">
+                                  <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                    Evaluation notes
+                                  </span>
+                                  <textarea
+                                    value={application.evaluationNotes || ""}
+                                    onChange={(event) =>
+                                      updateLocalLeadDraft("jv_applications", application.id, {
+                                        evaluationNotes: event.target.value,
+                                      })
+                                    }
+                                    disabled={!canManageLeads}
+                                    rows={3}
+                                    placeholder="Example: Developer has 3 completed estates, strong financing evidence, but mandate letter still needs legal review."
+                                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                  />
+                                </label>
+
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                  <button
+                                    onClick={() => saveJvApplicationEvaluation(application)}
+                                    disabled={!canManageLeads}
+                                    className="rounded-full bg-purple-700 px-5 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                  >
+                                    Save JV evaluation
+                                  </button>
+
+                                  {(application.evaluatedByEmail || application.evaluatedAt) && (
+                                    <p className="text-xs font-bold text-slate-500">
+                                      Last evaluated by {application.evaluatedByEmail || "staff"}
+                                      {application.evaluatedAt ? ` on ${formatDate(application.evaluatedAt)}` : ""}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
 
                             <div className="flex flex-wrap gap-2 md:justify-end">

@@ -90,6 +90,15 @@ type PropertyView = {
   viewedAt: string;
 };
 
+type StaffNotification = {
+  id: number;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  createdAt: string;
+};
+
 const WHATSAPP_NUMBER = "2348106350486";
 const LOCAL_ADMIN_PASSWORD = "admin123";
 
@@ -498,6 +507,17 @@ function mapInspectionBookingRow(row: any): InspectionBooking {
   };
 }
 
+function mapStaffNotificationRow(row: any): StaffNotification {
+  return {
+    id: Number(row.id),
+    title: row.title,
+    message: row.message,
+    type: row.type || "General",
+    isRead: Boolean(row.is_read),
+    createdAt: row.created_at,
+  };
+}
+
 function listingToRow(listing: Omit<Listing, "id">) {
   return {
     title: listing.title,
@@ -528,6 +548,7 @@ export default function App() {
   const [propertyViews, setPropertyViews] = useState<PropertyView[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [inspectionBookings, setInspectionBookings] = useState<InspectionBooking[]>([]);
+  const [staffNotifications, setStaffNotifications] = useState<StaffNotification[]>([]);
   const [modal, setModal] = useState<ModalType>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
@@ -645,6 +666,7 @@ export default function App() {
 
   const totalLeads = investorRequests.length + propertyInquiries.length + contactMessages.length + inspectionBookings.length;
   const conversionReadyLeads = propertyInquiries.length + contactMessages.length + inspectionBookings.length;
+  const unreadNotifications = staffNotifications.filter((notification) => !notification.isRead).length;
   const [topLocation, topLocationCount] = getTopCount(
     listings.map((listing) => listing.location.split(",")[0]?.trim() || listing.location)
   );
@@ -765,6 +787,7 @@ export default function App() {
           setPropertyViews([]);
           setContactMessages([]);
           setInspectionBookings([]);
+          setStaffNotifications([]);
         }
       }
     );
@@ -816,6 +839,11 @@ export default function App() {
   }, [inspectionBookings]);
 
   useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_staff_notifications", JSON.stringify(staffNotifications));
+  }, [staffNotifications]);
+
+  useEffect(() => {
     function openAdminShortcut(event: KeyboardEvent) {
       if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
         setAdminPassword("");
@@ -857,6 +885,7 @@ export default function App() {
       const storedViews = localStorage.getItem("inamaad_property_views");
       const storedContactMessages = localStorage.getItem("inamaad_contact_messages");
       const storedInspectionBookings = localStorage.getItem("inamaad_inspection_bookings");
+      const storedStaffNotifications = localStorage.getItem("inamaad_staff_notifications");
 
       if (storedListings) {
         setListings(JSON.parse(storedListings) as Listing[]);
@@ -881,6 +910,10 @@ export default function App() {
       if (storedInspectionBookings) {
         setInspectionBookings(JSON.parse(storedInspectionBookings) as InspectionBooking[]);
       }
+
+      if (storedStaffNotifications) {
+        setStaffNotifications(JSON.parse(storedStaffNotifications) as StaffNotification[]);
+      }
     } catch {
       localStorage.removeItem("inamaad_listings");
       localStorage.removeItem("inamaad_investor_requests");
@@ -888,6 +921,7 @@ export default function App() {
       localStorage.removeItem("inamaad_property_views");
       localStorage.removeItem("inamaad_contact_messages");
       localStorage.removeItem("inamaad_inspection_bookings");
+      localStorage.removeItem("inamaad_staff_notifications");
     }
   }
 
@@ -992,6 +1026,22 @@ export default function App() {
     setInspectionBookings((data || []).map(mapInspectionBookingRow));
   }
 
+  async function loadDatabaseStaffNotifications() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("staff_notifications")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setStaffNotifications((data || []).map(mapStaffNotificationRow));
+  }
+
   async function checkAdminAccess() {
     if (!supabase) return;
 
@@ -1012,6 +1062,7 @@ export default function App() {
       await loadDatabasePropertyViews();
       await loadDatabaseContactMessages();
       await loadDatabaseInspectionBookings();
+      await loadDatabaseStaffNotifications();
     }
   }
 
@@ -1201,6 +1252,12 @@ export default function App() {
         ]);
       }
 
+      await createStaffNotification(
+        "New pending property",
+        `${postForm.title} was submitted for admin review in ${postForm.location}.`,
+        "Pending Property"
+      );
+
       setPostForm({
         title: "",
         location: "",
@@ -1339,6 +1396,12 @@ export default function App() {
       ]);
     }
 
+    await createStaffNotification(
+      "New investor request",
+      `${investorForm.name} requested ${investorForm.interest} investment support with budget ${investorForm.budget}.`,
+      "Investor Request"
+    );
+
     setInvestorForm({
       name: "",
       email: "",
@@ -1390,6 +1453,12 @@ export default function App() {
       ]);
     }
 
+    await createStaffNotification(
+      "New property inquiry",
+      `${inquiryForm.name} requested access for ${selectedListing.title}.`,
+      "Property Inquiry"
+    );
+
     setInquiryForm({ name: "", email: "", phone: "", message: "" });
     setModal(null);
     showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
@@ -1438,6 +1507,12 @@ export default function App() {
       ]);
     }
 
+    await createStaffNotification(
+      "New inspection booking",
+      `${inspectionForm.name} booked an inspection for ${selectedListing.title}.`,
+      "Inspection Booking"
+    );
+
     setInspectionForm({
       name: "",
       email: "",
@@ -1479,6 +1554,12 @@ export default function App() {
         ...current,
       ]);
     }
+
+    await createStaffNotification(
+      "New contact message",
+      `${contactForm.name} sent a contact message: ${contactForm.subject || "General enquiry"}.`,
+      "Contact Message"
+    );
 
     setContactForm({
       name: "",
@@ -1584,7 +1665,118 @@ export default function App() {
     setPropertyViews([]);
     setContactMessages([]);
     setInspectionBookings([]);
+    setStaffNotifications([]);
     showSuccess("Staff signed out.");
+  }
+
+  async function createStaffNotification(
+    title: string,
+    message: string,
+    type = "General"
+  ) {
+    const newNotification: Omit<StaffNotification, "id"> = {
+      title,
+      message,
+      type,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("staff_notifications").insert({
+        title,
+        message,
+        type,
+        is_read: false,
+      });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      if (adminUnlocked) {
+        await loadDatabaseStaffNotifications();
+      }
+
+      return;
+    }
+
+    setStaffNotifications((current) => [
+      { ...newNotification, id: Date.now() },
+      ...current,
+    ]);
+  }
+
+  async function markNotificationRead(id: number) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("staff_notifications")
+        .update({ is_read: true })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to mark notification as read.");
+        return;
+      }
+
+      await loadDatabaseStaffNotifications();
+    } else {
+      setStaffNotifications((current) =>
+        current.map((notification) =>
+          notification.id === id ? { ...notification, isRead: true } : notification
+        )
+      );
+    }
+
+    showSuccess("Notification marked as read.");
+  }
+
+  async function markAllNotificationsRead() {
+    if (supabase) {
+      const { error } = await supabase
+        .from("staff_notifications")
+        .update({ is_read: true })
+        .eq("is_read", false);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to mark notifications as read.");
+        return;
+      }
+
+      await loadDatabaseStaffNotifications();
+    } else {
+      setStaffNotifications((current) =>
+        current.map((notification) => ({ ...notification, isRead: true }))
+      );
+    }
+
+    showSuccess("All notifications marked as read.");
+  }
+
+  async function deleteStaffNotification(id: number) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("staff_notifications")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete notification.");
+        return;
+      }
+
+      await loadDatabaseStaffNotifications();
+    } else {
+      setStaffNotifications((current) =>
+        current.filter((notification) => notification.id !== id)
+      );
+    }
+
+    showSuccess("Notification deleted.");
   }
 
   async function approveListing(id: number) {
@@ -3830,7 +4022,14 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-7">
+                <div className="grid gap-4 md:grid-cols-8">
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {unreadNotifications}
+                    </p>
+                    <p className="text-sm text-slate-500">New alerts</p>
+                  </div>
+
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
                     <p className="text-2xl font-black text-[#0d1c38]">
                       {listings.length}
@@ -3878,6 +4077,92 @@ export default function App() {
                       {investorRequests.length}
                     </p>
                     <p className="text-sm text-slate-500">Investor requests</p>
+                  </div>
+                </div>
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Staff notification center
+                      </p>
+                      <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                        New platform activity
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        Alerts for new investor requests, property inquiries, contact messages, inspection bookings, and pending property submissions.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={markAllNotificationsRead}
+                      className="rounded-full bg-[#0d1c38] px-5 py-2 text-xs font-black text-white"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+
+                  <div className="mt-5 grid gap-3">
+                    {staffNotifications.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No staff notifications yet. New activity will appear here.
+                      </p>
+                    )}
+
+                    {staffNotifications.slice(0, 12).map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`rounded-2xl border p-5 ${
+                          notification.isRead
+                            ? "border-slate-200 bg-white"
+                            : "border-[#f0bf3c] bg-[#fff8e5]"
+                        }`}
+                      >
+                        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-[#0d1c38] px-3 py-1 text-[11px] font-black text-white">
+                                {notification.type}
+                              </span>
+
+                              {!notification.isRead && (
+                                <span className="rounded-full bg-[#f0bf3c] px-3 py-1 text-[11px] font-black text-[#0d1c38]">
+                                  New
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-3 font-black text-[#0d1c38]">
+                              {notification.title}
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                              {notification.message}
+                            </p>
+                            <p className="mt-2 text-xs font-bold text-slate-400">
+                              {formatDate(notification.createdAt)}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 md:justify-end">
+                            {!notification.isRead && (
+                              <button
+                                onClick={() => markNotificationRead(notification.id)}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700"
+                              >
+                                Mark read
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => deleteStaffNotification(notification.id)}
+                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

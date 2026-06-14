@@ -32,6 +32,12 @@ type Listing = {
   documentStatus?: string;
   documentDetails?: string;
   documentFileUrl?: string;
+  titleVerified?: boolean;
+  ownerVerified?: boolean;
+  siteInspected?: boolean;
+  priceChecked?: boolean;
+  legalReviewStatus?: "Not Reviewed" | "Under Review" | "Verified" | "Rejected";
+  verificationNotes?: string;
   imageUrl?: string;
   featured?: boolean;
   featuredRank?: number;
@@ -243,6 +249,13 @@ const documentStatusOptions = [
   "Processing",
   "Pending Verification",
   "Not Available",
+];
+
+const legalReviewStatusOptions = [
+  "Not Reviewed",
+  "Under Review",
+  "Verified",
+  "Rejected",
 ];
 
 const investorInterestOptions = [
@@ -554,6 +567,12 @@ function mapListingRow(row: any): Listing {
     documentStatus: row.document_status || "",
     documentDetails: row.document_details || "",
     documentFileUrl: row.document_file_url || "",
+    titleVerified: Boolean(row.title_verified),
+    ownerVerified: Boolean(row.owner_verified),
+    siteInspected: Boolean(row.site_inspected),
+    priceChecked: Boolean(row.price_checked),
+    legalReviewStatus: row.legal_review_status || "Not Reviewed",
+    verificationNotes: row.verification_notes || "",
     imageUrl: row.image_url || "",
     featured: Boolean(row.featured),
     featuredRank: Number(row.featured_rank || 0),
@@ -655,10 +674,38 @@ function listingToRow(listing: Omit<Listing, "id">) {
     document_status: listing.documentStatus || null,
     document_details: listing.documentDetails || null,
     document_file_url: listing.documentFileUrl || null,
+    title_verified: Boolean(listing.titleVerified),
+    owner_verified: Boolean(listing.ownerVerified),
+    site_inspected: Boolean(listing.siteInspected),
+    price_checked: Boolean(listing.priceChecked),
+    legal_review_status: listing.legalReviewStatus || "Not Reviewed",
+    verification_notes: listing.verificationNotes || null,
     image_url: listing.imageUrl || null,
     featured: Boolean(listing.featured),
     featured_rank: Number(listing.featuredRank || 0),
   };
+}
+
+function isListingVerificationComplete(listing: Listing | Omit<Listing, "id">) {
+  return Boolean(
+    listing.titleVerified &&
+      listing.ownerVerified &&
+      listing.siteInspected &&
+      listing.priceChecked &&
+      listing.legalReviewStatus === "Verified"
+  );
+}
+
+function verificationSummary(listing: Listing | Omit<Listing, "id">) {
+  const completed = [
+    listing.titleVerified,
+    listing.ownerVerified,
+    listing.siteInspected,
+    listing.priceChecked,
+    listing.legalReviewStatus === "Verified",
+  ].filter(Boolean).length;
+
+  return `${completed}/5 checks complete`;
 }
 
 export default function App() {
@@ -741,6 +788,12 @@ export default function App() {
     documentStatus: "Available",
     documentDetails: "",
     documentFileUrl: "",
+    titleVerified: false,
+    ownerVerified: false,
+    siteInspected: false,
+    priceChecked: false,
+    legalReviewStatus: "Not Reviewed",
+    verificationNotes: "",
     status: "Verified" as ListingStatus,
     ownerName: "",
     ownerPhone: "",
@@ -1381,6 +1434,12 @@ export default function App() {
       documentStatus: listing.documentStatus || "Available",
       documentDetails: listing.documentDetails || "",
       documentFileUrl: listing.documentFileUrl || "",
+      titleVerified: Boolean(listing.titleVerified),
+      ownerVerified: Boolean(listing.ownerVerified),
+      siteInspected: Boolean(listing.siteInspected),
+      priceChecked: Boolean(listing.priceChecked),
+      legalReviewStatus: listing.legalReviewStatus || "Not Reviewed",
+      verificationNotes: listing.verificationNotes || "",
       status: listing.status,
       ownerName: listing.ownerName || "",
       ownerPhone: listing.ownerPhone || "",
@@ -1422,6 +1481,12 @@ export default function App() {
         documentStatus: postForm.documentStatus,
         documentDetails: postForm.documentDetails,
         documentFileUrl,
+        titleVerified: false,
+        ownerVerified: false,
+        siteInspected: false,
+        priceChecked: false,
+        legalReviewStatus: "Not Reviewed",
+        verificationNotes: "",
         status: "Pending Review",
         ownerName: postForm.ownerName,
         ownerPhone: postForm.ownerPhone,
@@ -1521,6 +1586,12 @@ export default function App() {
         documentStatus: editForm.documentStatus,
         documentDetails: editForm.documentDetails,
         documentFileUrl,
+        titleVerified: Boolean(editForm.titleVerified),
+        ownerVerified: Boolean(editForm.ownerVerified),
+        siteInspected: Boolean(editForm.siteInspected),
+        priceChecked: Boolean(editForm.priceChecked),
+        legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
+        verificationNotes: editForm.verificationNotes,
         status: editForm.status,
         ownerName: editForm.ownerName,
         ownerPhone: editForm.ownerPhone,
@@ -1546,6 +1617,12 @@ export default function App() {
               documentStatus: updatedListing.documentStatus,
               documentDetails: updatedListing.documentDetails,
               documentFileUrl: updatedListing.documentFileUrl,
+              titleVerified: updatedListing.titleVerified,
+              ownerVerified: updatedListing.ownerVerified,
+              siteInspected: updatedListing.siteInspected,
+              priceChecked: updatedListing.priceChecked,
+              legalReviewStatus: updatedListing.legalReviewStatus,
+              verificationNotes: updatedListing.verificationNotes,
               status: updatedListing.status,
               ownerName: updatedListing.ownerName,
               ownerPhone: updatedListing.ownerPhone,
@@ -2001,6 +2078,13 @@ export default function App() {
   }
 
   async function approveListing(id: number) {
+    const listingToApprove = listings.find((listing) => listing.id === id);
+
+    if (listingToApprove && !isListingVerificationComplete(listingToApprove)) {
+      showSuccess("Complete the verification checklist before approving this listing.");
+      return;
+    }
+
     if (supabase) {
       const { error } = await supabase
         .from("listings")
@@ -4067,6 +4151,95 @@ export default function App() {
                   </div>
                 </div>
 
+
+                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">Admin verification checklist</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        Complete these checks before approving a property as verified.
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-4 py-2 text-xs font-black ${isListingVerificationComplete({
+                      ...editingListing,
+                      titleVerified: editForm.titleVerified,
+                      ownerVerified: editForm.ownerVerified,
+                      siteInspected: editForm.siteInspected,
+                      priceChecked: editForm.priceChecked,
+                      legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
+                    }) ? "bg-emerald-600 text-white" : "bg-amber-100 text-amber-800"}`}>
+                      {isListingVerificationComplete({
+                        ...editingListing,
+                        titleVerified: editForm.titleVerified,
+                        ownerVerified: editForm.ownerVerified,
+                        siteInspected: editForm.siteInspected,
+                        priceChecked: editForm.priceChecked,
+                        legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
+                      }) ? "Ready for approval" : "Verification incomplete"}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {[
+                      ["titleVerified", "Title document checked"],
+                      ["ownerVerified", "Owner identity verified"],
+                      ["siteInspected", "Site inspection done"],
+                      ["priceChecked", "Price checked against market"],
+                    ].map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-black text-[#0d1c38]">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editForm[key as keyof typeof editForm])}
+                          onChange={(event) =>
+                            setEditForm({ ...editForm, [key]: event.target.checked })
+                          }
+                          className="h-5 w-5 accent-emerald-600"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={editForm.legalReviewStatus}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, legalReviewStatus: event.target.value })
+                      }
+                      className="rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm outline-none focus:border-emerald-600"
+                      aria-label="Legal review status"
+                    >
+                      {legalReviewStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={verificationSummary({
+                        ...editingListing,
+                        titleVerified: editForm.titleVerified,
+                        ownerVerified: editForm.ownerVerified,
+                        siteInspected: editForm.siteInspected,
+                        priceChecked: editForm.priceChecked,
+                        legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
+                      })}
+                      readOnly
+                      className="rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm font-black text-emerald-700 outline-none"
+                      aria-label="Verification summary"
+                    />
+                  </div>
+
+                  <textarea
+                    value={editForm.verificationNotes}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, verificationNotes: event.target.value })
+                    }
+                    placeholder="Verification notes, e.g. C of O sighted, owner ID checked, site inspected by agent, legal team cleared document."
+                    rows={3}
+                    className="mt-4 w-full rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm outline-none focus:border-emerald-600"
+                  />
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-[#0d1c38]">
                     <input
@@ -5067,9 +5240,11 @@ export default function App() {
 
                             <button
                               onClick={() => approveListing(listing.id)}
-                              className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              disabled={!isListingVerificationComplete(listing)}
+                              title={!isListingVerificationComplete(listing) ? "Complete verification checklist first" : "Approve listing"}
+                              className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
-                              Approve
+                              {isListingVerificationComplete(listing) ? "Approve" : "Verify first"}
                             </button>
 
                             <button

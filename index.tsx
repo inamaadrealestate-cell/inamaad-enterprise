@@ -28,8 +28,23 @@ type Listing = {
   id: number;
   title: string;
   location: string;
+  stateName?: string;
+  cityArea?: string;
+  fullAddress?: string;
+  nearbyLandmark?: string;
+  googleMapLink?: string;
+  showExactAddress?: boolean;
   price: string;
   value: number;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  toilets?: number | null;
+  parkingSpaces?: number | null;
+  landSize?: string;
+  propertySize?: string;
+  furnishingStatus?: string;
+  propertyCondition?: string;
+  amenities?: string;
   type: string;
   category: string;
   yieldText: string;
@@ -297,6 +312,41 @@ const listingPurposeOptions = [
   "JV Partnership",
   "Off-plan",
   "Distress Sale",
+];
+
+const furnishingStatusOptions = [
+  "Not Specified",
+  "Furnished",
+  "Semi Furnished",
+  "Unfurnished",
+];
+
+const propertyConditionOptions = [
+  "Not Specified",
+  "Newly Built",
+  "Fairly Used",
+  "Renovated",
+  "Off-plan",
+  "Under Construction",
+];
+
+const amenityOptions = [
+  "24/7 Security",
+  "CCTV",
+  "Swimming Pool",
+  "Gym",
+  "Serviced Estate",
+  "Constant Power",
+  "Water Supply",
+  "Borehole",
+  "POP Ceiling",
+  "Fitted Kitchen",
+  "Wardrobes",
+  "BQ",
+  "Parking Space",
+  "Paved Road",
+  "Drainage",
+  "Gated Estate",
 ];
 
 const availabilityStatusOptions: AvailabilityStatus[] = [
@@ -711,13 +761,43 @@ function getTopCount(items: string[]) {
   );
 }
 
+function buildPublicLocationText(listing: Pick<Listing, "location" | "stateName" | "cityArea">) {
+  const parts = [listing.cityArea, listing.stateName].filter(Boolean);
+  return parts.length ? parts.join(", ") : listing.location || "Location not stated";
+}
+
+function buildExactLocationText(listing: Listing) {
+  if (listing.showExactAddress && listing.fullAddress) return listing.fullAddress;
+  return buildPublicLocationText(listing);
+}
+
+function buildListingLocationValue(form: { stateName?: string; cityArea?: string; location?: string }) {
+  const parts = [form.cityArea, form.stateName].filter(Boolean);
+  return parts.length ? parts.join(", ") : form.location || "Nigeria";
+}
+
 function mapListingRow(row: any): Listing {
   return {
     id: Number(row.id),
     title: row.title,
     location: row.location,
+    stateName: row.state_name || "",
+    cityArea: row.city_area || "",
+    fullAddress: row.full_address || "",
+    nearbyLandmark: row.nearby_landmark || "",
+    googleMapLink: row.google_map_link || "",
+    showExactAddress: Boolean(row.show_exact_address),
     price: row.price,
     value: Number(row.value || 0),
+    bedrooms: row.bedrooms == null ? undefined : Number(row.bedrooms),
+    bathrooms: row.bathrooms == null ? undefined : Number(row.bathrooms),
+    toilets: row.toilets == null ? undefined : Number(row.toilets),
+    parkingSpaces: row.parking_spaces == null ? undefined : Number(row.parking_spaces),
+    landSize: row.land_size || "",
+    propertySize: row.property_size || "",
+    furnishingStatus: row.furnishing_status || "Not Specified",
+    propertyCondition: row.property_condition || "Not Specified",
+    amenities: row.amenities || "",
     type: row.type,
     category: row.category,
     yieldText: row.yield_text,
@@ -889,8 +969,23 @@ function listingToRow(listing: Omit<Listing, "id">) {
   return {
     title: listing.title,
     location: listing.location,
+    state_name: listing.stateName || null,
+    city_area: listing.cityArea || null,
+    full_address: listing.fullAddress || null,
+    nearby_landmark: listing.nearbyLandmark || null,
+    google_map_link: listing.googleMapLink || null,
+    show_exact_address: Boolean(listing.showExactAddress),
     price: listing.price,
     value: listing.value,
+    bedrooms: listing.bedrooms || null,
+    bathrooms: listing.bathrooms || null,
+    toilets: listing.toilets || null,
+    parking_spaces: listing.parkingSpaces || null,
+    land_size: listing.landSize || null,
+    property_size: listing.propertySize || null,
+    furnishing_status: listing.furnishingStatus || "Not Specified",
+    property_condition: listing.propertyCondition || "Not Specified",
+    amenities: listing.amenities || null,
     type: listing.type,
     category: listing.category,
     yield_text: listing.yieldText,
@@ -1000,7 +1095,22 @@ export default function App() {
   const [postForm, setPostForm] = useState({
     title: "",
     location: "",
+    stateName: "FCT Abuja",
+    cityArea: "",
+    fullAddress: "",
+    nearbyLandmark: "",
+    googleMapLink: "",
+    showExactAddress: false,
     price: "",
+    bedrooms: "",
+    bathrooms: "",
+    toilets: "",
+    parkingSpaces: "",
+    landSize: "",
+    propertySize: "",
+    furnishingStatus: "Not Specified",
+    propertyCondition: "Not Specified",
+    amenities: "",
     type: "Residential",
     category: "For Sale",
     availabilityStatus: "Available" as AvailabilityStatus,
@@ -1022,7 +1132,22 @@ export default function App() {
   const [editForm, setEditForm] = useState({
     title: "",
     location: "",
+    stateName: "FCT Abuja",
+    cityArea: "",
+    fullAddress: "",
+    nearbyLandmark: "",
+    googleMapLink: "",
+    showExactAddress: false,
     price: "",
+    bedrooms: "",
+    bathrooms: "",
+    toilets: "",
+    parkingSpaces: "",
+    landSize: "",
+    propertySize: "",
+    furnishingStatus: "Not Specified",
+    propertyCondition: "Not Specified",
+    amenities: "",
     type: "Residential",
     category: "For Sale",
     availabilityStatus: "Available" as AvailabilityStatus,
@@ -1925,7 +2050,22 @@ export default function App() {
     setEditForm({
       title: listing.title,
       location: listing.location,
+      stateName: listing.stateName || listing.location || "FCT Abuja",
+      cityArea: listing.cityArea || "",
+      fullAddress: listing.fullAddress || "",
+      nearbyLandmark: listing.nearbyLandmark || "",
+      googleMapLink: listing.googleMapLink || "",
+      showExactAddress: Boolean(listing.showExactAddress),
       price: listing.price,
+      bedrooms: listing.bedrooms ? String(listing.bedrooms) : "",
+      bathrooms: listing.bathrooms ? String(listing.bathrooms) : "",
+      toilets: listing.toilets ? String(listing.toilets) : "",
+      parkingSpaces: listing.parkingSpaces ? String(listing.parkingSpaces) : "",
+      landSize: listing.landSize || "",
+      propertySize: listing.propertySize || "",
+      furnishingStatus: listing.furnishingStatus || "Not Specified",
+      propertyCondition: listing.propertyCondition || "Not Specified",
+      amenities: listing.amenities || "",
       type: listing.type,
       category: listing.category,
       availabilityStatus: listing.availabilityStatus || "Available",
@@ -1973,9 +2113,24 @@ export default function App() {
 
       const newListing: Omit<Listing, "id"> = {
         title: postForm.title,
-        location: postForm.location,
+        location: buildListingLocationValue(postForm),
+        stateName: postForm.stateName,
+        cityArea: postForm.cityArea,
+        fullAddress: postForm.fullAddress,
+        nearbyLandmark: postForm.nearbyLandmark,
+        googleMapLink: postForm.googleMapLink,
+        showExactAddress: postForm.showExactAddress,
         price: postForm.price,
         value: currencyToValue(postForm.price),
+        bedrooms: postForm.bedrooms ? Number(postForm.bedrooms) : undefined,
+        bathrooms: postForm.bathrooms ? Number(postForm.bathrooms) : undefined,
+        toilets: postForm.toilets ? Number(postForm.toilets) : undefined,
+        parkingSpaces: postForm.parkingSpaces ? Number(postForm.parkingSpaces) : undefined,
+        landSize: postForm.landSize,
+        propertySize: postForm.propertySize,
+        furnishingStatus: postForm.furnishingStatus,
+        propertyCondition: postForm.propertyCondition,
+        amenities: postForm.amenities,
         type: postForm.type,
         category: postForm.category,
         availabilityStatus: postForm.availabilityStatus,
@@ -2026,14 +2181,29 @@ export default function App() {
 
       await createStaffNotification(
         "New pending property",
-        `${postForm.title} was submitted for admin review in ${postForm.location}.`,
+        `${postForm.title} was submitted for admin review in ${buildListingLocationValue(postForm)}.`,
         "Pending Property"
       );
 
       setPostForm({
         title: "",
         location: "",
+        stateName: "FCT Abuja",
+        cityArea: "",
+        fullAddress: "",
+        nearbyLandmark: "",
+        googleMapLink: "",
+        showExactAddress: false,
         price: "",
+        bedrooms: "",
+        bathrooms: "",
+        toilets: "",
+        parkingSpaces: "",
+        landSize: "",
+        propertySize: "",
+        furnishingStatus: "Not Specified",
+        propertyCondition: "Not Specified",
+        amenities: "",
         type: "Residential",
         category: "For Sale",
         availabilityStatus: "Available" as AvailabilityStatus,
@@ -2089,9 +2259,24 @@ export default function App() {
       const updatedListing: Listing = {
         ...editingListing,
         title: editForm.title,
-        location: editForm.location,
+        location: buildListingLocationValue(editForm),
+        stateName: editForm.stateName,
+        cityArea: editForm.cityArea,
+        fullAddress: editForm.fullAddress,
+        nearbyLandmark: editForm.nearbyLandmark,
+        googleMapLink: editForm.googleMapLink,
+        showExactAddress: editForm.showExactAddress,
         price: editForm.price,
         value: currencyToValue(editForm.price),
+        bedrooms: editForm.bedrooms ? Number(editForm.bedrooms) : undefined,
+        bathrooms: editForm.bathrooms ? Number(editForm.bathrooms) : undefined,
+        toilets: editForm.toilets ? Number(editForm.toilets) : undefined,
+        parkingSpaces: editForm.parkingSpaces ? Number(editForm.parkingSpaces) : undefined,
+        landSize: editForm.landSize,
+        propertySize: editForm.propertySize,
+        furnishingStatus: editForm.furnishingStatus,
+        propertyCondition: editForm.propertyCondition,
+        amenities: editForm.amenities,
         type: editForm.type,
         category: editForm.category,
         availabilityStatus: editForm.availabilityStatus as AvailabilityStatus,
@@ -2124,8 +2309,23 @@ export default function App() {
             listingToRow({
               title: updatedListing.title,
               location: updatedListing.location,
+              stateName: updatedListing.stateName,
+              cityArea: updatedListing.cityArea,
+              fullAddress: updatedListing.fullAddress,
+              nearbyLandmark: updatedListing.nearbyLandmark,
+              googleMapLink: updatedListing.googleMapLink,
+              showExactAddress: updatedListing.showExactAddress,
               price: updatedListing.price,
               value: updatedListing.value,
+              bedrooms: updatedListing.bedrooms,
+              bathrooms: updatedListing.bathrooms,
+              toilets: updatedListing.toilets,
+              parkingSpaces: updatedListing.parkingSpaces,
+              landSize: updatedListing.landSize,
+              propertySize: updatedListing.propertySize,
+              furnishingStatus: updatedListing.furnishingStatus,
+              propertyCondition: updatedListing.propertyCondition,
+              amenities: updatedListing.amenities,
               type: updatedListing.type,
               category: updatedListing.category,
               availabilityStatus: updatedListing.availabilityStatus,
@@ -4450,6 +4650,14 @@ export default function App() {
                         </div>
                       </div>
 
+                      {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
+                        <div className="mt-5 flex flex-wrap gap-2 text-xs font-black text-[#0d1c38]">
+                          {listing.bedrooms ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.bedrooms} Beds</span> : null}
+                          {listing.bathrooms ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.bathrooms} Baths</span> : null}
+                          {listing.landSize ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.landSize}</span> : null}
+                        </div>
+                      )}
+
                       <p className="mt-5 min-h-[72px] text-base leading-7 text-slate-600">
                         {listing.description}
                       </p>
@@ -5190,19 +5398,70 @@ export default function App() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <input
+                  <select
                     required
-                    list="nigeria-location-options"
-                    value={postForm.location}
+                    value={postForm.stateName}
                     onChange={(event) =>
-                      setPostForm({
-                        ...postForm,
-                        location: event.target.value,
-                      })
+                      setPostForm({ ...postForm, stateName: event.target.value })
                     }
-                    placeholder="State/FCT or city, e.g. Lagos or FCT Abuja"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                    aria-label="State or FCT"
+                  >
+                    {nigeriaLocationLabels.map((location) => (
+                      <option key={location}>{location}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Exact property location</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Use State/FCT and City/Area publicly. Keep full address hidden unless you want visitors to see it.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      required
+                      value={postForm.cityArea}
+                      onChange={(event) => setPostForm({ ...postForm, cityArea: event.target.value })}
+                      placeholder="City / Area, e.g. Garki, Maitama, Lekki Phase 1"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.nearbyLandmark}
+                      onChange={(event) => setPostForm({ ...postForm, nearbyLandmark: event.target.value })}
+                      placeholder="Nearby landmark, e.g. close to Shoprite / airport road"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.fullAddress}
+                      onChange={(event) => setPostForm({ ...postForm, fullAddress: event.target.value })}
+                      placeholder="Full address / estate name, kept private unless enabled"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+
+                    <input
+                      value={postForm.googleMapLink}
+                      onChange={(event) => setPostForm({ ...postForm, googleMapLink: event.target.value })}
+                      placeholder="Google Maps link, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={postForm.showExactAddress}
+                      onChange={(event) => setPostForm({ ...postForm, showExactAddress: event.target.checked })}
+                    />
+                    Show exact address and map link publicly
+                  </label>
+
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Public display: {postForm.cityArea || "Area"}, {postForm.stateName || "State/FCT"}
+                  </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -5311,6 +5570,94 @@ export default function App() {
                     }
                     placeholder="Investment highlight, e.g. Estimated 14% yearly appreciation"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Property specifications and amenities</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Add the details buyers and tenants normally search for. Leave fields empty if they do not apply, for example land may not need bedrooms.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-4">
+                    <input
+                      type="number"
+                      min="0"
+                      value={postForm.bedrooms}
+                      onChange={(event) => setPostForm({ ...postForm, bedrooms: event.target.value })}
+                      placeholder="Bedrooms, e.g. 4"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      value={postForm.bathrooms}
+                      onChange={(event) => setPostForm({ ...postForm, bathrooms: event.target.value })}
+                      placeholder="Bathrooms, e.g. 4"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      value={postForm.toilets}
+                      onChange={(event) => setPostForm({ ...postForm, toilets: event.target.value })}
+                      placeholder="Toilets, e.g. 5"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      value={postForm.parkingSpaces}
+                      onChange={(event) => setPostForm({ ...postForm, parkingSpaces: event.target.value })}
+                      placeholder="Parking spaces, e.g. 2"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={postForm.landSize}
+                      onChange={(event) => setPostForm({ ...postForm, landSize: event.target.value })}
+                      placeholder="Land size, e.g. 500sqm, 1 plot, 2 hectares"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.propertySize}
+                      onChange={(event) => setPostForm({ ...postForm, propertySize: event.target.value })}
+                      placeholder="Built-up size, e.g. 320sqm"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={postForm.furnishingStatus}
+                      onChange={(event) => setPostForm({ ...postForm, furnishingStatus: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Furnishing status"
+                    >
+                      {furnishingStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={postForm.propertyCondition}
+                      onChange={(event) => setPostForm({ ...postForm, propertyCondition: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Property condition"
+                    >
+                      {propertyConditionOptions.map((condition) => (
+                        <option key={condition}>{condition}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <input
+                    list="amenity-options"
+                    value={postForm.amenities}
+                    onChange={(event) => setPostForm({ ...postForm, amenities: event.target.value })}
+                    placeholder="Amenities, e.g. 24/7 Security, CCTV, Swimming Pool, Fitted Kitchen"
+                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
                 </div>
 
@@ -5479,16 +5826,68 @@ export default function App() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <input
+                  <select
                     required
-                    list="nigeria-location-options"
-                    value={editForm.location}
-                    onChange={(event) =>
-                      setEditForm({ ...editForm, location: event.target.value })
-                    }
-                    placeholder="State/FCT or city, e.g. Lagos or FCT Abuja"
+                    value={editForm.stateName}
+                    onChange={(event) => setEditForm({ ...editForm, stateName: event.target.value })}
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                    aria-label="State or FCT"
+                  >
+                    {nigeriaLocationLabels.map((location) => (
+                      <option key={location}>{location}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Exact property location</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Control what the public sees. Staff can keep exact address private while showing the area/state.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      required
+                      value={editForm.cityArea}
+                      onChange={(event) => setEditForm({ ...editForm, cityArea: event.target.value })}
+                      placeholder="City / Area, e.g. Garki, Maitama, Lekki Phase 1"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.nearbyLandmark}
+                      onChange={(event) => setEditForm({ ...editForm, nearbyLandmark: event.target.value })}
+                      placeholder="Nearby landmark"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.fullAddress}
+                      onChange={(event) => setEditForm({ ...editForm, fullAddress: event.target.value })}
+                      placeholder="Full address / estate name"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+
+                    <input
+                      value={editForm.googleMapLink}
+                      onChange={(event) => setEditForm({ ...editForm, googleMapLink: event.target.value })}
+                      placeholder="Google Maps link"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={editForm.showExactAddress}
+                      onChange={(event) => setEditForm({ ...editForm, showExactAddress: event.target.checked })}
+                    />
+                    Show exact address and map link publicly
+                  </label>
+
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Public display: {editForm.cityArea || "Area"}, {editForm.stateName || "State/FCT"}
+                  </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -5604,6 +6003,95 @@ export default function App() {
                       className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
                   </div>
+                </div>
+
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Property specifications and amenities</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Update the physical property details buyers and tenants use to compare listings.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-4">
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.bedrooms}
+                      onChange={(event) => setEditForm({ ...editForm, bedrooms: event.target.value })}
+                      placeholder="Bedrooms, e.g. 4"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.bathrooms}
+                      onChange={(event) => setEditForm({ ...editForm, bathrooms: event.target.value })}
+                      placeholder="Bathrooms, e.g. 4"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.toilets}
+                      onChange={(event) => setEditForm({ ...editForm, toilets: event.target.value })}
+                      placeholder="Toilets, e.g. 5"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.parkingSpaces}
+                      onChange={(event) => setEditForm({ ...editForm, parkingSpaces: event.target.value })}
+                      placeholder="Parking spaces, e.g. 2"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={editForm.landSize}
+                      onChange={(event) => setEditForm({ ...editForm, landSize: event.target.value })}
+                      placeholder="Land size, e.g. 500sqm, 1 plot, 2 hectares"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.propertySize}
+                      onChange={(event) => setEditForm({ ...editForm, propertySize: event.target.value })}
+                      placeholder="Built-up size, e.g. 320sqm"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={editForm.furnishingStatus}
+                      onChange={(event) => setEditForm({ ...editForm, furnishingStatus: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Furnishing status"
+                    >
+                      {furnishingStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={editForm.propertyCondition}
+                      onChange={(event) => setEditForm({ ...editForm, propertyCondition: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Property condition"
+                    >
+                      {propertyConditionOptions.map((condition) => (
+                        <option key={condition}>{condition}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <input
+                    list="amenity-options"
+                    value={editForm.amenities}
+                    onChange={(event) => setEditForm({ ...editForm, amenities: event.target.value })}
+                    placeholder="Amenities, e.g. 24/7 Security, CCTV, Swimming Pool, Fitted Kitchen"
+                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
                 </div>
 
                 <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
@@ -6005,7 +6493,7 @@ export default function App() {
                     </h3>
 
                     <p className="mt-3 text-lg text-slate-200">
-                      {selectedListing.location}
+                      {buildPublicLocationText(selectedListing)}
                     </p>
                     <div className={`mt-4 w-fit rounded-full px-4 py-2 text-xs font-black ${availabilityBadgeClass(selectedListing.availabilityStatus)}`}>
                       {selectedListing.availabilityStatus || "Available"}
@@ -6016,7 +6504,7 @@ export default function App() {
                 <div className="mt-6 grid gap-5 md:grid-cols-[1fr_260px]">
                   <div>
                     <p className="text-sm font-bold text-slate-500">
-                      {selectedListing.location}
+                      {buildPublicLocationText(selectedListing)}
                     </p>
 
                     <p className="mt-3 text-3xl font-black text-[#0d1c38]">
@@ -6030,6 +6518,48 @@ export default function App() {
                     <div className="mt-5 rounded-2xl bg-[#f7f8fb] p-5 font-bold text-slate-700">
                       {selectedListing.yieldText}
                     </div>
+
+                    {(selectedListing.stateName || selectedListing.cityArea || selectedListing.fullAddress || selectedListing.nearbyLandmark || selectedListing.googleMapLink) && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-700">
+                        <p className="font-black text-[#0d1c38]">Location details</p>
+                        <p className="mt-2"><span className="font-black">Area:</span> {buildPublicLocationText(selectedListing)}</p>
+                        {selectedListing.nearbyLandmark ? <p><span className="font-black">Nearby landmark:</span> {selectedListing.nearbyLandmark}</p> : null}
+                        {selectedListing.showExactAddress && selectedListing.fullAddress ? (
+                          <p><span className="font-black">Exact address:</span> {selectedListing.fullAddress}</p>
+                        ) : (
+                          <p className="text-slate-500">Exact address is hidden until staff confirms access.</p>
+                        )}
+                        {selectedListing.showExactAddress && selectedListing.googleMapLink ? (
+                          <a
+                            href={selectedListing.googleMapLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white"
+                          >
+                            Open Google Maps
+                          </a>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {(selectedListing.bedrooms || selectedListing.bathrooms || selectedListing.toilets || selectedListing.parkingSpaces || selectedListing.landSize || selectedListing.propertySize || selectedListing.furnishingStatus || selectedListing.propertyCondition || selectedListing.amenities) && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+                        <p className="font-black text-[#0d1c38]">Property specifications</p>
+                        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                          {selectedListing.bedrooms ? <p><span className="font-black">Bedrooms:</span> {selectedListing.bedrooms}</p> : null}
+                          {selectedListing.bathrooms ? <p><span className="font-black">Bathrooms:</span> {selectedListing.bathrooms}</p> : null}
+                          {selectedListing.toilets ? <p><span className="font-black">Toilets:</span> {selectedListing.toilets}</p> : null}
+                          {selectedListing.parkingSpaces ? <p><span className="font-black">Parking:</span> {selectedListing.parkingSpaces} spaces</p> : null}
+                          {selectedListing.landSize ? <p><span className="font-black">Land size:</span> {selectedListing.landSize}</p> : null}
+                          {selectedListing.propertySize ? <p><span className="font-black">Built-up size:</span> {selectedListing.propertySize}</p> : null}
+                          {selectedListing.furnishingStatus && selectedListing.furnishingStatus !== "Not Specified" ? <p><span className="font-black">Furnishing:</span> {selectedListing.furnishingStatus}</p> : null}
+                          {selectedListing.propertyCondition && selectedListing.propertyCondition !== "Not Specified" ? <p><span className="font-black">Condition:</span> {selectedListing.propertyCondition}</p> : null}
+                        </div>
+                        {selectedListing.amenities && (
+                          <p className="mt-4 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Amenities:</span> {selectedListing.amenities}</p>
+                        )}
+                      </div>
+                    )}
 
                     {(selectedListing.documentTitle || selectedListing.documentDetails) && (
                       <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
@@ -6078,6 +6608,16 @@ export default function App() {
                           {selectedListing.category}
                         </p>
                       </div>
+
+
+                      {(selectedListing.bedrooms || selectedListing.bathrooms || selectedListing.landSize) && (
+                        <div>
+                          <p className="text-slate-400">Specs</p>
+                          <p className="font-black">
+                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join(" • ")}
+                          </p>
+                        </div>
+                      )}
 
                       <div>
                         <p className="text-slate-400">Document title</p>
@@ -7985,6 +8525,12 @@ export default function App() {
                               {listing.location} • {listing.price}
                             </p>
 
+                            {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
+                              <p className="mt-1 text-xs font-bold text-slate-500">
+                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join(" • ")}
+                              </p>
+                            )}
+
                             <p className="mt-1 text-xs font-black text-slate-400">
                               {listing.status} • {listing.availabilityStatus || "Available"}
                               {listing.featured ? ` • Featured rank ${listing.featuredRank || 0}` : ""}
@@ -8038,3 +8584,5 @@ export default function App() {
 // Property reference upgrade: public and staff listing references use stable INM-000001 style IDs.
 
 // Availability status upgrade: listings now support Available, Reserved, Sold, Rented, Leased, and Off Market badges plus staff controls.
+
+// Property specifications upgrade: bedrooms, bathrooms, toilets, parking, sizes, furnishing, condition, and amenities are now supported.

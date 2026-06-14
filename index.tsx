@@ -34,6 +34,10 @@ type Listing = {
   nearbyLandmark?: string;
   googleMapLink?: string;
   showExactAddress?: boolean;
+  videoUrl?: string;
+  virtualTourUrl?: string;
+  droneVideoUrl?: string;
+  showVideoPublicly?: boolean;
   price: string;
   value: number;
   bedrooms?: number | null;
@@ -787,6 +791,10 @@ function mapListingRow(row: any): Listing {
     nearbyLandmark: row.nearby_landmark || "",
     googleMapLink: row.google_map_link || "",
     showExactAddress: Boolean(row.show_exact_address),
+    videoUrl: row.video_url || "",
+    virtualTourUrl: row.virtual_tour_url || "",
+    droneVideoUrl: row.drone_video_url || "",
+    showVideoPublicly: row.show_video_publicly !== false,
     price: row.price,
     value: Number(row.value || 0),
     bedrooms: row.bedrooms == null ? undefined : Number(row.bedrooms),
@@ -975,6 +983,10 @@ function listingToRow(listing: Omit<Listing, "id">) {
     nearby_landmark: listing.nearbyLandmark || null,
     google_map_link: listing.googleMapLink || null,
     show_exact_address: Boolean(listing.showExactAddress),
+    video_url: listing.videoUrl || null,
+    virtual_tour_url: listing.virtualTourUrl || null,
+    drone_video_url: listing.droneVideoUrl || null,
+    show_video_publicly: listing.showVideoPublicly !== false,
     price: listing.price,
     value: listing.value,
     bedrooms: listing.bedrooms || null,
@@ -1101,6 +1113,10 @@ export default function App() {
     nearbyLandmark: "",
     googleMapLink: "",
     showExactAddress: false,
+    videoUrl: "",
+    virtualTourUrl: "",
+    droneVideoUrl: "",
+    showVideoPublicly: true,
     price: "",
     bedrooms: "",
     bathrooms: "",
@@ -1138,6 +1154,10 @@ export default function App() {
     nearbyLandmark: "",
     googleMapLink: "",
     showExactAddress: false,
+    videoUrl: "",
+    virtualTourUrl: "",
+    droneVideoUrl: "",
+    showVideoPublicly: true,
     price: "",
     bedrooms: "",
     bathrooms: "",
@@ -2056,6 +2076,10 @@ export default function App() {
       nearbyLandmark: listing.nearbyLandmark || "",
       googleMapLink: listing.googleMapLink || "",
       showExactAddress: Boolean(listing.showExactAddress),
+      videoUrl: listing.videoUrl || "",
+      virtualTourUrl: listing.virtualTourUrl || "",
+      droneVideoUrl: listing.droneVideoUrl || "",
+      showVideoPublicly: listing.showVideoPublicly !== false,
       price: listing.price,
       bedrooms: listing.bedrooms ? String(listing.bedrooms) : "",
       bathrooms: listing.bathrooms ? String(listing.bathrooms) : "",
@@ -2120,6 +2144,10 @@ export default function App() {
         nearbyLandmark: postForm.nearbyLandmark,
         googleMapLink: postForm.googleMapLink,
         showExactAddress: postForm.showExactAddress,
+        videoUrl: postForm.videoUrl,
+        virtualTourUrl: postForm.virtualTourUrl,
+        droneVideoUrl: postForm.droneVideoUrl,
+        showVideoPublicly: postForm.showVideoPublicly,
         price: postForm.price,
         value: currencyToValue(postForm.price),
         bedrooms: postForm.bedrooms ? Number(postForm.bedrooms) : undefined,
@@ -2194,6 +2222,10 @@ export default function App() {
         nearbyLandmark: "",
         googleMapLink: "",
         showExactAddress: false,
+        videoUrl: "",
+        virtualTourUrl: "",
+        droneVideoUrl: "",
+        showVideoPublicly: true,
         price: "",
         bedrooms: "",
         bathrooms: "",
@@ -2266,6 +2298,10 @@ export default function App() {
         nearbyLandmark: editForm.nearbyLandmark,
         googleMapLink: editForm.googleMapLink,
         showExactAddress: editForm.showExactAddress,
+        videoUrl: editForm.videoUrl,
+        virtualTourUrl: editForm.virtualTourUrl,
+        droneVideoUrl: editForm.droneVideoUrl,
+        showVideoPublicly: editForm.showVideoPublicly,
         price: editForm.price,
         value: currencyToValue(editForm.price),
         bedrooms: editForm.bedrooms ? Number(editForm.bedrooms) : undefined,
@@ -2315,6 +2351,10 @@ export default function App() {
               nearbyLandmark: updatedListing.nearbyLandmark,
               googleMapLink: updatedListing.googleMapLink,
               showExactAddress: updatedListing.showExactAddress,
+              videoUrl: updatedListing.videoUrl,
+              virtualTourUrl: updatedListing.virtualTourUrl,
+              droneVideoUrl: updatedListing.droneVideoUrl,
+              showVideoPublicly: updatedListing.showVideoPublicly,
               price: updatedListing.price,
               value: updatedListing.value,
               bedrooms: updatedListing.bedrooms,
@@ -5464,6 +5504,43 @@ export default function App() {
                   </p>
                 </div>
 
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Property video / virtual tour</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Add YouTube, TikTok, Instagram, Google Drive, virtual tour, or drone video links. Leave blank if not available.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={postForm.videoUrl}
+                      onChange={(event) => setPostForm({ ...postForm, videoUrl: event.target.value })}
+                      placeholder="YouTube / property video link"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.virtualTourUrl}
+                      onChange={(event) => setPostForm({ ...postForm, virtualTourUrl: event.target.value })}
+                      placeholder="Virtual tour link, e.g. Matterport / 360 tour"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.droneVideoUrl}
+                      onChange={(event) => setPostForm({ ...postForm, droneVideoUrl: event.target.value })}
+                      placeholder="Drone video link, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={postForm.showVideoPublicly}
+                      onChange={(event) => setPostForm({ ...postForm, showVideoPublicly: event.target.checked })}
+                    />
+                    Show video / virtual tour links publicly
+                  </label>
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
                     <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -5888,6 +5965,43 @@ export default function App() {
                   <p className="mt-3 text-xs font-bold text-slate-500">
                     Public display: {editForm.cityArea || "Area"}, {editForm.stateName || "State/FCT"}
                   </p>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Property video / virtual tour</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Use video links to show tours, drone footage, and walk-throughs without uploading heavy videos.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={editForm.videoUrl}
+                      onChange={(event) => setEditForm({ ...editForm, videoUrl: event.target.value })}
+                      placeholder="YouTube / property video link"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.virtualTourUrl}
+                      onChange={(event) => setEditForm({ ...editForm, virtualTourUrl: event.target.value })}
+                      placeholder="Virtual tour link"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.droneVideoUrl}
+                      onChange={(event) => setEditForm({ ...editForm, droneVideoUrl: event.target.value })}
+                      placeholder="Drone video link"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={editForm.showVideoPublicly}
+                      onChange={(event) => setEditForm({ ...editForm, showVideoPublicly: event.target.checked })}
+                    />
+                    Show video / virtual tour links publicly
+                  </label>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -6542,6 +6656,44 @@ export default function App() {
                       </div>
                     )}
 
+                    {selectedListing.showVideoPublicly !== false && (selectedListing.videoUrl || selectedListing.virtualTourUrl || selectedListing.droneVideoUrl) && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-700">
+                        <p className="font-black text-[#0d1c38]">Video and virtual tour</p>
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          {selectedListing.videoUrl ? (
+                            <a
+                              href={selectedListing.videoUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white"
+                            >
+                              Watch property video
+                            </a>
+                          ) : null}
+                          {selectedListing.virtualTourUrl ? (
+                            <a
+                              href={selectedListing.virtualTourUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full bg-[#f0bf3c] px-4 py-2 text-xs font-black text-[#0d1c38]"
+                            >
+                              Open virtual tour
+                            </a>
+                          ) : null}
+                          {selectedListing.droneVideoUrl ? (
+                            <a
+                              href={selectedListing.droneVideoUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-[#0d1c38]"
+                            >
+                              Watch drone video
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
+
                     {(selectedListing.bedrooms || selectedListing.bathrooms || selectedListing.toilets || selectedListing.parkingSpaces || selectedListing.landSize || selectedListing.propertySize || selectedListing.furnishingStatus || selectedListing.propertyCondition || selectedListing.amenities) && (
                       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
                         <p className="font-black text-[#0d1c38]">Property specifications</p>
@@ -6609,6 +6761,15 @@ export default function App() {
                         </p>
                       </div>
 
+
+                      {(selectedListing.videoUrl || selectedListing.virtualTourUrl || selectedListing.droneVideoUrl) && (
+                        <div>
+                          <p className="text-slate-400">Media</p>
+                          <p className="font-black">
+                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join(" • ")}
+                          </p>
+                        </div>
+                      )}
 
                       {(selectedListing.bedrooms || selectedListing.bathrooms || selectedListing.landSize) && (
                         <div>

@@ -487,6 +487,11 @@ function formatDate(value?: string) {
   });
 }
 
+function buildListingReference(listingId?: number | null) {
+  const safeId = Number(listingId || 0);
+  return `INM-${String(safeId).padStart(6, "0")}`;
+}
+
 function currencyToValue(value: string) {
   const cleaned = value.replace(/[^\d]/g, "");
   return Number(cleaned || 0);
@@ -565,7 +570,7 @@ function buildListingShareUrl(listingId: number) {
 }
 
 function buildListingShareText(listing: Listing) {
-  return `INAMAAD Real Estate: ${listing.title} - ${listing.price} in ${listing.location}. View details: ${buildListingShareUrl(
+  return `INAMAAD Real Estate: ${listing.title} (${buildListingReference(listing.id)}) - ${listing.price} in ${listing.location}. View details: ${buildListingShareUrl(
     listing.id
   )}`;
 }
@@ -3383,6 +3388,7 @@ export default function App() {
       "inamaad-listings.csv",
       [
         "ID",
+        "Reference",
         "Title",
         "Location",
         "Price",
@@ -3403,6 +3409,7 @@ export default function App() {
       ],
       listings.map((listing) => [
         listing.id,
+        buildListingReference(listing.id),
         listing.title,
         listing.location,
         listing.price,
@@ -4033,8 +4040,13 @@ export default function App() {
                             )}
                           </div>
 
-                          <div className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white">
-                            {listing.status}
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white">
+                              {listing.status}
+                            </div>
+                            <div className="rounded-full bg-white/15 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-white backdrop-blur">
+                              Ref {buildListingReference(listing.id)}
+                            </div>
                           </div>
                         </div>
 
@@ -5534,6 +5546,10 @@ export default function App() {
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0d1c38]/95 via-[#0d1c38]/45 to-[#0d1c38]/10" />
 
                   <div className="relative z-10 flex h-full flex-col justify-end p-8 text-white">
+                    <div className="mb-3 inline-flex w-fit rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide text-white backdrop-blur">
+                      Ref {buildListingReference(selectedListing.id)}
+                    </div>
+
                     <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
                       INAMAAD verified asset
                     </p>
@@ -5597,6 +5613,11 @@ export default function App() {
                     </p>
 
                     <div className="mt-5 grid gap-4 text-sm">
+                      <div>
+                        <p className="text-slate-400">Reference</p>
+                        <p className="font-black text-[#f0bf3c]">{buildListingReference(selectedListing.id)}</p>
+                      </div>
+
                       <div>
                         <p className="text-slate-400">Type</p>
                         <p className="font-black">{selectedListing.type}</p>
@@ -6506,6 +6527,9 @@ export default function App() {
                           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
                             #{index + 1} viewed property
                           </p>
+                          <p className="mt-1 text-xs font-black uppercase tracking-[0.16em] text-[#d49613]">
+                            {buildListingReference(listing.id)}
+                          </p>
                           <p className="mt-1 font-black text-[#0d1c38]">
                             {listing.title}
                           </p>
@@ -6622,7 +6646,11 @@ export default function App() {
                       >
                         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                           <div>
-                            <p className="font-black text-[#0d1c38]">
+                            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d49613]">
+                              {buildListingReference(listing.id)}
+                            </p>
+
+                            <p className="mt-1 font-black text-[#0d1c38]">
                               {listing.title}
                             </p>
 
@@ -7255,7 +7283,11 @@ export default function App() {
                       >
                         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                           <div>
-                            <p className="font-black text-[#0d1c38]">
+                            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d49613]">
+                              {buildListingReference(listing.id)}
+                            </p>
+
+                            <p className="mt-1 font-black text-[#0d1c38]">
                               {listing.title}
                             </p>
 
@@ -7306,3 +7338,5 @@ export default function App() {
 }
 
 // Lead command center upgrade: follow-up dashboard for overdue, due-today, urgent, and unassigned leads.
+
+// Property reference upgrade: public and staff listing references use stable INM-000001 style IDs.

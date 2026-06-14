@@ -86,6 +86,15 @@ type Listing = {
   contactAddress?: string;
   publicContactVisibility?: string;
   mandateStatus?: string;
+  identityType?: string;
+  identityNumber?: string;
+  companyRegistrationNumber?: string;
+  mandateDocumentStatus?: string;
+  contactProfileVerified?: boolean;
+  contactVerificationNotes?: string;
+  identityDocumentUrl?: string;
+  cacDocumentUrl?: string;
+  mandateDocumentUrl?: string;
   documentTitle?: string;
   documentStatus?: string;
   documentDetails?: string;
@@ -422,6 +431,25 @@ const mandateStatusOptions = [
   "Authorized Agent",
   "Developer Mandate",
   "Company Mandate",
+];
+
+const identityTypeOptions = [
+  "Not Provided",
+  "NIN",
+  "International Passport",
+  "Driver's License",
+  "Voter's Card",
+  "CAC Certificate",
+  "Company Representative ID",
+  "Other",
+];
+
+const mandateDocumentStatusOptions = [
+  "Not Provided",
+  "Provided",
+  "Under Review",
+  "Verified",
+  "Rejected",
 ];
 
 const documentTitleOptions = [
@@ -828,6 +856,23 @@ function extractPropertyDocumentPath(documentFileUrl: string) {
   return decodeURIComponent(cleanValue.split("/").pop() || "");
 }
 
+function extractStorageObjectPath(fileUrl: string, bucketName: string) {
+  if (!fileUrl) return "";
+
+  const cleanValue = fileUrl.split("?")[0];
+  const bucketMarker = `${bucketName}/`;
+
+  if (cleanValue.includes(bucketMarker)) {
+    return decodeURIComponent(cleanValue.split(bucketMarker).pop() || "");
+  }
+
+  if (!cleanValue.includes("/")) {
+    return cleanValue;
+  }
+
+  return decodeURIComponent(cleanValue.split("/").pop() || "");
+}
+
 function leadStatusClass(status: LeadStatus) {
   if (status === "Closed") return "bg-emerald-100 text-emerald-700";
   if (status === "Contacted") return "bg-blue-100 text-blue-700";
@@ -973,6 +1018,15 @@ function mapListingRow(row: any): Listing {
     contactAddress: row.contact_address || "",
     publicContactVisibility: row.public_contact_visibility || "Hide Phone",
     mandateStatus: row.mandate_status || "Not Confirmed",
+    identityType: row.identity_type || "Not Provided",
+    identityNumber: row.identity_number || "",
+    companyRegistrationNumber: row.company_registration_number || "",
+    mandateDocumentStatus: row.mandate_document_status || "Not Provided",
+    contactProfileVerified: Boolean(row.contact_profile_verified),
+    contactVerificationNotes: row.contact_verification_notes || "",
+    identityDocumentUrl: row.identity_document_url || "",
+    cacDocumentUrl: row.cac_document_url || "",
+    mandateDocumentUrl: row.mandate_document_url || "",
     documentTitle: row.document_title || "",
     documentStatus: row.document_status || "",
     documentDetails: row.document_details || "",
@@ -1204,6 +1258,15 @@ function listingToRow(listing: Omit<Listing, "id">) {
     contact_address: listing.contactAddress || null,
     public_contact_visibility: listing.publicContactVisibility || "Hide Phone",
     mandate_status: listing.mandateStatus || "Not Confirmed",
+    identity_type: listing.identityType || null,
+    identity_number: listing.identityNumber || null,
+    company_registration_number: listing.companyRegistrationNumber || null,
+    mandate_document_status: listing.mandateDocumentStatus || "Not Provided",
+    contact_profile_verified: Boolean(listing.contactProfileVerified),
+    contact_verification_notes: listing.contactVerificationNotes || null,
+    identity_document_url: listing.identityDocumentUrl || null,
+    cac_document_url: listing.cacDocumentUrl || null,
+    mandate_document_url: listing.mandateDocumentUrl || null,
     document_title: listing.documentTitle || null,
     document_status: listing.documentStatus || null,
     document_details: listing.documentDetails || null,
@@ -1364,6 +1427,15 @@ export default function App() {
     contactAddress: "",
     publicContactVisibility: "Hide Phone",
     mandateStatus: "Not Confirmed",
+    identityType: "Not Provided",
+    identityNumber: "",
+    companyRegistrationNumber: "",
+    mandateDocumentStatus: "Not Provided",
+    contactProfileVerified: false,
+    contactVerificationNotes: "",
+    identityDocumentUrl: "",
+    cacDocumentUrl: "",
+    mandateDocumentUrl: "",
   });
 
   const [postImageFile, setPostImageFile] = useState<File | null>(null);
@@ -1440,6 +1512,15 @@ export default function App() {
     contactAddress: "",
     publicContactVisibility: "Hide Phone",
     mandateStatus: "Not Confirmed",
+    identityType: "Not Provided",
+    identityNumber: "",
+    companyRegistrationNumber: "",
+    mandateDocumentStatus: "Not Provided",
+    contactProfileVerified: false,
+    contactVerificationNotes: "",
+    identityDocumentUrl: "",
+    cacDocumentUrl: "",
+    mandateDocumentUrl: "",
     imageUrl: "",
     featured: false,
     featuredRank: "0",
@@ -1448,6 +1529,9 @@ export default function App() {
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editGalleryFiles, setEditGalleryFiles] = useState<File[]>([]);
   const [editDocumentFile, setEditDocumentFile] = useState<File | null>(null);
+  const [editIdentityDocumentFile, setEditIdentityDocumentFile] = useState<File | null>(null);
+  const [editCacDocumentFile, setEditCacDocumentFile] = useState<File | null>(null);
+  const [editMandateDocumentFile, setEditMandateDocumentFile] = useState<File | null>(null);
 
   const [investorForm, setInvestorForm] = useState({
     name: "",
@@ -2315,6 +2399,76 @@ export default function App() {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
+  async function uploadVerificationDocument(file: File, folder: string) {
+    if (!supabase) return "";
+
+    if (!canOpenDocuments) {
+      showSuccess("Your role cannot upload owner/agent verification documents.");
+      return "";
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const safeFileName = `${folder}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("verification-documents")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return safeFileName;
+  }
+
+  async function openSecureVerificationDocument(documentFileUrl?: string, label = "verification document") {
+    if (!canOpenDocuments) {
+      showSuccess("Your role cannot open owner/agent verification documents.");
+      return;
+    }
+
+    if (!documentFileUrl) {
+      showSuccess(`No ${label} has been uploaded for this listing.`);
+      return;
+    }
+
+    if (!supabase || !user) {
+      showSuccess("Only signed-in senior staff can open verification documents.");
+      return;
+    }
+
+    const documentPath = extractStorageObjectPath(documentFileUrl, "verification-documents");
+
+    if (!documentPath) {
+      showSuccess("Unable to find the secure verification document path.");
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from("verification-documents")
+      .createSignedUrl(documentPath, 300);
+
+    if (error || !data?.signedUrl) {
+      console.error(error);
+      showSuccess("Unable to open verification document. Make sure you are signed in as senior staff.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      `Opened secure ${label}`,
+      "Verification Document",
+      documentPath,
+      `Staff generated a temporary signed URL for ${label}.`
+    );
+
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
   function imageFileToBase64(file: File) {
     return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -2413,6 +2567,9 @@ export default function App() {
     setEditImageFile(null);
     setEditGalleryFiles([]);
     setEditDocumentFile(null);
+    setEditIdentityDocumentFile(null);
+    setEditCacDocumentFile(null);
+    setEditMandateDocumentFile(null);
     setEditForm({
       title: listing.title,
       location: listing.location,
@@ -2483,6 +2640,15 @@ export default function App() {
       contactAddress: listing.contactAddress || "",
       publicContactVisibility: listing.publicContactVisibility || "Hide Phone",
       mandateStatus: listing.mandateStatus || "Not Confirmed",
+      identityType: listing.identityType || "Not Provided",
+      identityNumber: listing.identityNumber || "",
+      companyRegistrationNumber: listing.companyRegistrationNumber || "",
+      mandateDocumentStatus: listing.mandateDocumentStatus || "Not Provided",
+      contactProfileVerified: Boolean(listing.contactProfileVerified),
+      contactVerificationNotes: listing.contactVerificationNotes || "",
+      identityDocumentUrl: listing.identityDocumentUrl || "",
+      cacDocumentUrl: listing.cacDocumentUrl || "",
+      mandateDocumentUrl: listing.mandateDocumentUrl || "",
       imageUrl: listing.imageUrl || "",
       featured: Boolean(listing.featured),
       featuredRank: String(listing.featuredRank || 0),
@@ -2579,6 +2745,12 @@ export default function App() {
         contactAddress: postForm.contactAddress,
         publicContactVisibility: postForm.publicContactVisibility,
         mandateStatus: postForm.mandateStatus,
+        identityType: postForm.identityType,
+        identityNumber: postForm.identityNumber,
+        companyRegistrationNumber: postForm.companyRegistrationNumber,
+        mandateDocumentStatus: postForm.mandateDocumentStatus,
+        contactProfileVerified: false,
+        contactVerificationNotes: postForm.contactVerificationNotes,
         imageUrl,
         featured: false,
         featuredRank: 0,
@@ -2728,6 +2900,24 @@ export default function App() {
           : await imageFileToBase64(editDocumentFile)
         : editForm.documentFileUrl;
 
+      const identityDocumentUrl = editIdentityDocumentFile
+        ? supabase
+          ? await uploadVerificationDocument(editIdentityDocumentFile, "identity")
+          : await imageFileToBase64(editIdentityDocumentFile)
+        : editForm.identityDocumentUrl;
+
+      const cacDocumentUrl = editCacDocumentFile
+        ? supabase
+          ? await uploadVerificationDocument(editCacDocumentFile, "cac")
+          : await imageFileToBase64(editCacDocumentFile)
+        : editForm.cacDocumentUrl;
+
+      const mandateDocumentUrl = editMandateDocumentFile
+        ? supabase
+          ? await uploadVerificationDocument(editMandateDocumentFile, "mandate")
+          : await imageFileToBase64(editMandateDocumentFile)
+        : editForm.mandateDocumentUrl;
+
       const updatedListing: Listing = {
         ...editingListing,
         title: editForm.title,
@@ -2800,6 +2990,15 @@ export default function App() {
         contactAddress: editForm.contactAddress,
         publicContactVisibility: editForm.publicContactVisibility,
         mandateStatus: editForm.mandateStatus,
+        identityType: editForm.identityType,
+        identityNumber: editForm.identityNumber,
+        companyRegistrationNumber: editForm.companyRegistrationNumber,
+        mandateDocumentStatus: editForm.mandateDocumentStatus,
+        contactProfileVerified: Boolean(editForm.contactProfileVerified),
+        contactVerificationNotes: editForm.contactVerificationNotes,
+        identityDocumentUrl,
+        cacDocumentUrl,
+        mandateDocumentUrl,
         imageUrl,
         featured: Boolean(editForm.featured),
         featuredRank: Number(editForm.featuredRank || 0),
@@ -6704,6 +6903,50 @@ export default function App() {
                       rows={3}
                       className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
                     />
+
+                    <select
+                      value={postForm.identityType}
+                      onChange={(event) => setPostForm({ ...postForm, identityType: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Identity verification type"
+                    >
+                      {identityTypeOptions.map((type) => (
+                        <option key={type}>{type}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={postForm.identityNumber}
+                      onChange={(event) => setPostForm({ ...postForm, identityNumber: event.target.value })}
+                      placeholder="ID number / NIN / passport number, optional for staff verification"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.companyRegistrationNumber}
+                      onChange={(event) => setPostForm({ ...postForm, companyRegistrationNumber: event.target.value })}
+                      placeholder="CAC / company registration number, e.g. RC1234567"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={postForm.mandateDocumentStatus}
+                      onChange={(event) => setPostForm({ ...postForm, mandateDocumentStatus: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Mandate document status"
+                    >
+                      {mandateDocumentStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      value={postForm.contactVerificationNotes}
+                      onChange={(event) => setPostForm({ ...postForm, contactVerificationNotes: event.target.value })}
+                      placeholder="Verification note, e.g. Agent claims direct mandate from owner; CAC pending confirmation."
+                      rows={3}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
                   </div>
 
                   <p className="mt-3 text-xs font-bold text-slate-500">
@@ -7460,6 +7703,118 @@ export default function App() {
                       rows={3}
                       className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
                     />
+
+                    <select
+                      value={editForm.identityType}
+                      onChange={(event) => setEditForm({ ...editForm, identityType: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Identity verification type"
+                    >
+                      {identityTypeOptions.map((type) => (
+                        <option key={type}>{type}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={editForm.identityNumber}
+                      onChange={(event) => setEditForm({ ...editForm, identityNumber: event.target.value })}
+                      placeholder="ID number / NIN / passport number"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.companyRegistrationNumber}
+                      onChange={(event) => setEditForm({ ...editForm, companyRegistrationNumber: event.target.value })}
+                      placeholder="CAC / company registration number, e.g. RC1234567"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={editForm.mandateDocumentStatus}
+                      onChange={(event) => setEditForm({ ...editForm, mandateDocumentStatus: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Mandate document status"
+                    >
+                      {mandateDocumentStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <label className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-black text-emerald-800 md:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editForm.contactProfileVerified)}
+                        onChange={(event) => setEditForm({ ...editForm, contactProfileVerified: event.target.checked })}
+                      />
+                      Owner/agent/developer profile verified
+                    </label>
+
+                    <textarea
+                      value={editForm.contactVerificationNotes}
+                      onChange={(event) => setEditForm({ ...editForm, contactVerificationNotes: event.target.value })}
+                      placeholder="Private verification notes, e.g. ID checked, CAC verified, mandate letter reviewed."
+                      rows={3}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 md:col-span-2">
+                      <p className="text-sm font-black text-[#0d1c38]">Private verification document uploads</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Staff-only files. Upload owner ID, CAC certificate, and mandate/authorization letter. These files are stored in a private Supabase bucket and opened with temporary signed links only.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        {[
+                          {
+                            label: "Owner/agent ID document",
+                            url: editForm.identityDocumentUrl,
+                            file: editIdentityDocumentFile,
+                            setFile: setEditIdentityDocumentFile,
+                            openLabel: "owner/agent ID document",
+                          },
+                          {
+                            label: "CAC/company document",
+                            url: editForm.cacDocumentUrl,
+                            file: editCacDocumentFile,
+                            setFile: setEditCacDocumentFile,
+                            openLabel: "CAC/company document",
+                          },
+                          {
+                            label: "Mandate/authorization letter",
+                            url: editForm.mandateDocumentUrl,
+                            file: editMandateDocumentFile,
+                            setFile: setEditMandateDocumentFile,
+                            openLabel: "mandate/authorization letter",
+                          },
+                        ].map((item) => (
+                          <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <label className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                              {item.label}
+                            </label>
+                            <input
+                              type="file"
+                              accept="application/pdf,image/jpeg,image/png,image/webp"
+                              onChange={(event) => item.setFile(event.target.files?.[0] || null)}
+                              disabled={!canOpenDocuments}
+                              className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs outline-none focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:opacity-60"
+                            />
+                            <p className="mt-2 text-xs font-bold text-slate-500">
+                              {item.file ? `Selected: ${item.file.name}` : item.url ? "Uploaded" : "Not uploaded"}
+                            </p>
+                            {item.url && (
+                              <button
+                                type="button"
+                                onClick={() => openSecureVerificationDocument(item.url, item.openLabel)}
+                                disabled={!canOpenDocuments}
+                                className="mt-3 rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {canOpenDocuments ? "Open secure file" : "Locked"}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <p className="mt-3 text-xs font-bold text-slate-500">
@@ -7812,6 +8167,8 @@ export default function App() {
                         <div className="mt-3 grid gap-3 sm:grid-cols-2">
                           <p><span className="font-black">Role:</span> {selectedListing.contactRole || "Owner"}</p>
                           <p><span className="font-black">Mandate:</span> {selectedListing.mandateStatus || "Not Confirmed"}</p>
+                          <p><span className="font-black">Profile verification:</span> {selectedListing.contactProfileVerified ? "Verified" : "Not verified yet"}</p>
+                          <p><span className="font-black">Mandate document:</span> {selectedListing.mandateDocumentStatus || "Not Provided"}</p>
                           <p><span className="font-black">Name:</span> {getListingContactName(selectedListing)}</p>
                           {selectedListing.companyName ? <p><span className="font-black">Company:</span> {selectedListing.companyName}</p> : null}
                         </div>

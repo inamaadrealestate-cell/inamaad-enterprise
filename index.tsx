@@ -996,6 +996,107 @@ export default function App() {
     (member) => member.isActive && member.role !== "Viewer"
   );
   const activeStaffCount = staffMembers.filter((member) => member.isActive).length;
+  const todayKey = new Date().toISOString().slice(0, 10);
+
+  const leadFollowUpItems = useMemo(() => {
+    const items = [
+      ...propertyInquiries.map((inquiry) => ({
+        id: inquiry.id,
+        kind: "property_inquiries" as LeadKind,
+        source: "Property inquiry",
+        title: inquiry.listingTitle,
+        name: inquiry.name,
+        phone: inquiry.phone,
+        email: inquiry.email,
+        status: inquiry.status || "New",
+        priority: inquiry.priority || "Normal",
+        followUpDate: inquiry.followUpDate || "",
+        lastContactedAt: inquiry.lastContactedAt || "",
+        assignedToEmail: inquiry.assignedToEmail || "",
+        createdAt: inquiry.createdAt,
+      })),
+      ...inspectionBookings.map((booking) => ({
+        id: booking.id,
+        kind: "inspection_bookings" as LeadKind,
+        source: "Inspection booking",
+        title: booking.listingTitle,
+        name: booking.name,
+        phone: booking.phone,
+        email: booking.email,
+        status: booking.status || "New",
+        priority: booking.priority || "Normal",
+        followUpDate: booking.followUpDate || "",
+        lastContactedAt: booking.lastContactedAt || "",
+        assignedToEmail: booking.assignedToEmail || "",
+        createdAt: booking.createdAt,
+      })),
+      ...contactMessages.map((message) => ({
+        id: message.id,
+        kind: "contact_messages" as LeadKind,
+        source: "Contact message",
+        title: message.subject || "General enquiry",
+        name: message.name,
+        phone: message.phone,
+        email: message.email,
+        status: message.status || "New",
+        priority: message.priority || "Normal",
+        followUpDate: message.followUpDate || "",
+        lastContactedAt: message.lastContactedAt || "",
+        assignedToEmail: message.assignedToEmail || "",
+        createdAt: message.createdAt,
+      })),
+      ...investorRequests.map((request) => ({
+        id: request.id,
+        kind: "investor_requests" as LeadKind,
+        source: "Investor request",
+        title: request.interest,
+        name: request.name,
+        phone: request.phone,
+        email: request.email,
+        status: request.status || "New",
+        priority: request.priority || "Normal",
+        followUpDate: request.followUpDate || "",
+        lastContactedAt: request.lastContactedAt || "",
+        assignedToEmail: request.assignedToEmail || "",
+        createdAt: request.createdAt,
+      })),
+    ];
+
+    return items
+      .filter((item) => item.status !== "Closed" && item.status !== "Completed" && item.status !== "Cancelled")
+      .sort((first, second) => {
+        const priorityOrder: Record<LeadPriority, number> = {
+          Urgent: 4,
+          High: 3,
+          Normal: 2,
+          Low: 1,
+        };
+
+        const firstDate = first.followUpDate || "9999-12-31";
+        const secondDate = second.followUpDate || "9999-12-31";
+
+        if (firstDate !== secondDate) return firstDate.localeCompare(secondDate);
+
+        return priorityOrder[second.priority] - priorityOrder[first.priority];
+      });
+  }, [propertyInquiries, inspectionBookings, contactMessages, investorRequests]);
+
+  const overdueFollowUps = leadFollowUpItems.filter(
+    (item) => item.followUpDate && item.followUpDate < todayKey
+  );
+  const todayFollowUps = leadFollowUpItems.filter(
+    (item) => item.followUpDate === todayKey
+  );
+  const urgentFollowUps = leadFollowUpItems.filter(
+    (item) => item.priority === "Urgent" || item.priority === "High"
+  );
+  const unassignedLeads = leadFollowUpItems.filter(
+    (item) => !item.assignedToEmail
+  );
+  const nextFollowUps = leadFollowUpItems.filter(
+    (item) => item.followUpDate && item.followUpDate >= todayKey
+  );
+
   const [topLocation, topLocationCount] = getTopCount(
     listings.map((listing) => listing.location.split(",")[0]?.trim() || listing.location)
   );
@@ -5855,6 +5956,108 @@ export default function App() {
                   <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                     <div>
                       <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Lead command center
+                      </p>
+                      <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                        Follow-up dashboard
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        Track overdue buyers, today’s follow-ups, urgent leads, and unassigned opportunities in one place.
+                      </p>
+                    </div>
+
+                    <div className="rounded-full bg-[#0d1c38] px-5 py-2 text-xs font-black text-white">
+                      {leadFollowUpItems.length} active leads
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 md:grid-cols-4">
+                    <div className="rounded-2xl bg-red-50 p-5">
+                      <p className="text-2xl font-black text-red-700">{overdueFollowUps.length}</p>
+                      <p className="text-sm font-bold text-red-600">Overdue follow-ups</p>
+                    </div>
+                    <div className="rounded-2xl bg-amber-50 p-5">
+                      <p className="text-2xl font-black text-amber-700">{todayFollowUps.length}</p>
+                      <p className="text-sm font-bold text-amber-600">Due today</p>
+                    </div>
+                    <div className="rounded-2xl bg-orange-50 p-5">
+                      <p className="text-2xl font-black text-orange-700">{urgentFollowUps.length}</p>
+                      <p className="text-sm font-bold text-orange-600">High / urgent</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-100 p-5">
+                      <p className="text-2xl font-black text-[#0d1c38]">{unassignedLeads.length}</p>
+                      <p className="text-sm font-bold text-slate-500">Unassigned</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200 p-5">
+                      <h4 className="font-black text-[#0d1c38]">Needs attention now</h4>
+                      <div className="mt-4 grid gap-3">
+                        {[...overdueFollowUps, ...todayFollowUps].slice(0, 8).length === 0 && (
+                          <p className="rounded-2xl bg-[#f7f8fb] p-4 text-sm text-slate-500">
+                            No overdue or due-today follow-ups. Good work.
+                          </p>
+                        )}
+
+                        {[...overdueFollowUps, ...todayFollowUps].slice(0, 8).map((item) => (
+                          <div key={`${item.kind}-${item.id}`} className="rounded-2xl bg-[#f7f8fb] p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-[#d49613]">
+                                {item.source}
+                              </span>
+                              <span className={`rounded-full px-3 py-1 text-[11px] font-black ${item.priority === "Urgent" ? "bg-red-100 text-red-700" : item.priority === "High" ? "bg-orange-100 text-orange-700" : "bg-slate-200 text-slate-600"}`}>
+                                {item.priority}
+                              </span>
+                              <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-slate-500">
+                                {item.followUpDate < todayKey ? "Overdue" : "Today"}
+                              </span>
+                            </div>
+                            <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
+                            <p className="mt-1 text-sm text-slate-500">{item.title}</p>
+                            <p className="mt-2 text-xs font-bold text-slate-400">
+                              Follow-up: {formatDate(item.followUpDate)} • Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 p-5">
+                      <h4 className="font-black text-[#0d1c38]">Next scheduled follow-ups</h4>
+                      <div className="mt-4 grid gap-3">
+                        {nextFollowUps.slice(0, 8).length === 0 && (
+                          <p className="rounded-2xl bg-[#f7f8fb] p-4 text-sm text-slate-500">
+                            No upcoming follow-up dates yet. Set follow-up dates inside each lead.
+                          </p>
+                        )}
+
+                        {nextFollowUps.slice(0, 8).map((item) => (
+                          <div key={`${item.kind}-${item.id}`} className="rounded-2xl bg-[#f7f8fb] p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-[#d49613]">
+                                {item.source}
+                              </span>
+                              <span className={`rounded-full px-3 py-1 text-[11px] font-black ${item.priority === "Urgent" ? "bg-red-100 text-red-700" : item.priority === "High" ? "bg-orange-100 text-orange-700" : "bg-slate-200 text-slate-600"}`}>
+                                {item.priority}
+                              </span>
+                            </div>
+                            <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
+                            <p className="mt-1 text-sm text-slate-500">{item.title}</p>
+                            <p className="mt-2 text-xs font-bold text-slate-400">
+                              Follow-up: {formatDate(item.followUpDate)} • Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
                         Staff notification center
                       </p>
                       <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
@@ -7102,4 +7305,4 @@ export default function App() {
   );
 }
 
-// Follow-up reminders upgrade: priority, follow_up_date, last_contacted_at.
+// Lead command center upgrade: follow-up dashboard for overdue, due-today, urgent, and unassigned leads.

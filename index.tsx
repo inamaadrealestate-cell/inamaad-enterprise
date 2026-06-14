@@ -1681,6 +1681,10 @@ export default function App() {
     mandateDocumentUrl: "",
   });
 
+  const [postMode, setPostMode] = useState<"property" | "jv">("property");
+  const [postFormRenderKey, setPostFormRenderKey] = useState(0);
+  const postFormIsJointVenture = postMode === "jv";
+
   const [postImageFile, setPostImageFile] = useState<File | null>(null);
   const [postGalleryFiles, setPostGalleryFiles] = useState<File[]>([]);
   const [postDocumentFile, setPostDocumentFile] = useState<File | null>(null);
@@ -2282,7 +2286,7 @@ export default function App() {
       // Refresh after ANY click/tap, including disabled buttons, modal clicks,
       // empty space clicks, touch taps, and clicks where React handlers stop bubbling.
       // Capture-phase pointer events make this stronger than a normal onClick.
-      scheduleAutoRefresh(250);
+      scheduleAutoRefresh(0);
     };
 
     const clickEvents: Array<keyof WindowEventMap> = [
@@ -3257,6 +3261,70 @@ export default function App() {
     setModal("edit");
   }
 
+  function switchPostSubmissionMode(mode: "property" | "jv") {
+    setPostMode(mode);
+    setPostFormRenderKey((current) => current + 1);
+    setPostImageFile(null);
+    setPostGalleryFiles([]);
+    setPostDocumentFile(null);
+
+    setPostForm((current) => {
+      if (mode === "jv") {
+        return {
+          ...current,
+          title: current.title || "JV Development Opportunity",
+          type: "Joint Venture",
+          category: "JV Partnership",
+          price: current.price,
+          bedrooms: "",
+          bathrooms: "",
+          toilets: "",
+          parkingSpaces: "",
+          propertySize: "",
+          furnishingStatus: "Not Specified",
+          propertyCondition: "Not Specified",
+          amenities: "",
+          jvStructure: current.jvStructure || "Landowner + Developer JV",
+          jvProjectStage: current.jvProjectStage || "Land Available",
+          jvDealStatus: current.jvDealStatus || "New JV",
+          yieldText: current.yieldText || "Structured JV partnership opportunity",
+        };
+      }
+
+      return {
+        ...current,
+        title: current.title === "JV Development Opportunity" ? "" : current.title,
+        type: isJointVentureListing(current) ? "Residential" : current.type || "Residential",
+        category:
+          current.category === "JV Partnership" || current.category.toLowerCase().includes("jv")
+            ? "For Sale"
+            : current.category || "For Sale",
+        jvStructure: "Landowner + Developer JV",
+        jvLandContribution: "",
+        jvDeveloperRequirement: "",
+        jvInvestorRequirement: "",
+        jvSharingFormula: "",
+        jvProjectStage: "Land Available",
+        jvExpectedUnits: "",
+        jvEstimatedProjectCost: "",
+        jvCompletionTimeline: "",
+        jvTerms: "",
+        jvDealStatus: "New JV",
+        jvNextAction: "",
+        jvNextActionDate: "",
+        jvInternalNotes: "",
+      };
+    });
+
+    scheduleAutoRefresh(0);
+  }
+
+  function openPostModal(mode: "property" | "jv") {
+    switchPostSubmissionMode(mode);
+    setModal("post");
+    window.setTimeout(() => scheduleAutoRefresh(0), 0);
+  }
+
   async function submitListing(event: React.FormEvent) {
     event.preventDefault();
 
@@ -3275,7 +3343,7 @@ export default function App() {
           : await imageFileToBase64(postDocumentFile)
         : "";
 
-      const postIsJV = isJointVentureListing(postForm);
+      const postIsJV = postMode === "jv";
 
       const newListing: Omit<Listing, "id"> = {
         title: postForm.title,
@@ -3495,6 +3563,8 @@ export default function App() {
         publicContactVisibility: "Hide Phone",
         mandateStatus: "Not Confirmed",
       });
+      setPostMode("property");
+      setPostFormRenderKey((current) => current + 1);
       setPostImageFile(null);
       setPostGalleryFiles([]);
       setPostDocumentFile(null);
@@ -6205,7 +6275,7 @@ export default function App() {
               </div>
 
               <button
-                onClick={() => setModal("post")}
+                onClick={() => openPostModal("property")}
                 className="w-fit rounded-2xl bg-[#0d1c38] px-7 py-4 text-base font-bold text-white shadow-sm transition hover:bg-[#13284f]"
               >
                 Submit Property
@@ -6619,16 +6689,7 @@ export default function App() {
 
               <div className="mt-9 flex flex-col gap-4 sm:flex-row">
                 <button
-                  onClick={() => {
-                    setPostForm((current) => ({
-                      ...current,
-                      type: "Joint Venture",
-                      category: "JV Partnership",
-                      title: current.title || "JV Development Opportunity",
-                      jvDealStatus: "New JV",
-                    }));
-                    setModal("post");
-                  }}
+                  onClick={() => openPostModal("jv")}
                   className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-base font-black text-[#0d1c38] hover:bg-[#ffd45a]"
                 >
                   Submit JV Deal
@@ -7184,7 +7245,7 @@ export default function App() {
             )}
 
             {modal === "post" && (
-              <form onSubmit={submitListing} className="grid gap-4">
+              <form key={`post-${postMode}-${postFormRenderKey}`} onSubmit={submitListing} className="grid gap-4">
                 <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
                   <p className="font-black text-[#0d1c38]">Need help? Use examples like these:</p>
                   <p className="mt-2"><span className="font-black">Title:</span> 4 Bedroom Smart Duplex in Lekki Phase 1</p>
@@ -7196,15 +7257,15 @@ export default function App() {
                 <div className="grid gap-3 rounded-3xl border border-slate-200 bg-[#f7f8fb] p-3 sm:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() => setPostForm({ ...postForm, type: "Residential", category: "For Sale" })}
-                    className={`rounded-2xl px-5 py-3 text-sm font-black ${!isJointVentureListing(postForm) ? "bg-white text-[#0d1c38] shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
+                    onClick={() => switchPostSubmissionMode("property")}
+                    className={`rounded-2xl px-5 py-3 text-sm font-black ${!postFormIsJointVenture ? "bg-white text-[#0d1c38] shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
                   >
                     Property Listing
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPostForm({ ...postForm, type: "Joint Venture", category: "JV Partnership", jvDealStatus: "New JV" })}
-                    className={`rounded-2xl px-5 py-3 text-sm font-black ${isJointVentureListing(postForm) ? "bg-white text-[#0d1c38] shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
+                    onClick={() => switchPostSubmissionMode("jv")}
+                    className={`rounded-2xl px-5 py-3 text-sm font-black ${postFormIsJointVenture ? "bg-white text-[#0d1c38] shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
                   >
                     JV Deal
                   </button>
@@ -7327,7 +7388,7 @@ export default function App() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
                     <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                      Price currency
+                      {postFormIsJointVenture ? "Estimated JV value / project cost" : "Price currency"}
                     </label>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
@@ -7354,9 +7415,14 @@ export default function App() {
 
                   <select
                     value={postForm.type}
-                    onChange={(event) =>
-                      setPostForm({ ...postForm, type: event.target.value })
-                    }
+                    onChange={(event) => {
+                      const nextType = event.target.value;
+                      if (nextType === "Joint Venture") {
+                        switchPostSubmissionMode("jv");
+                        return;
+                      }
+                      setPostForm({ ...postForm, type: nextType });
+                    }}
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     aria-label="Property type"
                   >
@@ -7430,12 +7496,17 @@ export default function App() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <select
                     value={postForm.category}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const nextPurpose = event.target.value;
+                      if (nextPurpose === "JV Partnership") {
+                        switchPostSubmissionMode("jv");
+                        return;
+                      }
                       setPostForm({
                         ...postForm,
-                        category: event.target.value,
-                      })
-                    }
+                        category: nextPurpose,
+                      });
+                    }}
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     aria-label="Listing purpose"
                   >
@@ -7494,7 +7565,7 @@ export default function App() {
                   />
                 </div>
 
-                {isJointVentureListing(postForm) ? (
+                {postFormIsJointVenture ? (
                   <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
                     <p className="text-sm font-black text-[#0d1c38]">Joint venture project profile</p>
                     <p className="mt-1 text-xs leading-5 text-slate-600">
@@ -8171,7 +8242,7 @@ export default function App() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
                     <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                      Price currency
+                      {postFormIsJointVenture ? "Estimated JV value / project cost" : "Price currency"}
                     </label>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">

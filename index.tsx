@@ -935,7 +935,21 @@ export default function App() {
   const conversionReadyLeads = propertyInquiries.length + contactMessages.length + inspectionBookings.length;
   const unreadNotifications = staffNotifications.filter((notification) => !notification.isRead).length;
   const currentStaffMember = staffMembers.find((member) => member.email === user?.email);
-  const isSuperAdmin = !usesDatabase || currentStaffMember?.role === "Super Admin";
+  const currentStaffRole: StaffRole = usesDatabase
+    ? currentStaffMember?.role || "Viewer"
+    : "Super Admin";
+  const hasAnyStaffRole = (allowedRoles: StaffRole[]) =>
+    !usesDatabase || allowedRoles.includes(currentStaffRole);
+
+  const isSuperAdmin = hasAnyStaffRole(["Super Admin"]);
+  const canManageStaff = hasAnyStaffRole(["Super Admin"]);
+  const canEditListings = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
+  const canApproveListings = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
+  const canDeleteListings = hasAnyStaffRole(["Super Admin", "Admin"]);
+  const canManageLeads = hasAnyStaffRole(["Super Admin", "Admin", "Manager", "Agent"]);
+  const canDeleteLeads = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
+  const canOpenDocuments = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
+  const canExportReports = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
   const activeStaffCount = staffMembers.filter((member) => member.isActive).length;
   const [topLocation, topLocationCount] = getTopCount(
     listings.map((listing) => listing.location.split(",")[0]?.trim() || listing.location)
@@ -1440,6 +1454,11 @@ export default function App() {
   }
 
   async function openSecurePropertyDocument(documentFileUrl?: string) {
+    if (!canOpenDocuments) {
+      showSuccess("Your role cannot open secure title documents.");
+      return;
+    }
+
     if (!documentFileUrl) {
       showSuccess("No title document file has been uploaded for this listing.");
       return;
@@ -1564,6 +1583,11 @@ export default function App() {
   }
 
   function openEditListing(listing: Listing) {
+    if (!canEditListings) {
+      showSuccess("Your role cannot edit property listings.");
+      return;
+    }
+
     setEditingListing(listing);
     setSelectedListing(null);
     setEditImageFile(null);
@@ -1700,6 +1724,11 @@ export default function App() {
 
   async function submitEditListing(event: React.FormEvent) {
     event.preventDefault();
+
+    if (!canEditListings) {
+      showSuccess("Your role cannot save listing changes.");
+      return;
+    }
 
     if (!editingListing) return;
 
@@ -2448,6 +2477,11 @@ export default function App() {
   }
 
   async function approveListing(id: number) {
+    if (!canApproveListings) {
+      showSuccess("Your role cannot approve property listings.");
+      return;
+    }
+
     const listingToApprove = listings.find((listing) => listing.id === id);
 
     if (listingToApprove && !isListingVerificationComplete(listingToApprove)) {
@@ -2487,6 +2521,11 @@ export default function App() {
   }
 
   async function deleteListing(id: number) {
+    if (!canDeleteListings) {
+      showSuccess("Your role cannot delete property listings.");
+      return;
+    }
+
     const listingToDelete = listings.find((listing) => listing.id === id);
 
     if (supabase) {
@@ -2514,6 +2553,11 @@ export default function App() {
   }
 
   async function updateInvestorRequestStatus(id: number, status: LeadStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update lead status.");
+      return;
+    }
+
     const requestToUpdate = investorRequests.find((request) => request.id === id);
 
     if (supabase) {
@@ -2548,6 +2592,11 @@ export default function App() {
   }
 
   async function updatePropertyInquiryStatus(id: number, status: LeadStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update lead status.");
+      return;
+    }
+
     const inquiryToUpdate = propertyInquiries.find((inquiry) => inquiry.id === id);
 
     if (supabase) {
@@ -2582,6 +2631,11 @@ export default function App() {
   }
 
   async function deleteInvestorRequest(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete leads.");
+      return;
+    }
+
     const requestToDelete = investorRequests.find((request) => request.id === id);
 
     if (supabase) {
@@ -2614,6 +2668,11 @@ export default function App() {
   }
 
   async function deletePropertyInquiry(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete leads.");
+      return;
+    }
+
     const inquiryToDelete = propertyInquiries.find((inquiry) => inquiry.id === id);
 
     if (supabase) {
@@ -2646,6 +2705,11 @@ export default function App() {
   }
 
   async function updateContactMessageStatus(id: number, status: LeadStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update lead status.");
+      return;
+    }
+
     const messageToUpdate = contactMessages.find((message) => message.id === id);
 
     if (supabase) {
@@ -2680,6 +2744,11 @@ export default function App() {
   }
 
   async function deleteContactMessage(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete leads.");
+      return;
+    }
+
     const messageToDelete = contactMessages.find((message) => message.id === id);
 
     if (supabase) {
@@ -2712,6 +2781,11 @@ export default function App() {
   }
 
   async function updateInspectionBookingStatus(id: number, status: InspectionStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update inspection booking status.");
+      return;
+    }
+
     const bookingToUpdate = inspectionBookings.find((booking) => booking.id === id);
 
     if (supabase) {
@@ -2746,6 +2820,11 @@ export default function App() {
   }
 
   async function deleteInspectionBooking(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete bookings.");
+      return;
+    }
+
     const bookingToDelete = inspectionBookings.find((booking) => booking.id === id);
 
     if (supabase) {
@@ -2802,6 +2881,11 @@ export default function App() {
   }
 
   function exportListingsCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
     downloadCsv(
       "inamaad-listings.csv",
       [
@@ -2848,6 +2932,11 @@ export default function App() {
   }
 
   function exportInvestorRequestsCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
     downloadCsv(
       "inamaad-investor-requests.csv",
       [
@@ -2876,6 +2965,11 @@ export default function App() {
   }
 
   function exportPropertyInquiriesCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
     downloadCsv(
       "inamaad-property-inquiries.csv",
       [
@@ -2904,6 +2998,11 @@ export default function App() {
   }
 
   function exportContactMessagesCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
     downloadCsv(
       "inamaad-contact-messages.csv",
       [
@@ -2930,6 +3029,11 @@ export default function App() {
   }
 
   function exportInspectionBookingsCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
     downloadCsv(
       "inamaad-inspection-bookings.csv",
       [
@@ -2962,6 +3066,11 @@ export default function App() {
   }
 
   function exportPropertyViewsCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
     downloadCsv(
       "inamaad-property-views.csv",
       ["ID", "Listing ID", "Listing Title", "Viewed At"],
@@ -2975,6 +3084,11 @@ export default function App() {
   }
 
   function exportBusinessReportCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
     downloadCsv(
       "inamaad-business-report.csv",
       ["Metric", "Value"],
@@ -4580,9 +4694,11 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => openSecurePropertyDocument(editForm.documentFileUrl)}
-                        className="mt-4 inline-flex rounded-2xl bg-[#0d1c38] px-4 py-3 text-xs font-black text-white"
+                        disabled={!canOpenDocuments}
+                        title={!canOpenDocuments ? "Your role cannot open secure documents" : "Open secure title document"}
+                        className="mt-4 inline-flex rounded-2xl bg-[#0d1c38] px-4 py-3 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                       >
-                        Open secure document
+                        {canOpenDocuments ? "Open secure document" : "Secure document locked"}
                       </button>
                     )}
                     <input
@@ -5255,6 +5371,13 @@ export default function App() {
                   </button>
                 </div>
 
+                <div className="rounded-[2rem] border border-[#d49613]/30 bg-amber-50 p-5 text-sm text-amber-900">
+                  <p className="font-black text-[#0d1c38]">Current staff role: {currentStaffRole}</p>
+                  <p className="mt-2 leading-6">
+                    Access enabled: {canEditListings ? "edit listings" : "read listings"}, {canApproveListings ? "approve listings" : "no approval"}, {canManageLeads ? "manage leads" : "read-only leads"}, {canOpenDocuments ? "secure documents" : "documents locked"}, {canExportReports ? "reports" : "no report export"}.
+                  </p>
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-9">
                   <div className="rounded-2xl bg-[#f7f8fb] p-5">
                     <p className="text-2xl font-black text-[#0d1c38]">
@@ -5905,23 +6028,25 @@ export default function App() {
                           <div className="flex gap-3">
                             <button
                               onClick={() => openEditListing(listing)}
-                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                              disabled={!canEditListings}
+                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                               Edit
                             </button>
 
                             <button
                               onClick={() => approveListing(listing.id)}
-                              disabled={!isListingVerificationComplete(listing)}
-                              title={!isListingVerificationComplete(listing) ? "Complete verification checklist first" : "Approve listing"}
+                              disabled={!canApproveListings || !isListingVerificationComplete(listing)}
+                              title={!canApproveListings ? "Your role cannot approve listings" : !isListingVerificationComplete(listing) ? "Complete verification checklist first" : "Approve listing"}
                               className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
-                              {isListingVerificationComplete(listing) ? "Approve" : "Verify first"}
+                              {!canApproveListings ? "No approve access" : isListingVerificationComplete(listing) ? "Approve" : "Verify first"}
                             </button>
 
                             <button
                               onClick={() => deleteListing(listing.id)}
-                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                              disabled={!canDeleteListings}
+                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                               Delete
                             </button>
@@ -6022,7 +6147,8 @@ export default function App() {
                                 onClick={() =>
                                   updatePropertyInquiryStatus(inquiry.id, "New")
                                 }
-                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 New
                               </button>
@@ -6034,7 +6160,8 @@ export default function App() {
                                     "Contacted"
                                   )
                                 }
-                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 Contacted
                               </button>
@@ -6043,14 +6170,16 @@ export default function App() {
                                 onClick={() =>
                                   updatePropertyInquiryStatus(inquiry.id, "Closed")
                                 }
-                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 Closed
                               </button>
 
                               <button
                                 onClick={() => deletePropertyInquiry(inquiry.id)}
-                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                                disabled={!canDeleteLeads}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 Delete
                               </button>
@@ -6154,35 +6283,40 @@ export default function App() {
 
                               <button
                                 onClick={() => updateInspectionBookingStatus(booking.id, "New")}
-                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 New
                               </button>
 
                               <button
                                 onClick={() => updateInspectionBookingStatus(booking.id, "Scheduled")}
-                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 Scheduled
                               </button>
 
                               <button
                                 onClick={() => updateInspectionBookingStatus(booking.id, "Completed")}
-                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 Completed
                               </button>
 
                               <button
                                 onClick={() => updateInspectionBookingStatus(booking.id, "Cancelled")}
-                                className="rounded-full bg-red-100 px-4 py-2 text-xs font-black text-red-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-red-100 px-4 py-2 text-xs font-black text-red-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 Cancelled
                               </button>
 
                               <button
                                 onClick={() => deleteInspectionBooking(booking.id)}
-                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                                disabled={!canDeleteLeads}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 Delete
                               </button>
@@ -6286,7 +6420,8 @@ export default function App() {
 
                               <button
                                 onClick={() => updateContactMessageStatus(message.id, "New")}
-                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 New
                               </button>
@@ -6295,21 +6430,24 @@ export default function App() {
                                 onClick={() =>
                                   updateContactMessageStatus(message.id, "Contacted")
                                 }
-                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 Contacted
                               </button>
 
                               <button
                                 onClick={() => updateContactMessageStatus(message.id, "Closed")}
-                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 Closed
                               </button>
 
                               <button
                                 onClick={() => deleteContactMessage(message.id)}
-                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                                disabled={!canDeleteLeads}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 Delete
                               </button>
@@ -6409,7 +6547,8 @@ export default function App() {
                                 onClick={() =>
                                   updateInvestorRequestStatus(request.id, "New")
                                 }
-                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 New
                               </button>
@@ -6421,7 +6560,8 @@ export default function App() {
                                     "Contacted"
                                   )
                                 }
-                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 Contacted
                               </button>
@@ -6430,14 +6570,16 @@ export default function App() {
                                 onClick={() =>
                                   updateInvestorRequestStatus(request.id, "Closed")
                                 }
-                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700"
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                               >
                                 Closed
                               </button>
 
                               <button
                                 onClick={() => deleteInvestorRequest(request.id)}
-                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                                disabled={!canDeleteLeads}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 Delete
                               </button>
@@ -6484,14 +6626,16 @@ export default function App() {
                           <div className="flex gap-3">
                             <button
                               onClick={() => openEditListing(listing)}
-                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                              disabled={!canEditListings}
+                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                               Edit
                             </button>
 
                             <button
                               onClick={() => deleteListing(listing.id)}
-                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
+                              disabled={!canDeleteListings}
+                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                               Delete
                             </button>

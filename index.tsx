@@ -168,6 +168,65 @@ const nigeriaLocationLabels = [
   ...nigeriaStateOptions,
 ];
 
+const propertyTypeOptions = [
+  "Residential",
+  "Apartment / Flat",
+  "Mini Flat",
+  "Self Contain",
+  "Studio Apartment",
+  "Bungalow",
+  "Terrace",
+  "Terrace Duplex",
+  "Duplex",
+  "Semi-detached Duplex",
+  "Detached Duplex",
+  "Mansion",
+  "Penthouse",
+  "Short-let Apartment",
+  "Land",
+  "Estate Plot",
+  "Farm Land",
+  "Commercial",
+  "Office Space",
+  "Shop / Retail Space",
+  "Plaza",
+  "Warehouse",
+  "Hotel / Guest House",
+  "Mixed-use",
+  "Joint Venture",
+  "Estate Development",
+];
+
+const listingPurposeOptions = [
+  "For Sale",
+  "For Rent",
+  "Short Let",
+  "Lease",
+  "Commercial Lease",
+  "Investment",
+  "Land Banking",
+  "Joint Venture",
+  "JV Partnership",
+  "Off-plan",
+  "Distress Sale",
+];
+
+const investorInterestOptions = [
+  "Residential",
+  "Rental Income / For Rent",
+  "Apartment / Flat",
+  "Bungalow",
+  "Terrace",
+  "Terrace Duplex",
+  "Duplex",
+  "Land Banking",
+  "Commercial Property",
+  "Joint Venture",
+  "Short-let Income Property",
+  "Estate Development",
+  "Off-plan Investment",
+];
+
 const seedListings: Listing[] = [
   {
     id: 1,
@@ -578,6 +637,7 @@ export default function App() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [propertyType, setPropertyType] = useState("All");
+  const [listingPurpose, setListingPurpose] = useState("All Purposes");
   const [locationFilter, setLocationFilter] = useState("All Locations");
   const [minValueFilter, setMinValueFilter] = useState("");
   const [maxValueFilter, setMaxValueFilter] = useState("");
@@ -753,6 +813,9 @@ export default function App() {
         const matchesType =
           propertyType === "All" || listing.type === propertyType;
 
+        const matchesPurpose =
+          listingPurpose === "All Purposes" || listing.category === listingPurpose;
+
         const matchesLocation =
           locationFilter === "All Locations" ||
           listing.location.toLowerCase().includes(locationFilter.toLowerCase());
@@ -763,6 +826,7 @@ export default function App() {
         return (
           matchesSearch &&
           matchesType &&
+          matchesPurpose &&
           matchesLocation &&
           matchesMinValue &&
           matchesMaxValue
@@ -799,6 +863,7 @@ export default function App() {
     listings,
     query,
     propertyType,
+    listingPurpose,
     locationFilter,
     minValueFilter,
     maxValueFilter,
@@ -2407,7 +2472,7 @@ export default function App() {
               </p>
 
               <div className="mt-8 max-w-6xl rounded-[24px] bg-white p-4 shadow-2xl">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr_1fr_1.1fr]">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1.1fr]">
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
@@ -2422,10 +2487,21 @@ export default function App() {
                     className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
                   >
                     <option>All</option>
-                    <option>Residential</option>
-                    <option>Land</option>
-                    <option>Commercial</option>
-                    <option>Joint Venture</option>
+                    {propertyTypeOptions.map((type) => (
+                      <option key={type}>{type}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={listingPurpose}
+                    onChange={(event) => setListingPurpose(event.target.value)}
+                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
+                    aria-label="Listing purpose"
+                  >
+                    <option>All Purposes</option>
+                    {listingPurposeOptions.map((purpose) => (
+                      <option key={purpose}>{purpose}</option>
+                    ))}
                   </select>
 
                   <select
@@ -2531,8 +2607,15 @@ export default function App() {
               {[
                 "All",
                 "Residential",
+                "Apartment / Flat",
+                "Bungalow",
+                "Terrace Duplex",
+                "Duplex",
                 "Land",
                 "Commercial",
+                "Office Space",
+                "Shop / Retail Space",
+                "Warehouse",
                 "Joint Venture",
               ].map((item) => (
                 <button
@@ -2564,6 +2647,7 @@ export default function App() {
                   onClick={() => {
                     setQuery("");
                     setPropertyType("All");
+                    setListingPurpose("All Purposes");
                     setLocationFilter("All Locations");
                     setMinValueFilter("");
                     setMaxValueFilter("");
@@ -2575,7 +2659,7 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+              <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-6">
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
@@ -2601,6 +2685,18 @@ export default function App() {
                   placeholder="Max value"
                   className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
                 />
+
+                <select
+                  value={listingPurpose}
+                  onChange={(event) => setListingPurpose(event.target.value)}
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                  aria-label="Listing purpose"
+                >
+                  <option>All Purposes</option>
+                  {listingPurposeOptions.map((purpose) => (
+                    <option key={purpose}>{purpose}</option>
+                  ))}
+                </select>
 
                 <select
                   value={sortMode}
@@ -3425,6 +3521,7 @@ export default function App() {
                   <p className="mt-2"><span className="font-black">Title:</span> 4 Bedroom Smart Duplex in Lekki Phase 1</p>
                   <p><span className="font-black">Investment highlight:</span> Estimated 14% yearly appreciation with strong rental demand</p>
                   <p><span className="font-black">Opportunity:</span> A verified property in a fast-growing location, suitable for rental income, resale value, or long-term investment.</p>
+                  <p className="mt-2 rounded-xl bg-white px-3 py-2 text-slate-600"><span className="font-black text-[#0d1c38]">Quick guide:</span> choose the building/asset under Property type, then choose For Sale, For Rent, Short Let, Lease, Investment, or JV under Listing purpose.</p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <input
@@ -3433,7 +3530,7 @@ export default function App() {
                     onChange={(event) =>
                       setPostForm({ ...postForm, title: event.target.value })
                     }
-                    placeholder="Property title, e.g. 4 Bedroom Duplex in Lekki Phase 1"
+                    placeholder="Property title, e.g. 4 Bedroom Terrace Duplex in Lekki Phase 1"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
@@ -3486,11 +3583,11 @@ export default function App() {
                       setPostForm({ ...postForm, type: event.target.value })
                     }
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    aria-label="Property type"
                   >
-                    <option>Residential</option>
-                    <option>Land</option>
-                    <option>Commercial</option>
-                    <option>Joint Venture</option>
+                    {propertyTypeOptions.map((type) => (
+                      <option key={type}>{type}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -3504,12 +3601,11 @@ export default function App() {
                       })
                     }
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    aria-label="Listing purpose"
                   >
-                    <option>For Sale</option>
-                    <option>Investment</option>
-                    <option>JV</option>
-                    <option>Land Banking</option>
-                    <option>Short-let</option>
+                    {listingPurposeOptions.map((purpose) => (
+                      <option key={purpose}>{purpose}</option>
+                    ))}
                   </select>
 
                   <input
@@ -3619,7 +3715,7 @@ export default function App() {
                     onChange={(event) =>
                       setEditForm({ ...editForm, title: event.target.value })
                     }
-                    placeholder="Property title, e.g. 4 Bedroom Duplex in Lekki Phase 1"
+                    placeholder="Property title, e.g. 4 Bedroom Terrace Duplex in Lekki Phase 1"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
@@ -3669,11 +3765,11 @@ export default function App() {
                       setEditForm({ ...editForm, type: event.target.value })
                     }
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    aria-label="Property type"
                   >
-                    <option>Residential</option>
-                    <option>Land</option>
-                    <option>Commercial</option>
-                    <option>Joint Venture</option>
+                    {propertyTypeOptions.map((type) => (
+                      <option key={type}>{type}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -3684,12 +3780,11 @@ export default function App() {
                       setEditForm({ ...editForm, category: event.target.value })
                     }
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    aria-label="Listing purpose"
                   >
-                    <option>For Sale</option>
-                    <option>Investment</option>
-                    <option>JV</option>
-                    <option>Land Banking</option>
-                    <option>Short-let</option>
+                    {listingPurposeOptions.map((purpose) => (
+                      <option key={purpose}>{purpose}</option>
+                    ))}
                   </select>
 
                   <select
@@ -3883,11 +3978,9 @@ export default function App() {
                   }
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 >
-                  <option>Residential</option>
-                  <option>Land</option>
-                  <option>Commercial</option>
-                  <option>Joint Venture</option>
-                  <option>Short-let Income Property</option>
+                  {investorInterestOptions.map((interest) => (
+                    <option key={interest}>{interest}</option>
+                  ))}
                 </select>
 
                 <textarea

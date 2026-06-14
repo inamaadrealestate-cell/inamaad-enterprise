@@ -337,6 +337,28 @@ function currencyToValue(value: string) {
   return Number(cleaned || 0);
 }
 
+function formatNairaFull(value: string | number) {
+  const numericValue =
+    typeof value === "number" ? value : currencyToValue(String(value));
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return "";
+
+  return `₦${numericValue.toLocaleString("en-NG")}`;
+}
+
+function formatPriceInput(value: string) {
+  const numericValue = currencyToValue(value);
+  return numericValue > 0 ? formatNairaFull(numericValue) : "";
+}
+
+function formatPricePreview(value: string) {
+  const numericValue = currencyToValue(value);
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return "₦0";
+
+  return `${formatNairaFull(numericValue)} (${formatNairaCompact(numericValue)})`;
+}
+
 function formatNairaCompact(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "₦0";
 
@@ -3425,15 +3447,32 @@ export default function App() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <input
-                    required
-                    value={postForm.price}
-                    onChange={(event) =>
-                      setPostForm({ ...postForm, price: event.target.value })
-                    }
-                    placeholder="Price, e.g. ₦50,000,000"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
+                    <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                      Price currency
+                    </label>
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
+                        ₦ NGN
+                      </span>
+                      <input
+                        required
+                        inputMode="numeric"
+                        value={postForm.price}
+                        onChange={(event) =>
+                          setPostForm({
+                            ...postForm,
+                            price: formatPriceInput(event.target.value),
+                          })
+                        }
+                        placeholder="Enter amount, e.g. 50000000"
+                        className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
+                      />
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-slate-500">
+                      Auto calculated: {formatPricePreview(postForm.price)}
+                    </p>
+                  </div>
 
                   <select
                     value={postForm.type}
@@ -3584,15 +3623,32 @@ export default function App() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <input
-                    required
-                    value={editForm.price}
-                    onChange={(event) =>
-                      setEditForm({ ...editForm, price: event.target.value })
-                    }
-                    placeholder="Price, e.g. ₦50,000,000"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
+                    <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                      Price currency
+                    </label>
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
+                        ₦ NGN
+                      </span>
+                      <input
+                        required
+                        inputMode="numeric"
+                        value={editForm.price}
+                        onChange={(event) =>
+                          setEditForm({
+                            ...editForm,
+                            price: formatPriceInput(event.target.value),
+                          })
+                        }
+                        placeholder="Enter amount, e.g. 50000000"
+                        className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
+                      />
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-slate-500">
+                      Auto calculated: {formatPricePreview(editForm.price)}
+                    </p>
+                  </div>
 
                   <select
                     value={editForm.type}

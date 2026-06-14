@@ -13,6 +13,7 @@ type ModalType =
 
 type ListingStatus = "Verified" | "Pending Review";
 type AvailabilityStatus = "Available" | "Reserved" | "Sold" | "Rented" | "Leased" | "Off Market";
+type JVDealStatus = "New JV" | "Under Review" | "Due Diligence" | "Negotiation" | "Agreement Drafting" | "Approved" | "Rejected" | "Closed";
 type LeadStatus = "New" | "Contacted" | "Closed";
 type LeadPriority = "Low" | "Normal" | "High" | "Urgent";
 type InspectionStatus = "New" | "Scheduled" | "Completed" | "Cancelled";
@@ -77,6 +78,10 @@ type Listing = {
   jvProposalDocumentUrl?: string;
   jvLandTitleStatus?: "Not Reviewed" | "Under Review" | "Verified" | "Rejected";
   jvDevelopmentApprovalStatus?: "Not Required" | "Not Reviewed" | "Under Review" | "Approved" | "Rejected";
+  jvDealStatus?: JVDealStatus;
+  jvNextAction?: string;
+  jvNextActionDate?: string;
+  jvInternalNotes?: string;
   neighborhoodOverview?: string;
   roadAccess?: string;
   powerSupply?: string;
@@ -440,6 +445,17 @@ const jvDevelopmentApprovalStatusOptions = [
   "Under Review",
   "Approved",
   "Rejected",
+];
+
+const jvDealStatusOptions: JVDealStatus[] = [
+  "New JV",
+  "Under Review",
+  "Due Diligence",
+  "Negotiation",
+  "Agreement Drafting",
+  "Approved",
+  "Rejected",
+  "Closed",
 ];
 
 function isJointVentureListing(input: { type?: string; category?: string }) {
@@ -1105,6 +1121,10 @@ function mapListingRow(row: any): Listing {
     jvProposalDocumentUrl: row.jv_proposal_document_url || "",
     jvLandTitleStatus: row.jv_land_title_status || "Not Reviewed",
     jvDevelopmentApprovalStatus: row.jv_development_approval_status || "Not Reviewed",
+    jvDealStatus: row.jv_deal_status || "New JV",
+    jvNextAction: row.jv_next_action || "",
+    jvNextActionDate: row.jv_next_action_date || "",
+    jvInternalNotes: row.jv_internal_notes || "",
     neighborhoodOverview: row.neighborhood_overview || "",
     roadAccess: row.road_access || "",
     powerSupply: row.power_supply || "",
@@ -1385,6 +1405,10 @@ function listingToRow(listing: Omit<Listing, "id">) {
     jv_proposal_document_url: listing.jvProposalDocumentUrl || null,
     jv_land_title_status: listing.jvLandTitleStatus || "Not Reviewed",
     jv_development_approval_status: listing.jvDevelopmentApprovalStatus || "Not Reviewed",
+    jv_deal_status: listing.jvDealStatus || "New JV",
+    jv_next_action: listing.jvNextAction || null,
+    jv_next_action_date: listing.jvNextActionDate || null,
+    jv_internal_notes: listing.jvInternalNotes || null,
     neighborhood_overview: listing.neighborhoodOverview || null,
     road_access: listing.roadAccess || null,
     power_supply: listing.powerSupply || null,
@@ -1569,6 +1593,10 @@ export default function App() {
     jvProposalDocumentUrl: "",
     jvLandTitleStatus: "Not Reviewed",
     jvDevelopmentApprovalStatus: "Not Reviewed",
+    jvDealStatus: "New JV" as JVDealStatus,
+    jvNextAction: "",
+    jvNextActionDate: "",
+    jvInternalNotes: "",
     neighborhoodOverview: "",
     roadAccess: "",
     powerSupply: "",
@@ -1664,6 +1692,10 @@ export default function App() {
     jvProposalDocumentUrl: "",
     jvLandTitleStatus: "Not Reviewed",
     jvDevelopmentApprovalStatus: "Not Reviewed",
+    jvDealStatus: "New JV" as JVDealStatus,
+    jvNextAction: "",
+    jvNextActionDate: "",
+    jvInternalNotes: "",
     neighborhoodOverview: "",
     roadAccess: "",
     powerSupply: "",
@@ -2948,6 +2980,10 @@ export default function App() {
       jvProposalDocumentUrl: listing.jvProposalDocumentUrl || "",
       jvLandTitleStatus: listing.jvLandTitleStatus || "Not Reviewed",
       jvDevelopmentApprovalStatus: listing.jvDevelopmentApprovalStatus || "Not Reviewed",
+      jvDealStatus: listing.jvDealStatus || "New JV",
+      jvNextAction: listing.jvNextAction || "",
+      jvNextActionDate: listing.jvNextActionDate || "",
+      jvInternalNotes: listing.jvInternalNotes || "",
       neighborhoodOverview: listing.neighborhoodOverview || "",
       roadAccess: listing.roadAccess || "",
       powerSupply: listing.powerSupply || "",
@@ -3070,6 +3106,10 @@ export default function App() {
         jvProposalDocumentUrl: postForm.jvProposalDocumentUrl,
         jvLandTitleStatus: postForm.jvLandTitleStatus as Listing["jvLandTitleStatus"],
         jvDevelopmentApprovalStatus: postForm.jvDevelopmentApprovalStatus as Listing["jvDevelopmentApprovalStatus"],
+        jvDealStatus: "New JV",
+        jvNextAction: isJointVentureListing(postForm) ? "Review JV structure and due diligence documents" : "",
+        jvNextActionDate: "",
+        jvInternalNotes: "",
         neighborhoodOverview: postForm.neighborhoodOverview,
         roadAccess: postForm.roadAccess,
         powerSupply: postForm.powerSupply,
@@ -3372,6 +3412,10 @@ export default function App() {
         jvProposalDocumentUrl,
         jvLandTitleStatus: editForm.jvLandTitleStatus as Listing["jvLandTitleStatus"],
         jvDevelopmentApprovalStatus: editForm.jvDevelopmentApprovalStatus as Listing["jvDevelopmentApprovalStatus"],
+        jvDealStatus: editForm.jvDealStatus as JVDealStatus,
+        jvNextAction: editForm.jvNextAction,
+        jvNextActionDate: editForm.jvNextActionDate,
+        jvInternalNotes: editForm.jvInternalNotes,
         neighborhoodOverview: editForm.neighborhoodOverview,
         roadAccess: editForm.roadAccess,
         powerSupply: editForm.powerSupply,
@@ -3478,6 +3522,10 @@ export default function App() {
               jvProposalDocumentUrl: updatedListing.jvProposalDocumentUrl,
               jvLandTitleStatus: updatedListing.jvLandTitleStatus,
               jvDevelopmentApprovalStatus: updatedListing.jvDevelopmentApprovalStatus,
+              jvDealStatus: updatedListing.jvDealStatus,
+              jvNextAction: updatedListing.jvNextAction,
+              jvNextActionDate: updatedListing.jvNextActionDate,
+              jvInternalNotes: updatedListing.jvInternalNotes,
               neighborhoodOverview: updatedListing.neighborhoodOverview,
               roadAccess: updatedListing.roadAccess,
               powerSupply: updatedListing.powerSupply,
@@ -6221,7 +6269,16 @@ export default function App() {
 
               <div className="mt-9 flex flex-col gap-4 sm:flex-row">
                 <button
-                  onClick={() => setModal("post")}
+                  onClick={() => {
+                    setPostForm((current) => ({
+                      ...current,
+                      type: "Joint Venture",
+                      category: "JV Partnership",
+                      title: current.title || "JV Development Opportunity",
+                      jvDealStatus: "New JV",
+                    }));
+                    setModal("post");
+                  }}
                   className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-base font-black text-[#0d1c38] hover:bg-[#ffd45a]"
                 >
                   Submit JV Deal
@@ -6779,6 +6836,24 @@ export default function App() {
                   <p><span className="font-black">Opportunity:</span> A verified property in a fast-growing location, suitable for rental income, resale value, or long-term investment.</p>
                   <p className="mt-2 rounded-xl bg-white px-3 py-2 text-slate-600"><span className="font-black text-[#0d1c38]">Quick guide:</span> choose the building/asset under Property type, then choose For Sale, For Rent, Short Let, Lease, Investment, or JV under Listing purpose.</p>
                 </div>
+
+                <div className="grid gap-3 rounded-3xl border border-slate-200 bg-[#f7f8fb] p-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setPostForm({ ...postForm, type: "Residential", category: "For Sale" })}
+                    className={`rounded-2xl px-5 py-3 text-sm font-black ${!isJointVentureListing(postForm) ? "bg-white text-[#0d1c38] shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
+                  >
+                    Property Listing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPostForm({ ...postForm, type: "Joint Venture", category: "JV Partnership", jvDealStatus: "New JV" })}
+                    className={`rounded-2xl px-5 py-3 text-sm font-black ${isJointVentureListing(postForm) ? "bg-white text-[#0d1c38] shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
+                  >
+                    JV Deal
+                  </button>
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <input
                     required
@@ -8006,6 +8081,44 @@ export default function App() {
                       className="mt-4 min-h-[110px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
 
+                    <div className="mt-5 rounded-3xl border border-purple-200 bg-purple-50 p-5">
+                      <p className="text-sm font-black text-[#0d1c38]">JV deal pipeline</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        Manage this JV separately from normal property listings: due diligence, negotiation, agreement drafting, approval, rejection, or closure.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        <select
+                          value={editForm.jvDealStatus}
+                          onChange={(event) => setEditForm({ ...editForm, jvDealStatus: event.target.value as JVDealStatus })}
+                          className="rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="JV deal status"
+                        >
+                          {jvDealStatusOptions.map((status) => (<option key={status}>{status}</option>))}
+                        </select>
+                        <input
+                          type="date"
+                          value={editForm.jvNextActionDate}
+                          onChange={(event) => setEditForm({ ...editForm, jvNextActionDate: event.target.value })}
+                          className="rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="JV next action date"
+                        />
+                        <input
+                          value={editForm.jvNextAction}
+                          onChange={(event) => setEditForm({ ...editForm, jvNextAction: event.target.value })}
+                          placeholder="Next action, e.g. schedule negotiation"
+                          className="rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        />
+                      </div>
+
+                      <textarea
+                        value={editForm.jvInternalNotes}
+                        onChange={(event) => setEditForm({ ...editForm, jvInternalNotes: event.target.value })}
+                        placeholder="Private JV internal notes, negotiation risks, pending requirements, legal points..."
+                        className="mt-4 min-h-[110px] w-full rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
                     <div className="mt-5 rounded-3xl border border-amber-300 bg-white p-5">
                       <p className="text-sm font-black text-[#0d1c38]">JV due-diligence documents</p>
                       <p className="mt-1 text-xs leading-5 text-slate-600">
@@ -8878,6 +8991,8 @@ export default function App() {
                           <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                             <p><span className="font-black">Land title review:</span> {selectedListing.jvLandTitleStatus || "Not Reviewed"}</p>
                             <p><span className="font-black">Development approval:</span> {selectedListing.jvDevelopmentApprovalStatus || "Not Reviewed"}</p>
+                            <p><span className="font-black">JV deal status:</span> {selectedListing.jvDealStatus || "New JV"}</p>
+                            {selectedListing.jvNextActionDate && (<p><span className="font-black">Next review:</span> {formatDate(selectedListing.jvNextActionDate)}</p>)}
                           </div>
                           <p className="mt-3 text-xs leading-5 text-slate-500">Private JV documents are reviewed by INAMAAD staff and are not displayed publicly.</p>
                         </div>

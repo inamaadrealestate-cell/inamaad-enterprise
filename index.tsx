@@ -14,6 +14,7 @@ type ModalType =
 type ListingStatus = "Verified" | "Pending Review";
 type LeadStatus = "New" | "Contacted" | "Closed";
 type InspectionStatus = "New" | "Scheduled" | "Completed" | "Cancelled";
+type LeadKind = "investor_requests" | "property_inquiries" | "contact_messages" | "inspection_bookings";
 
 type Listing = {
   id: number;
@@ -53,6 +54,8 @@ type InvestorRequest = {
   interest: string;
   message: string;
   status: LeadStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
   createdAt: string;
 };
 
@@ -65,6 +68,8 @@ type PropertyInquiry = {
   phone: string;
   message: string;
   status: LeadStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
   createdAt: string;
 };
 
@@ -76,6 +81,8 @@ type ContactMessage = {
   subject: string;
   message: string;
   status: LeadStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
   createdAt: string;
 };
 
@@ -90,6 +97,8 @@ type InspectionBooking = {
   preferredTime: string;
   message: string;
   status: InspectionStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
   createdAt: string;
 };
 
@@ -634,6 +643,8 @@ function mapInvestorRow(row: any): InvestorRequest {
     interest: row.interest,
     message: row.message || "",
     status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
     createdAt: row.created_at,
   };
 }
@@ -648,6 +659,8 @@ function mapPropertyInquiryRow(row: any): PropertyInquiry {
     phone: row.phone,
     message: row.message || "",
     status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
     createdAt: row.created_at,
   };
 }
@@ -670,6 +683,8 @@ function mapContactMessageRow(row: any): ContactMessage {
     subject: row.subject || "General enquiry",
     message: row.message || "",
     status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
     createdAt: row.created_at,
   };
 }
@@ -686,6 +701,8 @@ function mapInspectionBookingRow(row: any): InspectionBooking {
     preferredTime: row.preferred_time || "",
     message: row.message || "",
     status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
     createdAt: row.created_at,
   };
 }
@@ -950,6 +967,9 @@ export default function App() {
   const canDeleteLeads = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
   const canOpenDocuments = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
   const canExportReports = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
+  const assignableStaffMembers = staffMembers.filter(
+    (member) => member.isActive && member.role !== "Viewer"
+  );
   const activeStaffCount = staffMembers.filter((member) => member.isActive).length;
   const [topLocation, topLocationCount] = getTopCount(
     listings.map((listing) => listing.location.split(",")[0]?.trim() || listing.location)
@@ -2850,6 +2870,211 @@ export default function App() {
   }
 
 
+
+  function getAssignedStaffLabel(email?: string) {
+    if (!email) return "Unassigned";
+
+    const staffMember = staffMembers.find((member) => member.email === email);
+
+    if (!staffMember) return email;
+
+    return `${staffMember.fullName || staffMember.email} • ${staffMember.role}`;
+  }
+
+  function getLeadKindLabel(kind: LeadKind) {
+    if (kind === "investor_requests") return "Investor Request";
+    if (kind === "property_inquiries") return "Property Inquiry";
+    if (kind === "contact_messages") return "Contact Message";
+    return "Inspection Booking";
+  }
+
+  async function reloadLeadKind(kind: LeadKind) {
+    if (kind === "investor_requests") await loadDatabaseInvestorRequests();
+    if (kind === "property_inquiries") await loadDatabasePropertyInquiries();
+    if (kind === "contact_messages") await loadDatabaseContactMessages();
+    if (kind === "inspection_bookings") await loadDatabaseInspectionBookings();
+  }
+
+  function updateLocalLeadDraft(
+    kind: LeadKind,
+    id: number,
+    changes: { assignedToEmail?: string; staffNotes?: string }
+  ) {
+    if (kind === "investor_requests") {
+      setInvestorRequests((current) =>
+        current.map((request) =>
+          request.id === id ? { ...request, ...changes } : request
+        )
+      );
+    }
+
+    if (kind === "property_inquiries") {
+      setPropertyInquiries((current) =>
+        current.map((inquiry) =>
+          inquiry.id === id ? { ...inquiry, ...changes } : inquiry
+        )
+      );
+    }
+
+    if (kind === "contact_messages") {
+      setContactMessages((current) =>
+        current.map((message) =>
+          message.id === id ? { ...message, ...changes } : message
+        )
+      );
+    }
+
+    if (kind === "inspection_bookings") {
+      setInspectionBookings((current) =>
+        current.map((booking) =>
+          booking.id === id ? { ...booking, ...changes } : booking
+        )
+      );
+    }
+  }
+
+  async function updateLeadAssignment(
+    kind: LeadKind,
+    id: number,
+    assignedToEmail: string
+  ) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot assign leads.");
+      return;
+    }
+
+    const cleanEmail = assignedToEmail || "";
+
+    if (supabase) {
+      const { error } = await supabase
+        .from(kind)
+        .update({ assigned_to_email: cleanEmail || null })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to assign this lead. Check staff permissions.");
+        return;
+      }
+
+      await reloadLeadKind(kind);
+    } else {
+      updateLocalLeadDraft(kind, id, { assignedToEmail: cleanEmail });
+    }
+
+    await createAdminActivityLog(
+      cleanEmail ? "Assigned lead to staff" : "Unassigned lead",
+      getLeadKindLabel(kind),
+      String(id),
+      cleanEmail ? `Assigned to ${cleanEmail}.` : "Lead assignment removed."
+    );
+
+    showSuccess(cleanEmail ? `Lead assigned to ${cleanEmail}.` : "Lead unassigned.");
+  }
+
+  async function saveLeadStaffNotes(kind: LeadKind, id: number, staffNotes: string) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot save staff notes.");
+      return;
+    }
+
+    if (supabase) {
+      const { error } = await supabase
+        .from(kind)
+        .update({ staff_notes: staffNotes || null })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to save staff notes.");
+        return;
+      }
+
+      await reloadLeadKind(kind);
+    } else {
+      updateLocalLeadDraft(kind, id, { staffNotes });
+    }
+
+    await createAdminActivityLog(
+      "Updated staff lead notes",
+      getLeadKindLabel(kind),
+      String(id),
+      staffNotes || "Staff notes cleared."
+    );
+
+    showSuccess("Staff notes saved.");
+  }
+
+  function renderLeadAssignmentControls(
+    kind: LeadKind,
+    id: number,
+    assignedToEmail?: string,
+    staffNotes?: string
+  ) {
+    return (
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-[#f7f8fb] p-4">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Assigned staff
+            </span>
+            <select
+              value={assignedToEmail || ""}
+              onChange={(event) => updateLeadAssignment(kind, id, event.target.value)}
+              disabled={!canManageLeads || assignableStaffMembers.length === 0}
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              <option value="">Unassigned</option>
+              {assignableStaffMembers.map((member) => (
+                <option key={member.email} value={member.email}>
+                  {member.fullName || member.email} — {member.role}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="rounded-2xl bg-white p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Current owner
+            </p>
+            <p className="mt-2 text-sm font-black text-[#0d1c38]">
+              {getAssignedStaffLabel(assignedToEmail)}
+            </p>
+            {assignableStaffMembers.length === 0 && (
+              <p className="mt-1 text-xs font-bold text-red-500">
+                Add active staff members first.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <label className="mt-3 block">
+          <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+            Private staff notes
+          </span>
+          <textarea
+            value={staffNotes || ""}
+            onChange={(event) =>
+              updateLocalLeadDraft(kind, id, { staffNotes: event.target.value })
+            }
+            disabled={!canManageLeads}
+            rows={2}
+            placeholder="Example: Called client, prefers Lekki, follow up tomorrow."
+            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          />
+        </label>
+
+        <button
+          onClick={() => saveLeadStaffNotes(kind, id, staffNotes || "")}
+          disabled={!canManageLeads}
+          className="mt-3 rounded-full bg-[#0d1c38] px-5 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          Save staff notes
+        </button>
+      </div>
+    );
+  }
+
   function escapeCsvValue(value: unknown) {
     const text = String(value ?? "");
 
@@ -2947,6 +3172,8 @@ export default function App() {
         "Budget",
         "Interest",
         "Status",
+        "Assigned To",
+        "Staff Notes",
         "Message",
         "Created At",
       ],
@@ -2958,6 +3185,8 @@ export default function App() {
         request.budget,
         request.interest,
         request.status || "New",
+        request.assignedToEmail || "",
+        request.staffNotes || "",
         request.message || "",
         request.createdAt,
       ])
@@ -2980,6 +3209,8 @@ export default function App() {
         "Email",
         "Phone",
         "Status",
+        "Assigned To",
+        "Staff Notes",
         "Message",
         "Created At",
       ],
@@ -2991,6 +3222,8 @@ export default function App() {
         inquiry.email || "",
         inquiry.phone,
         inquiry.status || "New",
+        inquiry.assignedToEmail || "",
+        inquiry.staffNotes || "",
         inquiry.message || "",
         inquiry.createdAt,
       ])
@@ -3012,6 +3245,8 @@ export default function App() {
         "Phone",
         "Subject",
         "Status",
+        "Assigned To",
+        "Staff Notes",
         "Message",
         "Created At",
       ],
@@ -3022,6 +3257,8 @@ export default function App() {
         message.phone || "",
         message.subject || "General enquiry",
         message.status || "New",
+        message.assignedToEmail || "",
+        message.staffNotes || "",
         message.message || "",
         message.createdAt,
       ])
@@ -3046,6 +3283,8 @@ export default function App() {
         "Preferred Date",
         "Preferred Time",
         "Status",
+        "Assigned To",
+        "Staff Notes",
         "Message",
         "Created At",
       ],
@@ -3059,6 +3298,8 @@ export default function App() {
         booking.preferredDate || "",
         booking.preferredTime || "",
         booking.status || "New",
+        booking.assignedToEmail || "",
+        booking.staffNotes || "",
         booking.message || "",
         booking.createdAt,
       ])
@@ -6109,6 +6350,13 @@ export default function App() {
                               <p className="mt-2 text-xs font-bold text-slate-400">
                                 Submitted {formatDate(inquiry.createdAt)}
                               </p>
+
+                              {renderLeadAssignmentControls(
+                                "property_inquiries",
+                                inquiry.id,
+                                inquiry.assignedToEmail,
+                                inquiry.staffNotes
+                              )}
                             </div>
 
                             <div className="flex flex-wrap gap-2 md:justify-end">
@@ -6247,6 +6495,13 @@ export default function App() {
                               <p className="mt-2 text-xs font-bold text-slate-400">
                                 Submitted {formatDate(booking.createdAt)}
                               </p>
+
+                              {renderLeadAssignmentControls(
+                                "inspection_bookings",
+                                booking.id,
+                                booking.assignedToEmail,
+                                booking.staffNotes
+                              )}
                             </div>
 
                             <div className="flex flex-wrap gap-2 md:justify-end">
@@ -6380,6 +6635,13 @@ export default function App() {
                               <p className="mt-2 text-xs font-bold text-slate-400">
                                 Submitted {formatDate(message.createdAt)}
                               </p>
+
+                              {renderLeadAssignmentControls(
+                                "contact_messages",
+                                message.id,
+                                message.assignedToEmail,
+                                message.staffNotes
+                              )}
                             </div>
 
                             <div className="flex flex-wrap gap-2 md:justify-end">
@@ -6511,6 +6773,13 @@ export default function App() {
                               <p className="mt-2 text-xs font-bold text-slate-400">
                                 Submitted {formatDate(request.createdAt)}
                               </p>
+
+                              {renderLeadAssignmentControls(
+                                "investor_requests",
+                                request.id,
+                                request.assignedToEmail,
+                                request.staffNotes
+                              )}
                             </div>
 
                             <div className="flex flex-wrap gap-2 md:justify-end">

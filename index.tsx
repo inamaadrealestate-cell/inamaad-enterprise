@@ -31,6 +31,7 @@ type Listing = {
   documentTitle?: string;
   documentStatus?: string;
   documentDetails?: string;
+  documentFileUrl?: string;
   imageUrl?: string;
   featured?: boolean;
   featuredRank?: number;
@@ -552,6 +553,7 @@ function mapListingRow(row: any): Listing {
     documentTitle: row.document_title || "",
     documentStatus: row.document_status || "",
     documentDetails: row.document_details || "",
+    documentFileUrl: row.document_file_url || "",
     imageUrl: row.image_url || "",
     featured: Boolean(row.featured),
     featuredRank: Number(row.featured_rank || 0),
@@ -652,6 +654,7 @@ function listingToRow(listing: Omit<Listing, "id">) {
     document_title: listing.documentTitle || null,
     document_status: listing.documentStatus || null,
     document_details: listing.documentDetails || null,
+    document_file_url: listing.documentFileUrl || null,
     image_url: listing.imageUrl || null,
     featured: Boolean(listing.featured),
     featured_rank: Number(listing.featuredRank || 0),
@@ -718,11 +721,13 @@ export default function App() {
     documentTitle: "C of O / Certificate of Occupancy",
     documentStatus: "Available",
     documentDetails: "",
+    documentFileUrl: "",
     ownerName: "",
     ownerPhone: "",
   });
 
   const [postImageFile, setPostImageFile] = useState<File | null>(null);
+  const [postDocumentFile, setPostDocumentFile] = useState<File | null>(null);
 
   const [editForm, setEditForm] = useState({
     title: "",
@@ -735,6 +740,7 @@ export default function App() {
     documentTitle: "C of O / Certificate of Occupancy",
     documentStatus: "Available",
     documentDetails: "",
+    documentFileUrl: "",
     status: "Verified" as ListingStatus,
     ownerName: "",
     ownerPhone: "",
@@ -744,6 +750,7 @@ export default function App() {
   });
 
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editDocumentFile, setEditDocumentFile] = useState<File | null>(null);
 
   const [investorForm, setInvestorForm] = useState({
     name: "",
@@ -1245,6 +1252,32 @@ export default function App() {
     return data.publicUrl;
   }
 
+  async function uploadPropertyDocument(file: File) {
+    if (!supabase) return "";
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const safeFileName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("property-documents")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data } = supabase.storage
+      .from("property-documents")
+      .getPublicUrl(safeFileName);
+
+    return data.publicUrl;
+  }
+
   function imageFileToBase64(file: File) {
     return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -1335,6 +1368,7 @@ export default function App() {
     setEditingListing(listing);
     setSelectedListing(null);
     setEditImageFile(null);
+    setEditDocumentFile(null);
     setEditForm({
       title: listing.title,
       location: listing.location,
@@ -1346,6 +1380,7 @@ export default function App() {
       documentTitle: listing.documentTitle || "C of O / Certificate of Occupancy",
       documentStatus: listing.documentStatus || "Available",
       documentDetails: listing.documentDetails || "",
+      documentFileUrl: listing.documentFileUrl || "",
       status: listing.status,
       ownerName: listing.ownerName || "",
       ownerPhone: listing.ownerPhone || "",
@@ -1368,6 +1403,12 @@ export default function App() {
           : await imageFileToBase64(postImageFile)
         : "";
 
+      const documentFileUrl = postDocumentFile
+        ? supabase
+          ? await uploadPropertyDocument(postDocumentFile)
+          : await imageFileToBase64(postDocumentFile)
+        : "";
+
       const newListing: Omit<Listing, "id"> = {
         title: postForm.title,
         location: postForm.location,
@@ -1380,6 +1421,7 @@ export default function App() {
         documentTitle: postForm.documentTitle,
         documentStatus: postForm.documentStatus,
         documentDetails: postForm.documentDetails,
+        documentFileUrl,
         status: "Pending Review",
         ownerName: postForm.ownerName,
         ownerPhone: postForm.ownerPhone,
@@ -1428,16 +1470,18 @@ export default function App() {
         documentTitle: "C of O / Certificate of Occupancy",
         documentStatus: "Available",
         documentDetails: "",
+        documentFileUrl: "",
         ownerName: "",
         ownerPhone: "",
       });
       setPostImageFile(null);
+      setPostDocumentFile(null);
 
       setModal(null);
       showSuccess("Opportunity submitted successfully. Admin review is pending.");
     } catch (error) {
       console.error(error);
-      showSuccess("Image upload failed. Please try a smaller JPG, PNG, or WEBP image.");
+      showSuccess("Upload failed. Please try a smaller image/document file.");
     } finally {
       setIsLoading(false);
     }
@@ -1457,6 +1501,12 @@ export default function App() {
           : await imageFileToBase64(editImageFile)
         : editForm.imageUrl;
 
+      const documentFileUrl = editDocumentFile
+        ? supabase
+          ? await uploadPropertyDocument(editDocumentFile)
+          : await imageFileToBase64(editDocumentFile)
+        : editForm.documentFileUrl;
+
       const updatedListing: Listing = {
         ...editingListing,
         title: editForm.title,
@@ -1470,6 +1520,7 @@ export default function App() {
         documentTitle: editForm.documentTitle,
         documentStatus: editForm.documentStatus,
         documentDetails: editForm.documentDetails,
+        documentFileUrl,
         status: editForm.status,
         ownerName: editForm.ownerName,
         ownerPhone: editForm.ownerPhone,
@@ -1494,6 +1545,7 @@ export default function App() {
               documentTitle: updatedListing.documentTitle,
               documentStatus: updatedListing.documentStatus,
               documentDetails: updatedListing.documentDetails,
+              documentFileUrl: updatedListing.documentFileUrl,
               status: updatedListing.status,
               ownerName: updatedListing.ownerName,
               ownerPhone: updatedListing.ownerPhone,
@@ -1521,12 +1573,13 @@ export default function App() {
       }
 
       setEditImageFile(null);
+      setEditDocumentFile(null);
       setEditingListing(null);
       setModal("admin");
       showSuccess("Listing updated successfully.");
     } catch (error) {
       console.error(error);
-      showSuccess("Image upload failed. Please try a smaller JPG, PNG, or WEBP image.");
+      showSuccess("Upload failed. Please try a smaller image/document file.");
     } finally {
       setIsLoading(false);
     }
@@ -2229,6 +2282,7 @@ export default function App() {
         "Document Title",
         "Document Status",
         "Document Details",
+        "Document File URL",
         "Status",
         "Owner Name",
         "Owner Phone",
@@ -2248,6 +2302,7 @@ export default function App() {
         listing.documentTitle || "",
         listing.documentStatus || "",
         listing.documentDetails || "",
+        listing.documentFileUrl || "",
         listing.status,
         listing.ownerName || "",
         listing.ownerPhone || "",
@@ -3730,6 +3785,28 @@ export default function App() {
                     rows={3}
                     className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
+
+                  <div className="mt-4 rounded-2xl border border-dashed border-amber-300 bg-white p-5">
+                    <label className="text-sm font-black text-[#0d1c38]">
+                      Upload title document file
+                    </label>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Optional but recommended. Upload PDF, JPG, PNG, or WEBP under 10MB, such as C of O, survey plan, deed, allocation letter, or approval paper.
+                    </p>
+                    <input
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,image/webp"
+                      onChange={(event) =>
+                        setPostDocumentFile(event.target.files?.[0] || null)
+                      }
+                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    {postDocumentFile && (
+                      <p className="mt-3 text-xs font-bold text-emerald-700">
+                        Document selected: {postDocumentFile.name}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
@@ -3956,6 +4033,38 @@ export default function App() {
                     rows={3}
                     className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
+
+                  <div className="mt-4 rounded-2xl border border-dashed border-amber-300 bg-white p-5">
+                    <label className="text-sm font-black text-[#0d1c38]">
+                      Replace title document file
+                    </label>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Leave empty to keep the current document. Upload PDF, JPG, PNG, or WEBP under 10MB.
+                    </p>
+                    {editForm.documentFileUrl && !editDocumentFile && (
+                      <a
+                        href={editForm.documentFileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-4 inline-flex rounded-2xl bg-[#0d1c38] px-4 py-3 text-xs font-black text-white"
+                      >
+                        View current document
+                      </a>
+                    )}
+                    <input
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,image/webp"
+                      onChange={(event) =>
+                        setEditDocumentFile(event.target.files?.[0] || null)
+                      }
+                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    {editDocumentFile && (
+                      <p className="mt-3 text-xs font-bold text-emerald-700">
+                        New document selected: {editDocumentFile.name}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -4225,6 +4334,16 @@ export default function App() {
                             {selectedListing.documentDetails}
                           </p>
                         )}
+                        {selectedListing.documentFileUrl && (
+                          <a
+                            href={selectedListing.documentFileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-4 inline-flex rounded-2xl bg-[#0d1c38] px-4 py-3 text-xs font-black text-white"
+                          >
+                            View uploaded title document
+                          </a>
+                        )}
                       </div>
                     )}
                   </div>
@@ -4258,6 +4377,13 @@ export default function App() {
                         <p className="text-slate-400">Document status</p>
                         <p className="font-black text-[#f0bf3c]">
                           {selectedListing.documentStatus || "Pending"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Document file</p>
+                        <p className="font-black">
+                          {selectedListing.documentFileUrl ? "Uploaded" : "Not uploaded"}
                         </p>
                       </div>
 

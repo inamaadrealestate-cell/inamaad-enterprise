@@ -75,6 +75,16 @@ type Listing = {
   createdAt?: string;
 };
 
+type PropertyImage = {
+  id: number;
+  listingId: number;
+  imageUrl: string;
+  caption?: string;
+  displayOrder?: number;
+  isMain?: boolean;
+  createdAt?: string;
+};
+
 type InvestorRequest = {
   id: number;
   name: string;
@@ -880,6 +890,18 @@ function mapPropertyViewRow(row: any): PropertyView {
   };
 }
 
+function mapPropertyImageRow(row: any): PropertyImage {
+  return {
+    id: Number(row.id),
+    listingId: Number(row.listing_id),
+    imageUrl: row.image_url || "",
+    caption: row.caption || "",
+    displayOrder: Number(row.display_order || 0),
+    isMain: Boolean(row.is_main),
+    createdAt: row.created_at || "",
+  };
+}
+
 function mapContactMessageRow(row: any): ContactMessage {
   return {
     id: Number(row.id),
@@ -1055,6 +1077,7 @@ export default function App() {
     []
   );
   const [propertyViews, setPropertyViews] = useState<PropertyView[]>([]);
+  const [propertyImages, setPropertyImages] = useState<PropertyImage[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [inspectionBookings, setInspectionBookings] = useState<InspectionBooking[]>([]);
   const [propertyOffers, setPropertyOffers] = useState<PropertyOffer[]>([]);
@@ -1143,6 +1166,7 @@ export default function App() {
   });
 
   const [postImageFile, setPostImageFile] = useState<File | null>(null);
+  const [postGalleryFiles, setPostGalleryFiles] = useState<File[]>([]);
   const [postDocumentFile, setPostDocumentFile] = useState<File | null>(null);
 
   const [editForm, setEditForm] = useState({
@@ -1194,6 +1218,7 @@ export default function App() {
   });
 
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editGalleryFiles, setEditGalleryFiles] = useState<File[]>([]);
   const [editDocumentFile, setEditDocumentFile] = useState<File | null>(null);
 
   const [investorForm, setInvestorForm] = useState({
@@ -1424,6 +1449,25 @@ export default function App() {
       .slice(0, 5);
   }, [listings, viewCountByListingId]);
 
+  const propertyImagesByListingId = useMemo(() => {
+    return propertyImages.reduce<Record<number, PropertyImage[]>>((groups, image) => {
+      groups[image.listingId] = groups[image.listingId] || [];
+      groups[image.listingId].push(image);
+      groups[image.listingId].sort((first, second) => Number(first.displayOrder || 0) - Number(second.displayOrder || 0));
+      return groups;
+    }, {});
+  }, [propertyImages]);
+
+  function getListingGalleryImages(listing: Listing | null | undefined) {
+    if (!listing) return [] as string[];
+
+    const galleryUrls = (propertyImagesByListingId[listing.id] || [])
+      .map((image) => image.imageUrl)
+      .filter(Boolean);
+
+    return Array.from(new Set([listing.imageUrl, ...galleryUrls].filter(Boolean) as string[]));
+  }
+
   const calculatorPurchasePrice = Number(calculatorForm.purchasePrice || 0);
   const calculatorAnnualRent = Number(calculatorForm.annualRent || 0);
   const calculatorGrowthRate = Number(calculatorForm.annualGrowth || 0) / 100;
@@ -1524,6 +1568,7 @@ export default function App() {
     }
 
     loadDatabaseListings();
+    loadDatabasePropertyImages();
 
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
@@ -1540,6 +1585,7 @@ export default function App() {
           setInvestorRequests([]);
           setPropertyInquiries([]);
           setPropertyViews([]);
+          setPropertyImages([]);
           setContactMessages([]);
           setInspectionBookings([]);
           setStaffNotifications([]);
@@ -1583,6 +1629,11 @@ export default function App() {
     if (supabase) return;
     localStorage.setItem("inamaad_property_views", JSON.stringify(propertyViews));
   }, [propertyViews]);
+
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_property_images", JSON.stringify(propertyImages));
+  }, [propertyImages]);
 
   useEffect(() => {
     if (supabase) return;
@@ -1639,6 +1690,7 @@ export default function App() {
       const storedRequests = localStorage.getItem("inamaad_investor_requests");
       const storedInquiries = localStorage.getItem("inamaad_property_inquiries");
       const storedViews = localStorage.getItem("inamaad_property_views");
+      const storedPropertyImages = localStorage.getItem("inamaad_property_images");
       const storedContactMessages = localStorage.getItem("inamaad_contact_messages");
       const storedInspectionBookings = localStorage.getItem("inamaad_inspection_bookings");
       const storedPropertyOffers = localStorage.getItem("inamaad_property_offers");
@@ -1658,6 +1710,10 @@ export default function App() {
 
       if (storedViews) {
         setPropertyViews(JSON.parse(storedViews) as PropertyView[]);
+      }
+
+      if (storedPropertyImages) {
+        setPropertyImages(JSON.parse(storedPropertyImages) as PropertyImage[]);
       }
 
       if (storedContactMessages) {
@@ -1680,6 +1736,7 @@ export default function App() {
       localStorage.removeItem("inamaad_investor_requests");
       localStorage.removeItem("inamaad_property_inquiries");
       localStorage.removeItem("inamaad_property_views");
+      localStorage.removeItem("inamaad_property_images");
       localStorage.removeItem("inamaad_contact_messages");
       localStorage.removeItem("inamaad_inspection_bookings");
       localStorage.removeItem("inamaad_property_offers");
@@ -1754,6 +1811,22 @@ export default function App() {
     }
 
     setPropertyViews((data || []).map(mapPropertyViewRow));
+  }
+
+  async function loadDatabasePropertyImages() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("property_images")
+      .select("*")
+      .order("display_order", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setPropertyImages((data || []).map(mapPropertyImageRow));
   }
 
   async function loadDatabaseContactMessages() {
@@ -1871,6 +1944,7 @@ export default function App() {
       await loadDatabaseInvestorRequests();
       await loadDatabasePropertyInquiries();
       await loadDatabasePropertyViews();
+      await loadDatabasePropertyImages();
       await loadDatabaseContactMessages();
       await loadDatabaseInspectionBookings();
       await loadDatabasePropertyOffers();
@@ -1904,6 +1978,48 @@ export default function App() {
       .getPublicUrl(safeFileName);
 
     return data.publicUrl;
+  }
+
+  async function uploadPropertyGalleryImages(listingId: number, files: File[], startOrder = 1) {
+    if (!files.length) return;
+
+    if (supabase) {
+      const rows = [];
+
+      for (let index = 0; index < files.length; index += 1) {
+        const imageUrl = await uploadPropertyImage(files[index]);
+        rows.push({
+          listing_id: listingId,
+          image_url: imageUrl,
+          caption: files[index].name,
+          display_order: startOrder + index,
+          is_main: false,
+        });
+      }
+
+      const { error } = await supabase.from("property_images").insert(rows);
+
+      if (error) {
+        throw error;
+      }
+
+      await loadDatabasePropertyImages();
+      return;
+    }
+
+    const localRows = await Promise.all(
+      files.map(async (file, index) => ({
+        id: Date.now() + index,
+        listingId,
+        imageUrl: await imageFileToBase64(file),
+        caption: file.name,
+        displayOrder: startOrder + index,
+        isMain: false,
+        createdAt: new Date().toISOString(),
+      }))
+    );
+
+    setPropertyImages((current) => [...current, ...localRows]);
   }
 
   async function uploadPropertyDocument(file: File) {
@@ -2012,6 +2128,7 @@ export default function App() {
 
       if (adminUnlocked) {
         await loadDatabasePropertyViews();
+      await loadDatabasePropertyImages();
       }
     } else {
       setPropertyViews((current) => [{ ...newView, id: Date.now() }, ...current]);
@@ -2066,6 +2183,7 @@ export default function App() {
     setEditingListing(listing);
     setSelectedListing(null);
     setEditImageFile(null);
+    setEditGalleryFiles([]);
     setEditDocumentFile(null);
     setEditForm({
       title: listing.title,
@@ -2186,12 +2304,16 @@ export default function App() {
       };
 
       if (supabase) {
-        const { error } = await supabase.from("listings").insert(
-          listingToRow({
-            ...newListing,
-            status: "Pending Review",
-          })
-        );
+        const { data, error } = await supabase
+          .from("listings")
+          .insert(
+            listingToRow({
+              ...newListing,
+              status: "Pending Review",
+            })
+          )
+          .select("id")
+          .single();
 
         if (error) {
           console.error(error);
@@ -2199,12 +2321,20 @@ export default function App() {
           return;
         }
 
+        if (data?.id && postGalleryFiles.length) {
+          await uploadPropertyGalleryImages(Number(data.id), postGalleryFiles, 1);
+        }
+
         await loadDatabaseListings();
       } else {
+        const localListingId = Date.now();
         setListings((current) => [
-          { ...newListing, id: Date.now() },
+          { ...newListing, id: localListingId },
           ...current,
         ]);
+        if (postGalleryFiles.length) {
+          await uploadPropertyGalleryImages(localListingId, postGalleryFiles, 1);
+        }
       }
 
       await createStaffNotification(
@@ -2251,6 +2381,7 @@ export default function App() {
         ownerPhone: "",
       });
       setPostImageFile(null);
+      setPostGalleryFiles([]);
       setPostDocumentFile(null);
 
       setModal(null);
@@ -2400,6 +2531,10 @@ export default function App() {
           return;
         }
 
+        if (editGalleryFiles.length) {
+          await uploadPropertyGalleryImages(editingListing.id, editGalleryFiles, (propertyImagesByListingId[editingListing.id]?.length || 0) + 1);
+        }
+
         await loadDatabaseListings();
       } else {
         setListings((current) =>
@@ -2407,6 +2542,9 @@ export default function App() {
             listing.id === editingListing.id ? updatedListing : listing
           )
         );
+        if (editGalleryFiles.length) {
+          await uploadPropertyGalleryImages(editingListing.id, editGalleryFiles, (propertyImagesByListingId[editingListing.id]?.length || 0) + 1);
+        }
       }
 
       await createAdminActivityLog(
@@ -2417,6 +2555,7 @@ export default function App() {
       );
 
       setEditImageFile(null);
+      setEditGalleryFiles([]);
       setEditDocumentFile(null);
       setEditingListing(null);
       setModal("admin");
@@ -4625,6 +4764,12 @@ export default function App() {
 
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0d1c38]/95 via-[#0d1c38]/45 to-[#0d1c38]/10" />
 
+                      {propertyImagesByListingId[listing.id]?.length ? (
+                        <div className="absolute bottom-5 right-5 z-20 rounded-full bg-white/90 px-4 py-2 text-xs font-black text-[#0d1c38] shadow-lg">
+                          {propertyImagesByListingId[listing.id].length + (listing.imageUrl ? 1 : 0)} Photos
+                        </div>
+                      ) : null}
+
                       <div className="relative z-10 flex h-full flex-col justify-between p-7 text-white">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex flex-wrap gap-2">
@@ -5828,6 +5973,29 @@ export default function App() {
                       Selected: {postImageFile.name}
                     </p>
                   )}
+
+                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                    <label className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                      More gallery images
+                    </label>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Optional. Add living room, bedroom, kitchen, bathroom, exterior, land/site, or document photos. You can select many images.
+                    </p>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(event) =>
+                        setPostGalleryFiles(Array.from(event.target.files || []))
+                      }
+                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    {postGalleryFiles.length > 0 && (
+                      <p className="mt-3 text-xs font-bold text-emerald-700">
+                        {postGalleryFiles.length} gallery image(s) selected
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <textarea
@@ -6440,6 +6608,29 @@ export default function App() {
                       New image selected: {editImageFile.name}
                     </p>
                   )}
+
+                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                    <label className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                      Add more gallery images
+                    </label>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Existing gallery images stay saved. Add more photos for bedroom, kitchen, exterior, land/site, or documents.
+                    </p>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(event) =>
+                        setEditGalleryFiles(Array.from(event.target.files || []))
+                      }
+                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    {editGalleryFiles.length > 0 && (
+                      <p className="mt-3 text-xs font-bold text-emerald-700">
+                        {editGalleryFiles.length} new gallery image(s) selected
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <textarea
@@ -6578,9 +6769,9 @@ export default function App() {
             {modal === "details" && selectedListing && (
               <div>
                 <div className="relative h-80 overflow-hidden rounded-[26px] bg-[#0d1c38]">
-                  {selectedListing.imageUrl ? (
+                  {getListingGalleryImages(selectedListing)[0] ? (
                     <img
-                      src={selectedListing.imageUrl}
+                      src={getListingGalleryImages(selectedListing)[0]}
                       alt={selectedListing.title}
                       className="absolute inset-0 h-full w-full object-cover"
                     />
@@ -6614,6 +6805,34 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {getListingGalleryImages(selectedListing).length > 1 && (
+                  <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-sm font-black text-[#0d1c38]">Property photo gallery</p>
+                      <p className="text-xs font-bold text-slate-500">
+                        {getListingGalleryImages(selectedListing).length} photos
+                      </p>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {getListingGalleryImages(selectedListing).map((imageUrl, index) => (
+                        <a
+                          key={`${imageUrl}-${index}`}
+                          href={imageUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group block overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
+                        >
+                          <img
+                            src={imageUrl}
+                            alt={`${selectedListing.title} photo ${index + 1}`}
+                            className="h-40 w-full object-cover transition duration-500 group-hover:scale-105"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-6 grid gap-5 md:grid-cols-[1fr_260px]">
                   <div>

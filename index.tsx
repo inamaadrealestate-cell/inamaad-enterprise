@@ -3420,6 +3420,12 @@ export default function App() {
 
             {modal === "post" && (
               <form onSubmit={submitListing} className="grid gap-4">
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Need help? Use examples like these:</p>
+                  <p className="mt-2"><span className="font-black">Title:</span> 4 Bedroom Smart Duplex in Lekki Phase 1</p>
+                  <p><span className="font-black">Investment highlight:</span> Estimated 14% yearly appreciation with strong rental demand</p>
+                  <p><span className="font-black">Opportunity:</span> A verified property in a fast-growing location, suitable for rental income, resale value, or long-term investment.</p>
+                </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <input
                     required
@@ -3427,7 +3433,7 @@ export default function App() {
                     onChange={(event) =>
                       setPostForm({ ...postForm, title: event.target.value })
                     }
-                    placeholder="Property title"
+                    placeholder="Property title, e.g. 4 Bedroom Duplex in Lekki Phase 1"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
@@ -3514,7 +3520,7 @@ export default function App() {
                         yieldText: event.target.value,
                       })
                     }
-                    placeholder="Investment highlight"
+                    placeholder="Investment highlight, e.g. Estimated 14% yearly appreciation"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
                 </div>
@@ -3553,7 +3559,7 @@ export default function App() {
                       description: event.target.value,
                     })
                   }
-                  placeholder="Describe the opportunity"
+                  placeholder="Describe the opportunity, e.g. A verified property in a fast-growing location suitable for rental income, resale value, or long-term investment."
                   rows={4}
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
@@ -3567,7 +3573,7 @@ export default function App() {
                         ownerName: event.target.value,
                       })
                     }
-                    placeholder="Owner/developer name"
+                    placeholder="Owner/developer name, e.g. INAMAAD Homes Ltd"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
@@ -3579,7 +3585,7 @@ export default function App() {
                         ownerPhone: event.target.value,
                       })
                     }
-                    placeholder="Phone number"
+                    placeholder="Phone number, e.g. 08106350486"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
                 </div>
@@ -3595,6 +3601,13 @@ export default function App() {
 
             {modal === "edit" && editingListing && (
               <form onSubmit={submitEditListing} className="grid gap-4">
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Admin writing guide:</p>
+                  <p className="mt-2"><span className="font-black">Title:</span> Luxury Apartments in Maitama, Abuja</p>
+                  <p><span className="font-black">Investment highlight:</span> Premium capital appreciation in Abuja’s prime district</p>
+                  <p><span className="font-black">Opportunity:</span> Explain the location, buyer/investor benefit, rental potential, documents, and why the property is valuable.</p>
+                </div>
+
                 <div className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-600">
                   Editing: <span className="font-black text-[#0d1c38]">{editingListing.title}</span>
                 </div>
@@ -3606,7 +3619,7 @@ export default function App() {
                     onChange={(event) =>
                       setEditForm({ ...editForm, title: event.target.value })
                     }
-                    placeholder="Property title"
+                    placeholder="Property title, e.g. 4 Bedroom Duplex in Lekki Phase 1"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
@@ -3724,7 +3737,7 @@ export default function App() {
                   onChange={(event) =>
                     setEditForm({ ...editForm, yieldText: event.target.value })
                   }
-                  placeholder="Investment highlight"
+                  placeholder="Investment highlight, e.g. Estimated 14% yearly appreciation"
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
@@ -3767,7 +3780,7 @@ export default function App() {
                   onChange={(event) =>
                     setEditForm({ ...editForm, description: event.target.value })
                   }
-                  placeholder="Describe the opportunity"
+                  placeholder="Describe the opportunity, e.g. A verified property in a fast-growing location suitable for rental income, resale value, or long-term investment."
                   rows={4}
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
@@ -3778,7 +3791,7 @@ export default function App() {
                     onChange={(event) =>
                       setEditForm({ ...editForm, ownerName: event.target.value })
                     }
-                    placeholder="Owner/developer name"
+                    placeholder="Owner/developer name, e.g. INAMAAD Homes Ltd"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
@@ -3787,7 +3800,7 @@ export default function App() {
                     onChange={(event) =>
                       setEditForm({ ...editForm, ownerPhone: event.target.value })
                     }
-                    placeholder="Phone number"
+                    placeholder="Phone number, e.g. 08106350486"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
                 </div>
@@ -3842,7 +3855,7 @@ export default function App() {
                         phone: event.target.value,
                       })
                     }
-                    placeholder="Phone number"
+                    placeholder="Phone number, e.g. 08106350486"
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 

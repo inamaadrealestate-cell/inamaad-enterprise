@@ -12,6 +12,7 @@ type ModalType =
   | "edit";
 
 type ListingStatus = "Verified" | "Pending Review";
+type AvailabilityStatus = "Available" | "Reserved" | "Sold" | "Rented" | "Leased" | "Off Market";
 type LeadStatus = "New" | "Contacted" | "Closed";
 type LeadPriority = "Low" | "Normal" | "High" | "Urgent";
 type InspectionStatus = "New" | "Scheduled" | "Completed" | "Cancelled";
@@ -28,6 +29,9 @@ type Listing = {
   yieldText: string;
   description: string;
   status: ListingStatus;
+  availabilityStatus?: AvailabilityStatus;
+  availabilityNote?: string;
+  availableFrom?: string;
   ownerName?: string;
   ownerPhone?: string;
   documentTitle?: string;
@@ -270,6 +274,16 @@ const listingPurposeOptions = [
   "Distress Sale",
 ];
 
+const availabilityStatusOptions: AvailabilityStatus[] = [
+  "Available",
+  "Reserved",
+  "Sold",
+  "Rented",
+  "Leased",
+  "Off Market",
+];
+
+
 const documentTitleOptions = [
   "C of O / Certificate of Occupancy",
   "R of O / Right of Occupancy",
@@ -336,6 +350,7 @@ const seedListings: Listing[] = [
     description:
       "A high-end residential investment opportunity positioned for strong rental income, resale value, and long-term wealth preservation.",
     status: "Verified",
+    availabilityStatus: "Available",
     createdAt: new Date().toISOString(),
   },
   {
@@ -350,6 +365,7 @@ const seedListings: Listing[] = [
     description:
       "A premium commercial asset located in one of Lagos’ strongest business districts, suitable for corporate tenants and long-term income.",
     status: "Verified",
+    availabilityStatus: "Available",
     createdAt: new Date().toISOString(),
   },
   {
@@ -364,6 +380,7 @@ const seedListings: Listing[] = [
     description:
       "A large land asset in a fast-growing corridor suitable for residential development, estate layout, or strategic land banking.",
     status: "Verified",
+    availabilityStatus: "Available",
     createdAt: new Date().toISOString(),
   },
   {
@@ -378,6 +395,7 @@ const seedListings: Listing[] = [
     description:
       "A structured joint venture opportunity for developers and investors interested in residential estate development.",
     status: "Verified",
+    availabilityStatus: "Available",
     createdAt: new Date().toISOString(),
   },
   {
@@ -392,6 +410,7 @@ const seedListings: Listing[] = [
     description:
       "A modern duplex in a high-demand residential market with strong resale and rental potential.",
     status: "Verified",
+    availabilityStatus: "Available",
     createdAt: new Date().toISOString(),
   },
   {
@@ -406,6 +425,7 @@ const seedListings: Listing[] = [
     description:
       "Documented serviced plots suitable for land banking, resale, and long-term property investment.",
     status: "Verified",
+    availabilityStatus: "Available",
     createdAt: new Date().toISOString(),
   },
 ];
@@ -485,6 +505,44 @@ function formatDate(value?: string) {
     month: "short",
     day: "numeric",
   });
+}
+
+function availabilityBadgeClass(status?: string) {
+  switch (status) {
+    case "Available":
+      return "bg-emerald-500 text-white";
+    case "Reserved":
+      return "bg-amber-400 text-[#0d1c38]";
+    case "Sold":
+      return "bg-red-600 text-white";
+    case "Rented":
+      return "bg-blue-600 text-white";
+    case "Leased":
+      return "bg-purple-600 text-white";
+    case "Off Market":
+      return "bg-slate-700 text-white";
+    default:
+      return "bg-emerald-500 text-white";
+  }
+}
+
+function availabilityShortNote(status?: string) {
+  switch (status) {
+    case "Available":
+      return "Open for enquiries";
+    case "Reserved":
+      return "Temporarily reserved";
+    case "Sold":
+      return "Sold property";
+    case "Rented":
+      return "Already rented";
+    case "Leased":
+      return "Currently leased";
+    case "Off Market":
+      return "Not currently active";
+    default:
+      return "Open for enquiries";
+  }
 }
 
 function buildListingReference(listingId?: number | null) {
@@ -632,6 +690,9 @@ function mapListingRow(row: any): Listing {
     yieldText: row.yield_text,
     description: row.description,
     status: row.status,
+    availabilityStatus: row.availability_status || "Available",
+    availabilityNote: row.availability_note || "",
+    availableFrom: row.available_from || "",
     ownerName: row.owner_name || "",
     ownerPhone: row.owner_phone || "",
     documentTitle: row.document_title || "",
@@ -781,6 +842,9 @@ function listingToRow(listing: Omit<Listing, "id">) {
     yield_text: listing.yieldText,
     description: listing.description,
     status: listing.status,
+    availability_status: listing.availabilityStatus || "Available",
+    availability_note: listing.availabilityNote || null,
+    available_from: listing.availableFrom || null,
     owner_name: listing.ownerName || null,
     owner_phone: listing.ownerPhone || null,
     document_title: listing.documentTitle || null,
@@ -842,6 +906,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [propertyType, setPropertyType] = useState("All");
   const [listingPurpose, setListingPurpose] = useState("All Purposes");
+  const [availabilityFilter, setAvailabilityFilter] = useState("All Availability");
   const [locationFilter, setLocationFilter] = useState("All Locations");
   const [minValueFilter, setMinValueFilter] = useState("");
   const [maxValueFilter, setMaxValueFilter] = useState("");
@@ -883,6 +948,9 @@ export default function App() {
     price: "",
     type: "Residential",
     category: "For Sale",
+    availabilityStatus: "Available" as AvailabilityStatus,
+    availabilityNote: "",
+    availableFrom: "",
     yieldText: "",
     description: "",
     documentTitle: "C of O / Certificate of Occupancy",
@@ -902,6 +970,9 @@ export default function App() {
     price: "",
     type: "Residential",
     category: "For Sale",
+    availabilityStatus: "Available" as AvailabilityStatus,
+    availabilityNote: "",
+    availableFrom: "",
     yieldText: "",
     description: "",
     documentTitle: "C of O / Certificate of Occupancy",
@@ -1152,7 +1223,7 @@ export default function App() {
         if (listing.status !== "Verified") return false;
 
         const searchText =
-          `${listing.title} ${listing.location} ${listing.type} ${listing.category} ${listing.documentTitle || ""} ${listing.documentStatus || ""}`.toLowerCase();
+          `${listing.title} ${listing.location} ${listing.type} ${listing.category} ${listing.availabilityStatus || ""} ${listing.documentTitle || ""} ${listing.documentStatus || ""}`.toLowerCase();
 
         const matchesSearch = searchText.includes(query.toLowerCase());
 
@@ -1161,6 +1232,10 @@ export default function App() {
 
         const matchesPurpose =
           listingPurpose === "All Purposes" || listing.category === listingPurpose;
+
+        const matchesAvailability =
+          availabilityFilter === "All Availability" ||
+          (listing.availabilityStatus || "Available") === availabilityFilter;
 
         const matchesLocation =
           locationFilter === "All Locations" ||
@@ -1173,6 +1248,7 @@ export default function App() {
           matchesSearch &&
           matchesType &&
           matchesPurpose &&
+          matchesAvailability &&
           matchesLocation &&
           matchesMinValue &&
           matchesMaxValue
@@ -1210,6 +1286,7 @@ export default function App() {
     query,
     propertyType,
     listingPurpose,
+    availabilityFilter,
     locationFilter,
     minValueFilter,
     maxValueFilter,
@@ -1749,6 +1826,9 @@ export default function App() {
       price: listing.price,
       type: listing.type,
       category: listing.category,
+      availabilityStatus: listing.availabilityStatus || "Available",
+      availabilityNote: listing.availabilityNote || "",
+      availableFrom: listing.availableFrom || "",
       yieldText: listing.yieldText,
       description: listing.description,
       documentTitle: listing.documentTitle || "C of O / Certificate of Occupancy",
@@ -1796,6 +1876,9 @@ export default function App() {
         value: currencyToValue(postForm.price),
         type: postForm.type,
         category: postForm.category,
+        availabilityStatus: postForm.availabilityStatus,
+        availabilityNote: postForm.availabilityNote,
+        availableFrom: postForm.availableFrom,
         yieldText: postForm.yieldText || "Pending investment review",
         description: postForm.description,
         documentTitle: postForm.documentTitle,
@@ -1851,6 +1934,9 @@ export default function App() {
         price: "",
         type: "Residential",
         category: "For Sale",
+        availabilityStatus: "Available" as AvailabilityStatus,
+        availabilityNote: "",
+        availableFrom: "",
         yieldText: "",
         description: "",
         documentTitle: "C of O / Certificate of Occupancy",
@@ -1906,6 +1992,9 @@ export default function App() {
         value: currencyToValue(editForm.price),
         type: editForm.type,
         category: editForm.category,
+        availabilityStatus: editForm.availabilityStatus as AvailabilityStatus,
+        availabilityNote: editForm.availabilityNote,
+        availableFrom: editForm.availableFrom,
         yieldText: editForm.yieldText || "Pending investment review",
         description: editForm.description,
         documentTitle: editForm.documentTitle,
@@ -1937,6 +2026,9 @@ export default function App() {
               value: updatedListing.value,
               type: updatedListing.type,
               category: updatedListing.category,
+              availabilityStatus: updatedListing.availabilityStatus,
+              availabilityNote: updatedListing.availabilityNote,
+              availableFrom: updatedListing.availableFrom,
               yieldText: updatedListing.yieldText,
               description: updatedListing.description,
               documentTitle: updatedListing.documentTitle,
@@ -3401,7 +3493,10 @@ export default function App() {
         "Document Status",
         "Document Details",
         "Document File URL",
-        "Status",
+        "Approval Status",
+        "Availability Status",
+        "Availability Note",
+        "Available From",
         "Owner Name",
         "Owner Phone",
         "Image URL",
@@ -3423,6 +3518,9 @@ export default function App() {
         listing.documentDetails || "",
         listing.documentFileUrl || "",
         listing.status,
+        listing.availabilityStatus || "Available",
+        listing.availabilityNote || "",
+        listing.availableFrom || "",
         listing.ownerName || "",
         listing.ownerPhone || "",
         listing.imageUrl || "",
@@ -3934,6 +4032,7 @@ export default function App() {
                     setQuery("");
                     setPropertyType("All");
                     setListingPurpose("All Purposes");
+                    setAvailabilityFilter("All Availability");
                     setLocationFilter("All Locations");
                     setMinValueFilter("");
                     setMaxValueFilter("");
@@ -3945,7 +4044,7 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+              <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
@@ -3981,6 +4080,18 @@ export default function App() {
                   <option>All Purposes</option>
                   {listingPurposeOptions.map((purpose) => (
                     <option key={purpose}>{purpose}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={availabilityFilter}
+                  onChange={(event) => setAvailabilityFilter(event.target.value)}
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                  aria-label="Availability status"
+                >
+                  <option>All Availability</option>
+                  {availabilityStatusOptions.map((status) => (
+                    <option key={status}>{status}</option>
                   ))}
                 </select>
 
@@ -4044,6 +4155,9 @@ export default function App() {
                             <div className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white">
                               {listing.status}
                             </div>
+                            <div className={`rounded-full px-4 py-2 text-xs font-black ${availabilityBadgeClass(listing.availabilityStatus)}`}>
+                              {listing.availabilityStatus || "Available"}
+                            </div>
                             <div className="rounded-full bg-white/15 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-white backdrop-blur">
                               Ref {buildListingReference(listing.id)}
                             </div>
@@ -4072,6 +4186,9 @@ export default function App() {
                           </p>
                           <p className="mt-1 text-3xl font-black text-[#0d1c38]">
                             {listing.price}
+                          </p>
+                          <p className="mt-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                            {availabilityShortNote(listing.availabilityStatus)}
                           </p>
                         </div>
 
@@ -4899,6 +5016,43 @@ export default function App() {
                     ))}
                   </select>
 
+                  <div className="grid gap-4 md:col-span-2 md:grid-cols-3">
+                    <select
+                      value={postForm.availabilityStatus}
+                      onChange={(event) =>
+                        setPostForm({
+                          ...postForm,
+                          availabilityStatus: event.target.value as AvailabilityStatus,
+                        })
+                      }
+                      aria-label="Availability status"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    >
+                      {availabilityStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="date"
+                      value={postForm.availableFrom}
+                      onChange={(event) =>
+                        setPostForm({ ...postForm, availableFrom: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Available from date"
+                    />
+
+                    <input
+                      value={postForm.availabilityNote}
+                      onChange={(event) =>
+                        setPostForm({ ...postForm, availabilityNote: event.target.value })
+                      }
+                      placeholder="Availability note, e.g. Vacant now, reserved till Friday, tenant leaves July"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
                   <input
                     value={postForm.yieldText}
                     onChange={(event) =>
@@ -5158,6 +5312,50 @@ export default function App() {
                     <option>Verified</option>
                     <option>Pending Review</option>
                   </select>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Availability status</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Use this to mark a property as Available, Reserved, Sold, Rented, Leased, or Off Market.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <select
+                      value={editForm.availabilityStatus}
+                      onChange={(event) =>
+                        setEditForm({
+                          ...editForm,
+                          availabilityStatus: event.target.value as AvailabilityStatus,
+                        })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Availability status"
+                    >
+                      {availabilityStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="date"
+                      value={editForm.availableFrom}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, availableFrom: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Available from date"
+                    />
+
+                    <input
+                      value={editForm.availabilityNote}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, availabilityNote: event.target.value })
+                      }
+                      placeholder="Note, e.g. Sold, reserved by client, vacant from 1 July"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
                 </div>
 
                 <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
@@ -5561,6 +5759,9 @@ export default function App() {
                     <p className="mt-3 text-lg text-slate-200">
                       {selectedListing.location}
                     </p>
+                    <div className={`mt-4 w-fit rounded-full px-4 py-2 text-xs font-black ${availabilityBadgeClass(selectedListing.availabilityStatus)}`}>
+                      {selectedListing.availabilityStatus || "Available"}
+                    </div>
                   </div>
                 </div>
 
@@ -5652,10 +5853,27 @@ export default function App() {
                       </div>
 
                       <div>
-                        <p className="text-slate-400">Status</p>
+                        <p className="text-slate-400">Approval status</p>
                         <p className="font-black text-emerald-300">
                           {selectedListing.status}
                         </p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Availability</p>
+                        <p className="font-black text-[#f0bf3c]">
+                          {selectedListing.availabilityStatus || "Available"}
+                        </p>
+                        {selectedListing.availableFrom && (
+                          <p className="mt-1 text-xs text-slate-400">
+                            Available from {formatDate(selectedListing.availableFrom)}
+                          </p>
+                        )}
+                        {selectedListing.availabilityNote && (
+                          <p className="mt-1 text-xs text-slate-400">
+                            {selectedListing.availabilityNote}
+                          </p>
+                        )}
                       </div>
 
 
@@ -7296,9 +7514,15 @@ export default function App() {
                             </p>
 
                             <p className="mt-1 text-xs font-black text-slate-400">
-                              {listing.status}
+                              {listing.status} • {listing.availabilityStatus || "Available"}
                               {listing.featured ? ` • Featured rank ${listing.featuredRank || 0}` : ""}
                             </p>
+
+                            {listing.availabilityNote && (
+                              <p className="mt-1 text-xs font-bold text-slate-500">
+                                Availability note: {listing.availabilityNote}
+                              </p>
+                            )}
 
 
                             <p className="mt-1 text-xs font-bold text-slate-500">
@@ -7340,3 +7564,5 @@ export default function App() {
 // Lead command center upgrade: follow-up dashboard for overdue, due-today, urgent, and unassigned leads.
 
 // Property reference upgrade: public and staff listing references use stable INM-000001 style IDs.
+
+// Availability status upgrade: listings now support Available, Reserved, Sold, Rented, Leased, and Off Market badges plus staff controls.

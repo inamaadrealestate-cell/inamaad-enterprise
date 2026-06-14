@@ -255,6 +255,20 @@ type JVApplication = {
   budgetCapacity?: string;
   experienceSummary?: string;
   proposalMessage?: string;
+  companyProfileUrl?: string;
+  cacCertificateUrl?: string;
+  portfolioUrl?: string;
+  financialProofUrl?: string;
+  proposalDocumentUrl?: string;
+  otherDocumentUrl?: string;
+  experienceRating?: number;
+  financialCapacityRating?: number;
+  trackRecordRating?: number;
+  documentReviewStatus?: JVDocumentReviewStatus;
+  riskLevel?: JVRiskLevel;
+  evaluationNotes?: string;
+  evaluatedByEmail?: string;
+  evaluatedAt?: string;
   status: JVApplicationStatus;
   assignedToEmail?: string;
   staffNotes?: string;
@@ -1321,6 +1335,12 @@ function mapJVApplicationRow(row: any): JVApplication {
     budgetCapacity: row.budget_capacity || "",
     experienceSummary: row.experience_summary || "",
     proposalMessage: row.proposal_message || "",
+    companyProfileUrl: row.company_profile_url || "",
+    cacCertificateUrl: row.cac_certificate_url || "",
+    portfolioUrl: row.portfolio_url || "",
+    financialProofUrl: row.financial_proof_url || "",
+    proposalDocumentUrl: row.proposal_document_url || "",
+    otherDocumentUrl: row.other_document_url || "",
     status: row.status || "New",
     assignedToEmail: row.assigned_to_email || "",
     staffNotes: row.staff_notes || "",
@@ -1830,6 +1850,13 @@ export default function App() {
     experienceSummary: "",
     proposalMessage: "",
   });
+
+  const [jvCompanyProfileFile, setJvCompanyProfileFile] = useState<File | null>(null);
+  const [jvCacCertificateFile, setJvCacCertificateFile] = useState<File | null>(null);
+  const [jvPortfolioFile, setJvPortfolioFile] = useState<File | null>(null);
+  const [jvFinancialProofFile, setJvFinancialProofFile] = useState<File | null>(null);
+  const [jvProposalDocumentFile, setJvProposalDocumentFile] = useState<File | null>(null);
+  const [jvOtherDocumentFile, setJvOtherDocumentFile] = useState<File | null>(null);
 
   const usesDatabase = Boolean(supabase);
 
@@ -2836,6 +2863,71 @@ export default function App() {
     await createAdminActivityLog(
       `Opened secure ${label}`,
       "JV Document",
+      documentPath,
+      `Staff generated a temporary signed URL for ${label}.`
+    );
+
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function uploadJvApplicationDocument(file: File, folder: string) {
+    if (!supabase) return "";
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const safeFileName = `${folder}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("jv-application-documents")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return safeFileName;
+  }
+
+  async function openSecureJvApplicationDocument(documentFileUrl?: string, label = "JV application document") {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot open JV applicant documents.");
+      return;
+    }
+
+    if (!documentFileUrl) {
+      showSuccess(`No ${label} has been uploaded for this JV applicant.`);
+      return;
+    }
+
+    if (!supabase || !user) {
+      showSuccess("Only signed-in staff can open JV applicant documents.");
+      return;
+    }
+
+    const documentPath = extractStorageObjectPath(documentFileUrl, "jv-application-documents");
+
+    if (!documentPath) {
+      showSuccess("Unable to find the secure JV applicant document path.");
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from("jv-application-documents")
+      .createSignedUrl(documentPath, 300);
+
+    if (error || !data?.signedUrl) {
+      console.error(error);
+      showSuccess("Unable to open JV applicant document. Make sure you are signed in as staff.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      `Opened secure ${label}`,
+      "JV Applicant Document",
       documentPath,
       `Staff generated a temporary signed URL for ${label}.`
     );
@@ -3877,6 +3969,40 @@ export default function App() {
 
     if (!selectedListing) return;
 
+    let companyProfileUrl = "";
+    let cacCertificateUrl = "";
+    let portfolioUrl = "";
+    let financialProofUrl = "";
+    let proposalDocumentUrl = "";
+    let otherDocumentUrl = "";
+
+    try {
+      if (supabase) {
+        companyProfileUrl = jvCompanyProfileFile
+          ? await uploadJvApplicationDocument(jvCompanyProfileFile, "company-profile")
+          : "";
+        cacCertificateUrl = jvCacCertificateFile
+          ? await uploadJvApplicationDocument(jvCacCertificateFile, "cac-certificate")
+          : "";
+        portfolioUrl = jvPortfolioFile
+          ? await uploadJvApplicationDocument(jvPortfolioFile, "portfolio")
+          : "";
+        financialProofUrl = jvFinancialProofFile
+          ? await uploadJvApplicationDocument(jvFinancialProofFile, "financial-proof")
+          : "";
+        proposalDocumentUrl = jvProposalDocumentFile
+          ? await uploadJvApplicationDocument(jvProposalDocumentFile, "proposal-document")
+          : "";
+        otherDocumentUrl = jvOtherDocumentFile
+          ? await uploadJvApplicationDocument(jvOtherDocumentFile, "other")
+          : "";
+      }
+    } catch (error) {
+      console.error(error);
+      showSuccess("Unable to upload JV application document. Use PDF, JPG, PNG, or WEBP under 20MB.");
+      return;
+    }
+
     const newApplication: Omit<JVApplication, "id"> = {
       listingId: selectedListing.id,
       listingTitle: selectedListing.title,
@@ -3888,6 +4014,12 @@ export default function App() {
       budgetCapacity: jvApplicationForm.budgetCapacity,
       experienceSummary: jvApplicationForm.experienceSummary,
       proposalMessage: jvApplicationForm.proposalMessage,
+      companyProfileUrl,
+      cacCertificateUrl,
+      portfolioUrl,
+      financialProofUrl,
+      proposalDocumentUrl,
+      otherDocumentUrl,
       status: "New",
       priority: "High",
       createdAt: new Date().toISOString(),
@@ -3905,6 +4037,12 @@ export default function App() {
         budget_capacity: jvApplicationForm.budgetCapacity || null,
         experience_summary: jvApplicationForm.experienceSummary || null,
         proposal_message: jvApplicationForm.proposalMessage || null,
+        company_profile_url: companyProfileUrl || null,
+        cac_certificate_url: cacCertificateUrl || null,
+        portfolio_url: portfolioUrl || null,
+        financial_proof_url: financialProofUrl || null,
+        proposal_document_url: proposalDocumentUrl || null,
+        other_document_url: otherDocumentUrl || null,
         status: "New",
         priority: "High",
       });
@@ -3934,8 +4072,14 @@ export default function App() {
       experienceSummary: "",
       proposalMessage: "",
     });
+    setJvCompanyProfileFile(null);
+    setJvCacCertificateFile(null);
+    setJvPortfolioFile(null);
+    setJvFinancialProofFile(null);
+    setJvProposalDocumentFile(null);
+    setJvOtherDocumentFile(null);
 
-    showSuccess("JV partnership application sent. INAMAAD will review and contact you shortly.");
+    showSuccess("JV partnership application sent with supporting documents. INAMAAD will review and contact you shortly.");
   }
 
   async function submitContactMessage(event: React.FormEvent) {
@@ -9446,6 +9590,77 @@ export default function App() {
                       className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
 
+                    <div className="rounded-3xl border border-purple-100 bg-purple-50/60 p-5">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-700">
+                        Supporting documents optional
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        Upload documents that help INAMAAD evaluate your JV capacity. Accepted: PDF, JPG, PNG, WEBP. Max 20MB each. These files are private and staff-only.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Company profile</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvCompanyProfileFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">CAC certificate</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvCacCertificateFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Portfolio / past projects</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvPortfolioFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Financial proof</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvFinancialProofFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">JV proposal document</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvProposalDocumentFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Other supporting file</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvOtherDocumentFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
                     <button className="rounded-2xl bg-purple-700 px-6 py-4 text-sm font-black text-white">
                       Submit JV partnership application
                     </button>
@@ -10763,6 +10978,71 @@ export default function App() {
                               <p className="mt-2 text-xs font-bold text-slate-400">
                                 Submitted {formatDate(application.createdAt)}
                               </p>
+
+                              <div className="mt-4 rounded-2xl border border-purple-100 bg-white p-4">
+                                <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">
+                                  JV applicant supporting documents
+                                </p>
+                                <p className="mt-1 text-xs font-bold text-slate-500">
+                                  Private staff-only files uploaded by the applicant. Use them for due diligence before shortlisting.
+                                </p>
+
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.companyProfileUrl, "company profile")}
+                                    disabled={!application.companyProfileUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    Company profile
+                                  </button>
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.cacCertificateUrl, "CAC certificate")}
+                                    disabled={!application.cacCertificateUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    CAC certificate
+                                  </button>
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.portfolioUrl, "portfolio / past projects")}
+                                    disabled={!application.portfolioUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    Portfolio
+                                  </button>
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.financialProofUrl, "financial proof")}
+                                    disabled={!application.financialProofUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    Financial proof
+                                  </button>
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.proposalDocumentUrl, "JV proposal document")}
+                                    disabled={!application.proposalDocumentUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    JV proposal
+                                  </button>
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.otherDocumentUrl, "other supporting document")}
+                                    disabled={!application.otherDocumentUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    Other file
+                                  </button>
+                                </div>
+
+                                {!application.companyProfileUrl &&
+                                  !application.cacCertificateUrl &&
+                                  !application.portfolioUrl &&
+                                  !application.financialProofUrl &&
+                                  !application.proposalDocumentUrl &&
+                                  !application.otherDocumentUrl && (
+                                    <p className="mt-3 text-xs font-bold text-slate-400">
+                                      No applicant documents uploaded.
+                                    </p>
+                                  )}
+                              </div>
 
                               {renderLeadAssignmentControls(
                                 "jv_applications",

@@ -17,10 +17,12 @@ type LeadStatus = "New" | "Contacted" | "Closed";
 type LeadPriority = "Low" | "Normal" | "High" | "Urgent";
 type InspectionStatus = "New" | "Scheduled" | "Completed" | "Cancelled";
 type OfferStatus = "New" | "Reviewing" | "Accepted" | "Rejected" | "Closed";
+type JVApplicationStatus = "New" | "Reviewing" | "Shortlisted" | "Accepted" | "Rejected" | "Closed";
 type LeadKind =
   | "investor_requests"
   | "property_inquiries"
   | "property_offers"
+  | "jv_applications"
   | "contact_messages"
   | "inspection_bookings";
 
@@ -58,6 +60,16 @@ type Listing = {
   furnishingStatus?: string;
   propertyCondition?: string;
   amenities?: string;
+  jvStructure?: string;
+  jvLandContribution?: string;
+  jvDeveloperRequirement?: string;
+  jvInvestorRequirement?: string;
+  jvSharingFormula?: string;
+  jvProjectStage?: string;
+  jvExpectedUnits?: string;
+  jvEstimatedProjectCost?: string;
+  jvCompletionTimeline?: string;
+  jvTerms?: string;
   neighborhoodOverview?: string;
   roadAccess?: string;
   powerSupply?: string;
@@ -201,6 +213,27 @@ type PropertyOffer = {
   paymentPlan: string;
   message: string;
   status: OfferStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
+  createdAt: string;
+};
+
+type JVApplication = {
+  id: number;
+  listingId?: number | null;
+  listingTitle: string;
+  applicantName: string;
+  applicantEmail: string;
+  applicantPhone: string;
+  applicantRole: string;
+  companyName?: string;
+  budgetCapacity?: string;
+  experienceSummary?: string;
+  proposalMessage?: string;
+  status: JVApplicationStatus;
   assignedToEmail?: string;
   staffNotes?: string;
   priority?: LeadPriority;
@@ -363,6 +396,40 @@ const listingPurposeOptions = [
   "Off-plan",
   "Distress Sale",
 ];
+
+const jvStructureOptions = [
+  "Landowner + Developer JV",
+  "Landowner + Investor JV",
+  "Developer + Investor Partnership",
+  "Equity Partnership",
+  "Build-to-Sell JV",
+  "Build-to-Rent JV",
+  "Revenue Share",
+  "Profit Share",
+  "Other JV Structure",
+];
+
+const jvProjectStageOptions = [
+  "Concept Stage",
+  "Land Available",
+  "Design / Approval Stage",
+  "Seeking Developer",
+  "Seeking Investor",
+  "Under Negotiation",
+  "Under Construction",
+  "Completed Project",
+];
+
+function isJointVentureListing(input: { type?: string; category?: string }) {
+  const type = (input.type || "").toLowerCase();
+  const category = (input.category || "").toLowerCase();
+  return (
+    type.includes("joint venture") ||
+    type.includes("estate development") ||
+    category.includes("joint venture") ||
+    category.includes("jv")
+  );
+}
 
 const furnishingStatusOptions = [
   "Not Specified",
@@ -894,6 +961,15 @@ function offerStatusClass(status: OfferStatus) {
   return "bg-amber-100 text-amber-700";
 }
 
+function jvApplicationStatusClass(status: JVApplicationStatus) {
+  if (status === "Accepted") return "bg-emerald-100 text-emerald-700";
+  if (status === "Shortlisted") return "bg-purple-100 text-purple-700";
+  if (status === "Reviewing") return "bg-blue-100 text-blue-700";
+  if (status === "Rejected") return "bg-red-100 text-red-700";
+  if (status === "Closed") return "bg-slate-200 text-slate-700";
+  return "bg-amber-100 text-amber-700";
+}
+
 function getTopCount(items: string[]) {
   const counts = items.reduce<Record<string, number>>((accumulator, item) => {
     const key = item || "Unknown";
@@ -990,6 +1066,16 @@ function mapListingRow(row: any): Listing {
     furnishingStatus: row.furnishing_status || "Not Specified",
     propertyCondition: row.property_condition || "Not Specified",
     amenities: row.amenities || "",
+    jvStructure: row.jv_structure || "",
+    jvLandContribution: row.jv_land_contribution || "",
+    jvDeveloperRequirement: row.jv_developer_requirement || "",
+    jvInvestorRequirement: row.jv_investor_requirement || "",
+    jvSharingFormula: row.jv_sharing_formula || "",
+    jvProjectStage: row.jv_project_stage || "",
+    jvExpectedUnits: row.jv_expected_units || "",
+    jvEstimatedProjectCost: row.jv_estimated_project_cost || "",
+    jvCompletionTimeline: row.jv_completion_timeline || "",
+    jvTerms: row.jv_terms || "",
     neighborhoodOverview: row.neighborhood_overview || "",
     roadAccess: row.road_access || "",
     powerSupply: row.power_supply || "",
@@ -1163,6 +1249,29 @@ function mapPropertyOfferRow(row: any): PropertyOffer {
   };
 }
 
+function mapJVApplicationRow(row: any): JVApplication {
+  return {
+    id: Number(row.id),
+    listingId: row.listing_id ? Number(row.listing_id) : null,
+    listingTitle: row.listing_title,
+    applicantName: row.applicant_name,
+    applicantEmail: row.applicant_email || "",
+    applicantPhone: row.applicant_phone,
+    applicantRole: row.applicant_role || "Investor",
+    companyName: row.company_name || "",
+    budgetCapacity: row.budget_capacity || "",
+    experienceSummary: row.experience_summary || "",
+    proposalMessage: row.proposal_message || "",
+    status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
+    createdAt: row.created_at,
+  };
+}
+
 function mapStaffNotificationRow(row: any): StaffNotification {
   return {
     id: Number(row.id),
@@ -1230,6 +1339,16 @@ function listingToRow(listing: Omit<Listing, "id">) {
     furnishing_status: listing.furnishingStatus || "Not Specified",
     property_condition: listing.propertyCondition || "Not Specified",
     amenities: listing.amenities || null,
+    jv_structure: listing.jvStructure || null,
+    jv_land_contribution: listing.jvLandContribution || null,
+    jv_developer_requirement: listing.jvDeveloperRequirement || null,
+    jv_investor_requirement: listing.jvInvestorRequirement || null,
+    jv_sharing_formula: listing.jvSharingFormula || null,
+    jv_project_stage: listing.jvProjectStage || null,
+    jv_expected_units: listing.jvExpectedUnits || null,
+    jv_estimated_project_cost: listing.jvEstimatedProjectCost || null,
+    jv_completion_timeline: listing.jvCompletionTimeline || null,
+    jv_terms: listing.jvTerms || null,
     neighborhood_overview: listing.neighborhoodOverview || null,
     road_access: listing.roadAccess || null,
     power_supply: listing.powerSupply || null,
@@ -1318,6 +1437,7 @@ export default function App() {
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [inspectionBookings, setInspectionBookings] = useState<InspectionBooking[]>([]);
   const [propertyOffers, setPropertyOffers] = useState<PropertyOffer[]>([]);
+  const [jvApplications, setJvApplications] = useState<JVApplication[]>([]);
   const [staffNotifications, setStaffNotifications] = useState<StaffNotification[]>([]);
   const [adminActivityLogs, setAdminActivityLogs] = useState<AdminActivityLog[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -1396,6 +1516,16 @@ export default function App() {
     furnishingStatus: "Not Specified",
     propertyCondition: "Not Specified",
     amenities: "",
+    jvStructure: "Landowner + Developer JV",
+    jvLandContribution: "",
+    jvDeveloperRequirement: "",
+    jvInvestorRequirement: "",
+    jvSharingFormula: "",
+    jvProjectStage: "Land Available",
+    jvExpectedUnits: "",
+    jvEstimatedProjectCost: "",
+    jvCompletionTimeline: "",
+    jvTerms: "",
     neighborhoodOverview: "",
     roadAccess: "",
     powerSupply: "",
@@ -1442,6 +1572,46 @@ export default function App() {
   const [postGalleryFiles, setPostGalleryFiles] = useState<File[]>([]);
   const [postDocumentFile, setPostDocumentFile] = useState<File | null>(null);
 
+  function openPropertySubmissionForm() {
+    setPostForm((current) => ({
+      ...current,
+      type: current.type === "Joint Venture" || current.type === "Estate Development" ? "Residential" : current.type,
+      category: current.category === "Joint Venture" || current.category === "JV Partnership" ? "For Sale" : current.category,
+      price: current.price === "JV Partnership" ? "" : current.price,
+    }));
+    setModal("post");
+  }
+
+  function openJvSubmissionForm() {
+    setPostForm((current) => ({
+      ...current,
+      type: "Joint Venture",
+      category: "JV Partnership",
+      price: current.price === "JV Partnership" ? "" : current.price,
+      bedrooms: "",
+      bathrooms: "",
+      toilets: "",
+      parkingSpaces: "",
+      propertySize: "",
+      furnishingStatus: "Not Specified",
+      propertyCondition: "Not Specified",
+      amenities: "",
+      agencyFee: "",
+      legalFee: "",
+      serviceCharge: "",
+      cautionFee: "",
+      surveyFee: "",
+      developmentFee: "",
+      paymentPlanAvailable: false,
+      installmentDetails: "",
+      availabilityStatus: "Available",
+      yieldText: current.yieldText || "JV partnership opportunity for landowner, developer, and investor collaboration",
+      jvStructure: current.jvStructure || "Landowner + Developer JV",
+      jvProjectStage: current.jvProjectStage || "Land Available",
+    }));
+    setModal("post");
+  }
+
   const [editForm, setEditForm] = useState({
     title: "",
     location: "",
@@ -1474,6 +1644,16 @@ export default function App() {
     furnishingStatus: "Not Specified",
     propertyCondition: "Not Specified",
     amenities: "",
+    jvStructure: "Landowner + Developer JV",
+    jvLandContribution: "",
+    jvDeveloperRequirement: "",
+    jvInvestorRequirement: "",
+    jvSharingFormula: "",
+    jvProjectStage: "Land Available",
+    jvExpectedUnits: "",
+    jvEstimatedProjectCost: "",
+    jvCompletionTimeline: "",
+    jvTerms: "",
     neighborhoodOverview: "",
     roadAccess: "",
     powerSupply: "",
@@ -1575,6 +1755,17 @@ export default function App() {
     message: "",
   });
 
+  const [jvApplicationForm, setJvApplicationForm] = useState({
+    applicantName: "",
+    applicantEmail: "",
+    applicantPhone: "",
+    applicantRole: "Developer",
+    companyName: "",
+    budgetCapacity: "",
+    experienceSummary: "",
+    proposalMessage: "",
+  });
+
   const usesDatabase = Boolean(supabase);
 
   const pendingListings = listings.filter(
@@ -1595,8 +1786,8 @@ export default function App() {
     0
   );
 
-  const totalLeads = investorRequests.length + propertyInquiries.length + propertyOffers.length + contactMessages.length + inspectionBookings.length;
-  const conversionReadyLeads = propertyInquiries.length + propertyOffers.length + contactMessages.length + inspectionBookings.length;
+  const totalLeads = investorRequests.length + propertyInquiries.length + propertyOffers.length + jvApplications.length + contactMessages.length + inspectionBookings.length;
+  const conversionReadyLeads = propertyInquiries.length + propertyOffers.length + jvApplications.length + contactMessages.length + inspectionBookings.length;
   const unreadNotifications = staffNotifications.filter((notification) => !notification.isRead).length;
   const currentStaffMember = staffMembers.find((member) => member.email === user?.email);
   const currentStaffRole: StaffRole = usesDatabase
@@ -1651,6 +1842,21 @@ export default function App() {
         lastContactedAt: offer.lastContactedAt || "",
         assignedToEmail: offer.assignedToEmail || "",
         createdAt: offer.createdAt,
+      })),
+      ...jvApplications.map((application) => ({
+        id: application.id,
+        kind: "jv_applications" as LeadKind,
+        source: "JV application",
+        title: application.listingTitle,
+        name: application.applicantName,
+        phone: application.applicantPhone,
+        email: application.applicantEmail,
+        status: application.status || "New",
+        priority: application.priority || "Normal",
+        followUpDate: application.followUpDate || "",
+        lastContactedAt: application.lastContactedAt || "",
+        assignedToEmail: application.assignedToEmail || "",
+        createdAt: application.createdAt,
       })),
       ...inspectionBookings.map((booking) => ({
         id: booking.id,
@@ -1716,7 +1922,7 @@ export default function App() {
 
         return priorityOrder[second.priority] - priorityOrder[first.priority];
       });
-  }, [propertyInquiries, propertyOffers, inspectionBookings, contactMessages, investorRequests]);
+  }, [propertyInquiries, propertyOffers, jvApplications, inspectionBookings, contactMessages, investorRequests]);
 
   const overdueFollowUps = leadFollowUpItems.filter(
     (item) => item.followUpDate && item.followUpDate < todayKey
@@ -1959,6 +2165,16 @@ export default function App() {
 
   useEffect(() => {
     if (supabase) return;
+    localStorage.setItem("inamaad_property_offers", JSON.stringify(propertyOffers));
+  }, [propertyOffers]);
+
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_jv_applications", JSON.stringify(jvApplications));
+  }, [jvApplications]);
+
+  useEffect(() => {
+    if (supabase) return;
     localStorage.setItem("inamaad_staff_notifications", JSON.stringify(staffNotifications));
   }, [staffNotifications]);
 
@@ -2006,6 +2222,7 @@ export default function App() {
       const storedContactMessages = localStorage.getItem("inamaad_contact_messages");
       const storedInspectionBookings = localStorage.getItem("inamaad_inspection_bookings");
       const storedPropertyOffers = localStorage.getItem("inamaad_property_offers");
+      const storedJvApplications = localStorage.getItem("inamaad_jv_applications");
       const storedStaffNotifications = localStorage.getItem("inamaad_staff_notifications");
 
       if (storedListings) {
@@ -2040,6 +2257,10 @@ export default function App() {
         setPropertyOffers(JSON.parse(storedPropertyOffers) as PropertyOffer[]);
       }
 
+      if (storedJvApplications) {
+        setJvApplications(JSON.parse(storedJvApplications) as JVApplication[]);
+      }
+
       if (storedStaffNotifications) {
         setStaffNotifications(JSON.parse(storedStaffNotifications) as StaffNotification[]);
       }
@@ -2052,6 +2273,7 @@ export default function App() {
       localStorage.removeItem("inamaad_contact_messages");
       localStorage.removeItem("inamaad_inspection_bookings");
       localStorage.removeItem("inamaad_property_offers");
+      localStorage.removeItem("inamaad_jv_applications");
       localStorage.removeItem("inamaad_staff_notifications");
     }
   }
@@ -2189,6 +2411,22 @@ export default function App() {
     setPropertyOffers((data || []).map(mapPropertyOfferRow));
   }
 
+  async function loadDatabaseJvApplications() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("jv_applications")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setJvApplications((data || []).map(mapJVApplicationRow));
+  }
+
   async function loadDatabaseStaffNotifications() {
     if (!supabase) return;
 
@@ -2260,6 +2498,7 @@ export default function App() {
       await loadDatabaseContactMessages();
       await loadDatabaseInspectionBookings();
       await loadDatabasePropertyOffers();
+      await loadDatabaseJvApplications();
       await loadDatabaseStaffNotifications();
       await loadDatabaseAdminActivityLogs();
       await loadDatabaseStaffMembers();
@@ -2602,6 +2841,16 @@ export default function App() {
       furnishingStatus: listing.furnishingStatus || "Not Specified",
       propertyCondition: listing.propertyCondition || "Not Specified",
       amenities: listing.amenities || "",
+      jvStructure: listing.jvStructure || "Landowner + Developer JV",
+      jvLandContribution: listing.jvLandContribution || "",
+      jvDeveloperRequirement: listing.jvDeveloperRequirement || "",
+      jvInvestorRequirement: listing.jvInvestorRequirement || "",
+      jvSharingFormula: listing.jvSharingFormula || "",
+      jvProjectStage: listing.jvProjectStage || "Land Available",
+      jvExpectedUnits: listing.jvExpectedUnits || "",
+      jvEstimatedProjectCost: listing.jvEstimatedProjectCost || "",
+      jvCompletionTimeline: listing.jvCompletionTimeline || "",
+      jvTerms: listing.jvTerms || "",
       neighborhoodOverview: listing.neighborhoodOverview || "",
       roadAccess: listing.roadAccess || "",
       powerSupply: listing.powerSupply || "",
@@ -2707,6 +2956,16 @@ export default function App() {
         furnishingStatus: postForm.furnishingStatus,
         propertyCondition: postForm.propertyCondition,
         amenities: postForm.amenities,
+        jvStructure: postForm.jvStructure,
+        jvLandContribution: postForm.jvLandContribution,
+        jvDeveloperRequirement: postForm.jvDeveloperRequirement,
+        jvInvestorRequirement: postForm.jvInvestorRequirement,
+        jvSharingFormula: postForm.jvSharingFormula,
+        jvProjectStage: postForm.jvProjectStage,
+        jvExpectedUnits: postForm.jvExpectedUnits,
+        jvEstimatedProjectCost: postForm.jvEstimatedProjectCost,
+        jvCompletionTimeline: postForm.jvCompletionTimeline,
+        jvTerms: postForm.jvTerms,
         neighborhoodOverview: postForm.neighborhoodOverview,
         roadAccess: postForm.roadAccess,
         powerSupply: postForm.powerSupply,
@@ -2829,6 +3088,16 @@ export default function App() {
         furnishingStatus: "Not Specified",
         propertyCondition: "Not Specified",
         amenities: "",
+        jvStructure: "Landowner + Developer JV",
+        jvLandContribution: "",
+        jvDeveloperRequirement: "",
+        jvInvestorRequirement: "",
+        jvSharingFormula: "",
+        jvProjectStage: "Land Available",
+        jvExpectedUnits: "",
+        jvEstimatedProjectCost: "",
+        jvCompletionTimeline: "",
+        jvTerms: "",
         neighborhoodOverview: "",
         roadAccess: "",
         powerSupply: "",
@@ -2952,6 +3221,16 @@ export default function App() {
         furnishingStatus: editForm.furnishingStatus,
         propertyCondition: editForm.propertyCondition,
         amenities: editForm.amenities,
+        jvStructure: editForm.jvStructure,
+        jvLandContribution: editForm.jvLandContribution,
+        jvDeveloperRequirement: editForm.jvDeveloperRequirement,
+        jvInvestorRequirement: editForm.jvInvestorRequirement,
+        jvSharingFormula: editForm.jvSharingFormula,
+        jvProjectStage: editForm.jvProjectStage,
+        jvExpectedUnits: editForm.jvExpectedUnits,
+        jvEstimatedProjectCost: editForm.jvEstimatedProjectCost,
+        jvCompletionTimeline: editForm.jvCompletionTimeline,
+        jvTerms: editForm.jvTerms,
         neighborhoodOverview: editForm.neighborhoodOverview,
         roadAccess: editForm.roadAccess,
         powerSupply: editForm.powerSupply,
@@ -3350,6 +3629,72 @@ export default function App() {
     });
 
     showSuccess("Offer/reservation request sent. INAMAAD will review and contact you shortly.");
+  }
+
+  async function submitJvApplication(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!selectedListing) return;
+
+    const newApplication: Omit<JVApplication, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      applicantName: jvApplicationForm.applicantName,
+      applicantEmail: jvApplicationForm.applicantEmail,
+      applicantPhone: jvApplicationForm.applicantPhone,
+      applicantRole: jvApplicationForm.applicantRole,
+      companyName: jvApplicationForm.companyName,
+      budgetCapacity: jvApplicationForm.budgetCapacity,
+      experienceSummary: jvApplicationForm.experienceSummary,
+      proposalMessage: jvApplicationForm.proposalMessage,
+      status: "New",
+      priority: "High",
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("jv_applications").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        applicant_name: jvApplicationForm.applicantName,
+        applicant_email: jvApplicationForm.applicantEmail || null,
+        applicant_phone: jvApplicationForm.applicantPhone,
+        applicant_role: jvApplicationForm.applicantRole,
+        company_name: jvApplicationForm.companyName || null,
+        budget_capacity: jvApplicationForm.budgetCapacity || null,
+        experience_summary: jvApplicationForm.experienceSummary || null,
+        proposal_message: jvApplicationForm.proposalMessage || null,
+        status: "New",
+        priority: "High",
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit JV application. Check database settings.");
+        return;
+      }
+    } else {
+      setJvApplications((current) => [{ ...newApplication, id: Date.now() }, ...current]);
+    }
+
+    await createStaffNotification(
+      "New JV partnership application",
+      `${jvApplicationForm.applicantName} applied as ${jvApplicationForm.applicantRole} for ${selectedListing.title}.`,
+      "JV Application"
+    );
+
+    setJvApplicationForm({
+      applicantName: "",
+      applicantEmail: "",
+      applicantPhone: "",
+      applicantRole: "Developer",
+      companyName: "",
+      budgetCapacity: "",
+      experienceSummary: "",
+      proposalMessage: "",
+    });
+
+    showSuccess("JV partnership application sent. INAMAAD will review and contact you shortly.");
   }
 
   async function submitContactMessage(event: React.FormEvent) {
@@ -4272,6 +4617,82 @@ export default function App() {
 
 
 
+  async function updateJvApplicationStatus(id: number, status: JVApplicationStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update JV application status.");
+      return;
+    }
+
+    const applicationToUpdate = jvApplications.find((application) => application.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("jv_applications")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update JV application status.");
+        return;
+      }
+
+      await loadDatabaseJvApplications();
+    } else {
+      setJvApplications((current) =>
+        current.map((application) =>
+          application.id === id ? { ...application, status } : application
+        )
+      );
+    }
+
+    await createAdminActivityLog(
+      `Marked JV application ${status}`,
+      "JV Application",
+      String(id),
+      applicationToUpdate ? `${applicationToUpdate.applicantName} / ${applicationToUpdate.listingTitle}` : "JV application status updated."
+    );
+
+    showSuccess(`JV application marked as ${status}.`);
+  }
+
+  async function deleteJvApplication(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete JV applications.");
+      return;
+    }
+
+    const applicationToDelete = jvApplications.find((application) => application.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("jv_applications")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete JV application.");
+        return;
+      }
+
+      await loadDatabaseJvApplications();
+    } else {
+      setJvApplications((current) =>
+        current.filter((application) => application.id !== id)
+      );
+    }
+
+    await createAdminActivityLog(
+      "Deleted JV application",
+      "JV Application",
+      String(id),
+      applicationToDelete ? `${applicationToDelete.applicantName} / ${applicationToDelete.listingTitle}` : "JV application deleted."
+    );
+
+    showSuccess("JV application removed.");
+  }
+
   function getAssignedStaffLabel(email?: string) {
     if (!email) return "Unassigned";
 
@@ -4286,6 +4707,7 @@ export default function App() {
     if (kind === "investor_requests") return "Investor Request";
     if (kind === "property_inquiries") return "Property Inquiry";
     if (kind === "property_offers") return "Property Offer";
+    if (kind === "jv_applications") return "JV Application";
     if (kind === "contact_messages") return "Contact Message";
     return "Inspection Booking";
   }
@@ -4294,6 +4716,7 @@ export default function App() {
     if (kind === "investor_requests") await loadDatabaseInvestorRequests();
     if (kind === "property_inquiries") await loadDatabasePropertyInquiries();
     if (kind === "property_offers") await loadDatabasePropertyOffers();
+    if (kind === "jv_applications") await loadDatabaseJvApplications();
     if (kind === "contact_messages") await loadDatabaseContactMessages();
     if (kind === "inspection_bookings") await loadDatabaseInspectionBookings();
   }
@@ -4323,6 +4746,14 @@ export default function App() {
       setPropertyOffers((current) =>
         current.map((offer) =>
           offer.id === id ? { ...offer, ...changes } : offer
+        )
+      );
+    }
+
+    if (kind === "jv_applications") {
+      setJvApplications((current) =>
+        current.map((application) =>
+          application.id === id ? { ...application, ...changes } : application
         )
       );
     }
@@ -5201,7 +5632,7 @@ export default function App() {
               </div>
 
               <button
-                onClick={() => setModal("post")}
+                onClick={openPropertySubmissionForm}
                 className="w-fit rounded-2xl bg-[#0d1c38] px-7 py-4 text-base font-bold text-white shadow-sm transition hover:bg-[#13284f]"
               >
                 Submit Property
@@ -5429,7 +5860,14 @@ export default function App() {
                         </div>
                       </div>
 
-                      {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
+                      {isJointVentureListing(listing) ? (
+                        <div className="mt-5 flex flex-wrap gap-2 text-xs font-black text-[#0d1c38]">
+                          {listing.jvStructure ? <span className="rounded-full bg-amber-100 px-3 py-2">{listing.jvStructure}</span> : null}
+                          {listing.jvProjectStage ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.jvProjectStage}</span> : null}
+                          {listing.landSize ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.landSize}</span> : null}
+                          {listing.jvExpectedUnits ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.jvExpectedUnits} units</span> : null}
+                        </div>
+                      ) : (listing.bedrooms || listing.bathrooms || listing.landSize) && (
                         <div className="mt-5 flex flex-wrap gap-2 text-xs font-black text-[#0d1c38]">
                           {listing.bedrooms ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.bedrooms} Beds</span> : null}
                           {listing.bathrooms ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.bathrooms} Baths</span> : null}
@@ -5608,7 +6046,7 @@ export default function App() {
 
               <div className="mt-9 flex flex-col gap-4 sm:flex-row">
                 <button
-                  onClick={() => setModal("post")}
+                  onClick={openJvSubmissionForm}
                   className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-base font-black text-[#0d1c38] hover:bg-[#ffd45a]"
                 >
                   Submit JV Deal
@@ -6159,13 +6597,40 @@ export default function App() {
 
             {modal === "post" && (
               <form onSubmit={submitListing} className="grid gap-4">
-                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
-                  <p className="font-black text-[#0d1c38]">Need help? Use examples like these:</p>
-                  <p className="mt-2"><span className="font-black">Title:</span> 4 Bedroom Smart Duplex in Lekki Phase 1</p>
-                  <p><span className="font-black">Investment highlight:</span> Estimated 14% yearly appreciation with strong rental demand</p>
-                  <p><span className="font-black">Opportunity:</span> A verified property in a fast-growing location, suitable for rental income, resale value, or long-term investment.</p>
-                  <p className="mt-2 rounded-xl bg-white px-3 py-2 text-slate-600"><span className="font-black text-[#0d1c38]">Quick guide:</span> choose the building/asset under Property type, then choose For Sale, For Rent, Short Let, Lease, Investment, or JV under Listing purpose.</p>
+                <div className="grid rounded-2xl bg-slate-100 p-1 text-sm font-black text-[#0d1c38] md:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={openPropertySubmissionForm}
+                    className={`rounded-xl px-5 py-3 transition ${!isJointVentureListing(postForm) ? "bg-white shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
+                  >
+                    Property listing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openJvSubmissionForm}
+                    className={`rounded-xl px-5 py-3 transition ${isJointVentureListing(postForm) ? "bg-white shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
+                  >
+                    JV deal / development partnership
+                  </button>
                 </div>
+
+                {isJointVentureListing(postForm) ? (
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                    <p className="font-black text-[#0d1c38]">JV deal mode is active.</p>
+                    <p className="mt-2"><span className="font-black">Title:</span> Joint Venture Estate Development in Gwarinpa</p>
+                    <p><span className="font-black">JV highlight:</span> Landowner + developer partnership with agreed sharing formula.</p>
+                    <p><span className="font-black">Opportunity:</span> Describe land contribution, project stage, expected units, developer/investor requirement, sharing formula, timeline, and exit plan.</p>
+                    <p className="mt-2 rounded-xl bg-white px-3 py-2 text-slate-600"><span className="font-black text-[#0d1c38]">Important:</span> JV deals do not require bedrooms, bathrooms, furnishing, or normal property amenities. Those fields are removed in JV mode.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                    <p className="font-black text-[#0d1c38]">Property listing mode is active.</p>
+                    <p className="mt-2"><span className="font-black">Title:</span> 4 Bedroom Smart Duplex in Lekki Phase 1</p>
+                    <p><span className="font-black">Investment highlight:</span> Estimated 14% yearly appreciation with strong rental demand</p>
+                    <p><span className="font-black">Opportunity:</span> A verified property in a fast-growing location, suitable for rental income, resale value, or long-term investment.</p>
+                    <p className="mt-2 rounded-xl bg-white px-3 py-2 text-slate-600"><span className="font-black text-[#0d1c38]">Quick guide:</span> choose the building/asset under Property type, then choose For Sale, For Rent, Short Let, Lease, or Investment under Listing purpose.</p>
+                  </div>
+                )}
                 <div className="grid gap-4 md:grid-cols-2">
                   <input
                     required
@@ -6173,7 +6638,7 @@ export default function App() {
                     onChange={(event) =>
                       setPostForm({ ...postForm, title: event.target.value })
                     }
-                    placeholder="Property title, e.g. 4 Bedroom Terrace Duplex in Lekki Phase 1"
+                    placeholder={isJointVentureListing(postForm) ? "JV title, e.g. Joint Venture Estate Development in Gwarinpa" : "Property title, e.g. 4 Bedroom Terrace Duplex in Lekki Phase 1"}
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
@@ -6283,7 +6748,7 @@ export default function App() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
                     <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                      Price currency
+                      {isJointVentureListing(postForm) ? "Expected JV/project value" : "Price currency"}
                     </label>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
@@ -6299,7 +6764,7 @@ export default function App() {
                             price: formatPriceInput(event.target.value),
                           })
                         }
-                        placeholder="Enter amount, e.g. 50000000"
+                        placeholder={isJointVentureListing(postForm) ? "Expected project value, e.g. 1500000000" : "Enter amount, e.g. 50000000"}
                         className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
                       />
                     </div>
@@ -6310,9 +6775,22 @@ export default function App() {
 
                   <select
                     value={postForm.type}
-                    onChange={(event) =>
-                      setPostForm({ ...postForm, type: event.target.value })
-                    }
+                    onChange={(event) => {
+                      const selectedType = event.target.value;
+                      const switchedToJv = selectedType === "Joint Venture" || selectedType === "Estate Development";
+                      setPostForm({
+                        ...postForm,
+                        type: selectedType,
+                        category: switchedToJv ? "JV Partnership" : postForm.category,
+                        bedrooms: switchedToJv ? "" : postForm.bedrooms,
+                        bathrooms: switchedToJv ? "" : postForm.bathrooms,
+                        toilets: switchedToJv ? "" : postForm.toilets,
+                        parkingSpaces: switchedToJv ? "" : postForm.parkingSpaces,
+                        furnishingStatus: switchedToJv ? "Not Specified" : postForm.furnishingStatus,
+                        propertyCondition: switchedToJv ? "Not Specified" : postForm.propertyCondition,
+                        amenities: switchedToJv ? "" : postForm.amenities,
+                      });
+                    }}
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     aria-label="Property type"
                   >
@@ -6322,7 +6800,8 @@ export default function App() {
                   </select>
                 </div>
 
-                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                {!isJointVentureListing(postForm) && (
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
                   <p className="text-sm font-black text-[#0d1c38]">Price breakdown and payment details</p>
                   <p className="mt-1 text-xs leading-5 text-slate-600">
                     Add extra Nigerian real estate costs. The total estimated cost is calculated automatically from property price plus fees.
@@ -6383,15 +6862,23 @@ export default function App() {
                   />
                 </div>
 
+                )}
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <select
                     value={postForm.category}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const selectedPurpose = event.target.value;
                       setPostForm({
                         ...postForm,
-                        category: event.target.value,
-                      })
-                    }
+                        category: selectedPurpose,
+                        type: selectedPurpose === "Joint Venture" || selectedPurpose === "JV Partnership" ? "Joint Venture" : postForm.type,
+                        bedrooms: selectedPurpose === "Joint Venture" || selectedPurpose === "JV Partnership" ? "" : postForm.bedrooms,
+                        bathrooms: selectedPurpose === "Joint Venture" || selectedPurpose === "JV Partnership" ? "" : postForm.bathrooms,
+                        toilets: selectedPurpose === "Joint Venture" || selectedPurpose === "JV Partnership" ? "" : postForm.toilets,
+                        parkingSpaces: selectedPurpose === "Joint Venture" || selectedPurpose === "JV Partnership" ? "" : postForm.parkingSpaces,
+                      });
+                    }}
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     aria-label="Listing purpose"
                   >
@@ -6450,93 +6937,129 @@ export default function App() {
                   />
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Property specifications and amenities</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Add the details buyers and tenants normally search for. Leave fields empty if they do not apply, for example land may not need bedrooms.
-                  </p>
+                {isJointVentureListing(postForm) ? (
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">Joint venture project profile</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      JV deals should be described as development opportunities, not bedroom/bathroom listings. Use this section for landowner, developer, investor, sharing formula, and project stage.
+                    </p>
 
-                  <div className="mt-4 grid gap-4 md:grid-cols-4">
-                    <input
-                      type="number"
-                      min="0"
-                      value={postForm.bedrooms}
-                      onChange={(event) => setPostForm({ ...postForm, bedrooms: event.target.value })}
-                      placeholder="Bedrooms, e.g. 4"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      value={postForm.bathrooms}
-                      onChange={(event) => setPostForm({ ...postForm, bathrooms: event.target.value })}
-                      placeholder="Bathrooms, e.g. 4"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      value={postForm.toilets}
-                      onChange={(event) => setPostForm({ ...postForm, toilets: event.target.value })}
-                      placeholder="Toilets, e.g. 5"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      value={postForm.parkingSpaces}
-                      onChange={(event) => setPostForm({ ...postForm, parkingSpaces: event.target.value })}
-                      placeholder="Parking spaces, e.g. 2"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <select
+                        value={postForm.jvStructure}
+                        onChange={(event) => setPostForm({ ...postForm, jvStructure: event.target.value })}
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="JV structure"
+                      >
+                        {jvStructureOptions.map((structure) => (
+                          <option key={structure}>{structure}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={postForm.jvProjectStage}
+                        onChange={(event) => setPostForm({ ...postForm, jvProjectStage: event.target.value })}
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="JV project stage"
+                      >
+                        {jvProjectStageOptions.map((stage) => (
+                          <option key={stage}>{stage}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <input
+                        value={postForm.landSize}
+                        onChange={(event) => setPostForm({ ...postForm, landSize: event.target.value })}
+                        placeholder="JV land size, e.g. 3,500sqm, 2 hectares, 20 plots"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={postForm.jvExpectedUnits}
+                        onChange={(event) => setPostForm({ ...postForm, jvExpectedUnits: event.target.value })}
+                        placeholder="Expected units, e.g. 24 terraces, 80 apartments"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={postForm.jvEstimatedProjectCost}
+                        onChange={(event) => setPostForm({ ...postForm, jvEstimatedProjectCost: formatPriceInput(event.target.value) })}
+                        placeholder="Estimated project cost, e.g. ₦1,500,000,000"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={postForm.jvCompletionTimeline}
+                        onChange={(event) => setPostForm({ ...postForm, jvCompletionTimeline: event.target.value })}
+                        placeholder="Completion timeline, e.g. 18 months after approval"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <textarea
+                        value={postForm.jvLandContribution}
+                        onChange={(event) => setPostForm({ ...postForm, jvLandContribution: event.target.value })}
+                        placeholder="Landowner contribution, e.g. clean land with C of O, access road, vacant possession"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={postForm.jvDeveloperRequirement}
+                        onChange={(event) => setPostForm({ ...postForm, jvDeveloperRequirement: event.target.value })}
+                        placeholder="Developer requirement, e.g. fund construction, handle approvals, deliver infrastructure"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={postForm.jvInvestorRequirement}
+                        onChange={(event) => setPostForm({ ...postForm, jvInvestorRequirement: event.target.value })}
+                        placeholder="Investor requirement, e.g. equity funding, staged capital, off-plan buyer pool"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={postForm.jvSharingFormula}
+                        onChange={(event) => setPostForm({ ...postForm, jvSharingFormula: event.target.value })}
+                        placeholder="Sharing formula, e.g. 40% landowner / 60% developer, or units split after cost recovery"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <textarea
+                      value={postForm.jvTerms}
+                      onChange={(event) => setPostForm({ ...postForm, jvTerms: event.target.value })}
+                      placeholder="JV terms and notes, e.g. required due diligence, legal structure, approvals, exit plan, profit-sharing terms"
+                      className="mt-4 min-h-[110px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
                   </div>
+                ) : (
+                  <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">Property specifications and amenities</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Add the details buyers and tenants normally search for. Leave fields empty if they do not apply, for example land may not need bedrooms.
+                    </p>
 
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <input
-                      value={postForm.landSize}
-                      onChange={(event) => setPostForm({ ...postForm, landSize: event.target.value })}
-                      placeholder="Land size, e.g. 500sqm, 1 plot, 2 hectares"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.propertySize}
-                      onChange={(event) => setPostForm({ ...postForm, propertySize: event.target.value })}
-                      placeholder="Built-up size, e.g. 320sqm"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
+                    <div className="mt-4 grid gap-4 md:grid-cols-4">
+                      <input type="number" min="0" value={postForm.bedrooms} onChange={(event) => setPostForm({ ...postForm, bedrooms: event.target.value })} placeholder="Bedrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={postForm.bathrooms} onChange={(event) => setPostForm({ ...postForm, bathrooms: event.target.value })} placeholder="Bathrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={postForm.toilets} onChange={(event) => setPostForm({ ...postForm, toilets: event.target.value })} placeholder="Toilets, e.g. 5" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={postForm.parkingSpaces} onChange={(event) => setPostForm({ ...postForm, parkingSpaces: event.target.value })} placeholder="Parking spaces, e.g. 2" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <input value={postForm.landSize} onChange={(event) => setPostForm({ ...postForm, landSize: event.target.value })} placeholder="Land size, e.g. 500sqm, 1 plot, 2 hectares" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input value={postForm.propertySize} onChange={(event) => setPostForm({ ...postForm, propertySize: event.target.value })} placeholder="Built-up size, e.g. 320sqm" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <select value={postForm.furnishingStatus} onChange={(event) => setPostForm({ ...postForm, furnishingStatus: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Furnishing status">
+                        {furnishingStatusOptions.map((status) => (<option key={status}>{status}</option>))}
+                      </select>
+                      <select value={postForm.propertyCondition} onChange={(event) => setPostForm({ ...postForm, propertyCondition: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Property condition">
+                        {propertyConditionOptions.map((condition) => (<option key={condition}>{condition}</option>))}
+                      </select>
+                    </div>
+
+                    <input list="amenity-options" value={postForm.amenities} onChange={(event) => setPostForm({ ...postForm, amenities: event.target.value })} placeholder="Amenities, e.g. 24/7 Security, CCTV, Swimming Pool, Fitted Kitchen" className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
                   </div>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <select
-                      value={postForm.furnishingStatus}
-                      onChange={(event) => setPostForm({ ...postForm, furnishingStatus: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Furnishing status"
-                    >
-                      {furnishingStatusOptions.map((status) => (
-                        <option key={status}>{status}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={postForm.propertyCondition}
-                      onChange={(event) => setPostForm({ ...postForm, propertyCondition: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Property condition"
-                    >
-                      {propertyConditionOptions.map((condition) => (
-                        <option key={condition}>{condition}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <input
-                    list="amenity-options"
-                    value={postForm.amenities}
-                    onChange={(event) => setPostForm({ ...postForm, amenities: event.target.value })}
-                    placeholder="Amenities, e.g. 24/7 Security, CCTV, Swimming Pool, Fitted Kitchen"
-                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-                </div>
+                )}
 
                 <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
                   <p className="text-sm font-black text-[#0d1c38]">Neighborhood and infrastructure</p>
@@ -7265,94 +7788,129 @@ export default function App() {
                 </div>
 
 
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Property specifications and amenities</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Update the physical property details buyers and tenants use to compare listings.
-                  </p>
+                {isJointVentureListing(editForm) ? (
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">Joint venture project profile</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      JV deals should be described as development opportunities, not bedroom/bathroom listings. Use this section for landowner, developer, investor, sharing formula, and project stage.
+                    </p>
 
-                  <div className="mt-4 grid gap-4 md:grid-cols-4">
-                    <input
-                      type="number"
-                      min="0"
-                      value={editForm.bedrooms}
-                      onChange={(event) => setEditForm({ ...editForm, bedrooms: event.target.value })}
-                      placeholder="Bedrooms, e.g. 4"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      value={editForm.bathrooms}
-                      onChange={(event) => setEditForm({ ...editForm, bathrooms: event.target.value })}
-                      placeholder="Bathrooms, e.g. 4"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      value={editForm.toilets}
-                      onChange={(event) => setEditForm({ ...editForm, toilets: event.target.value })}
-                      placeholder="Toilets, e.g. 5"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      value={editForm.parkingSpaces}
-                      onChange={(event) => setEditForm({ ...editForm, parkingSpaces: event.target.value })}
-                      placeholder="Parking spaces, e.g. 2"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <select
+                        value={editForm.jvStructure}
+                        onChange={(event) => setEditForm({ ...editForm, jvStructure: event.target.value })}
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="JV structure"
+                      >
+                        {jvStructureOptions.map((structure) => (
+                          <option key={structure}>{structure}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={editForm.jvProjectStage}
+                        onChange={(event) => setEditForm({ ...editForm, jvProjectStage: event.target.value })}
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="JV project stage"
+                      >
+                        {jvProjectStageOptions.map((stage) => (
+                          <option key={stage}>{stage}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <input
+                        value={editForm.landSize}
+                        onChange={(event) => setEditForm({ ...editForm, landSize: event.target.value })}
+                        placeholder="JV land size, e.g. 3,500sqm, 2 hectares, 20 plots"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={editForm.jvExpectedUnits}
+                        onChange={(event) => setEditForm({ ...editForm, jvExpectedUnits: event.target.value })}
+                        placeholder="Expected units, e.g. 24 terraces, 80 apartments"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={editForm.jvEstimatedProjectCost}
+                        onChange={(event) => setEditForm({ ...editForm, jvEstimatedProjectCost: formatPriceInput(event.target.value) })}
+                        placeholder="Estimated project cost, e.g. ₦1,500,000,000"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={editForm.jvCompletionTimeline}
+                        onChange={(event) => setEditForm({ ...editForm, jvCompletionTimeline: event.target.value })}
+                        placeholder="Completion timeline, e.g. 18 months after approval"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <textarea
+                        value={editForm.jvLandContribution}
+                        onChange={(event) => setEditForm({ ...editForm, jvLandContribution: event.target.value })}
+                        placeholder="Landowner contribution, e.g. clean land with C of O, access road, vacant possession"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={editForm.jvDeveloperRequirement}
+                        onChange={(event) => setEditForm({ ...editForm, jvDeveloperRequirement: event.target.value })}
+                        placeholder="Developer requirement, e.g. fund construction, handle approvals, deliver infrastructure"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={editForm.jvInvestorRequirement}
+                        onChange={(event) => setEditForm({ ...editForm, jvInvestorRequirement: event.target.value })}
+                        placeholder="Investor requirement, e.g. equity funding, staged capital, off-plan buyer pool"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={editForm.jvSharingFormula}
+                        onChange={(event) => setEditForm({ ...editForm, jvSharingFormula: event.target.value })}
+                        placeholder="Sharing formula, e.g. 40% landowner / 60% developer, or units split after cost recovery"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <textarea
+                      value={editForm.jvTerms}
+                      onChange={(event) => setEditForm({ ...editForm, jvTerms: event.target.value })}
+                      placeholder="JV terms and notes, e.g. required due diligence, legal structure, approvals, exit plan, profit-sharing terms"
+                      className="mt-4 min-h-[110px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
                   </div>
+                ) : (
+                  <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">Property specifications and amenities</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Update the physical property details buyers and tenants use to compare listings.
+                    </p>
 
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <input
-                      value={editForm.landSize}
-                      onChange={(event) => setEditForm({ ...editForm, landSize: event.target.value })}
-                      placeholder="Land size, e.g. 500sqm, 1 plot, 2 hectares"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.propertySize}
-                      onChange={(event) => setEditForm({ ...editForm, propertySize: event.target.value })}
-                      placeholder="Built-up size, e.g. 320sqm"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
+                    <div className="mt-4 grid gap-4 md:grid-cols-4">
+                      <input type="number" min="0" value={editForm.bedrooms} onChange={(event) => setEditForm({ ...editForm, bedrooms: event.target.value })} placeholder="Bedrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={editForm.bathrooms} onChange={(event) => setEditForm({ ...editForm, bathrooms: event.target.value })} placeholder="Bathrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={editForm.toilets} onChange={(event) => setEditForm({ ...editForm, toilets: event.target.value })} placeholder="Toilets, e.g. 5" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={editForm.parkingSpaces} onChange={(event) => setEditForm({ ...editForm, parkingSpaces: event.target.value })} placeholder="Parking spaces, e.g. 2" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <input value={editForm.landSize} onChange={(event) => setEditForm({ ...editForm, landSize: event.target.value })} placeholder="Land size, e.g. 500sqm, 1 plot, 2 hectares" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input value={editForm.propertySize} onChange={(event) => setEditForm({ ...editForm, propertySize: event.target.value })} placeholder="Built-up size, e.g. 320sqm" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <select value={editForm.furnishingStatus} onChange={(event) => setEditForm({ ...editForm, furnishingStatus: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Furnishing status">
+                        {furnishingStatusOptions.map((status) => (<option key={status}>{status}</option>))}
+                      </select>
+                      <select value={editForm.propertyCondition} onChange={(event) => setEditForm({ ...editForm, propertyCondition: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Property condition">
+                        {propertyConditionOptions.map((condition) => (<option key={condition}>{condition}</option>))}
+                      </select>
+                    </div>
+
+                    <input list="amenity-options" value={editForm.amenities} onChange={(event) => setEditForm({ ...editForm, amenities: event.target.value })} placeholder="Amenities, e.g. 24/7 Security, CCTV, Swimming Pool, Fitted Kitchen" className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
                   </div>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <select
-                      value={editForm.furnishingStatus}
-                      onChange={(event) => setEditForm({ ...editForm, furnishingStatus: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Furnishing status"
-                    >
-                      {furnishingStatusOptions.map((status) => (
-                        <option key={status}>{status}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={editForm.propertyCondition}
-                      onChange={(event) => setEditForm({ ...editForm, propertyCondition: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Property condition"
-                    >
-                      {propertyConditionOptions.map((condition) => (
-                        <option key={condition}>{condition}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <input
-                    list="amenity-options"
-                    value={editForm.amenities}
-                    onChange={(event) => setEditForm({ ...editForm, amenities: event.target.value })}
-                    placeholder="Amenities, e.g. 24/7 Security, CCTV, Swimming Pool, Fitted Kitchen"
-                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-                </div>
-
+                )}
                 <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
                   <p className="text-sm font-black text-[#0d1c38]">Property document / title papers</p>
                   <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -8097,7 +8655,24 @@ export default function App() {
                       </div>
                     )}
 
-                    {(selectedListing.bedrooms || selectedListing.bathrooms || selectedListing.toilets || selectedListing.parkingSpaces || selectedListing.landSize || selectedListing.propertySize || selectedListing.furnishingStatus || selectedListing.propertyCondition || selectedListing.amenities) && (
+                    {isJointVentureListing(selectedListing) ? (
+                      <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                        <p className="font-black text-[#0d1c38]">Joint venture project profile</p>
+                        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                          {selectedListing.jvStructure ? <p><span className="font-black">JV structure:</span> {selectedListing.jvStructure}</p> : null}
+                          {selectedListing.jvProjectStage ? <p><span className="font-black">Project stage:</span> {selectedListing.jvProjectStage}</p> : null}
+                          {selectedListing.landSize ? <p><span className="font-black">Land size:</span> {selectedListing.landSize}</p> : null}
+                          {selectedListing.jvExpectedUnits ? <p><span className="font-black">Expected units:</span> {selectedListing.jvExpectedUnits}</p> : null}
+                          {selectedListing.jvEstimatedProjectCost ? <p><span className="font-black">Estimated project cost:</span> {selectedListing.jvEstimatedProjectCost}</p> : null}
+                          {selectedListing.jvCompletionTimeline ? <p><span className="font-black">Timeline:</span> {selectedListing.jvCompletionTimeline}</p> : null}
+                        </div>
+                        {selectedListing.jvLandContribution ? <p className="mt-4 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Landowner contribution:</span> {selectedListing.jvLandContribution}</p> : null}
+                        {selectedListing.jvDeveloperRequirement ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Developer requirement:</span> {selectedListing.jvDeveloperRequirement}</p> : null}
+                        {selectedListing.jvInvestorRequirement ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Investor requirement:</span> {selectedListing.jvInvestorRequirement}</p> : null}
+                        {selectedListing.jvSharingFormula ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Sharing formula:</span> {selectedListing.jvSharingFormula}</p> : null}
+                        {selectedListing.jvTerms ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">JV terms:</span> {selectedListing.jvTerms}</p> : null}
+                      </div>
+                    ) : (selectedListing.bedrooms || selectedListing.bathrooms || selectedListing.toilets || selectedListing.parkingSpaces || selectedListing.landSize || selectedListing.propertySize || selectedListing.furnishingStatus || selectedListing.propertyCondition || selectedListing.amenities) && (
                       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
                         <p className="font-black text-[#0d1c38]">Property specifications</p>
                         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -8350,6 +8925,114 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {selectedListing && isJointVentureListing(selectedListing) && (
+                  <form
+                    onSubmit={submitJvApplication}
+                    className="mt-6 grid gap-4 rounded-[24px] border border-purple-200 bg-purple-50 p-6"
+                  >
+                    <div>
+                      <p className="text-xl font-black text-[#0d1c38]">
+                        Apply for JV partnership
+                      </p>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Submit a professional JV interest as a developer, investor, financier, landowner, construction partner, or marketing partner.
+                      </p>
+                    </div>
+
+                    <input
+                      required
+                      value={jvApplicationForm.applicantName}
+                      onChange={(event) =>
+                        setJvApplicationForm({ ...jvApplicationForm, applicantName: event.target.value })
+                      }
+                      placeholder="Applicant name"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <input
+                        value={jvApplicationForm.applicantEmail}
+                        onChange={(event) =>
+                          setJvApplicationForm({ ...jvApplicationForm, applicantEmail: event.target.value })
+                        }
+                        type="email"
+                        placeholder="Email address optional"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <input
+                        required
+                        value={jvApplicationForm.applicantPhone}
+                        onChange={(event) =>
+                          setJvApplicationForm({ ...jvApplicationForm, applicantPhone: event.target.value })
+                        }
+                        placeholder="Phone or WhatsApp number"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <select
+                        value={jvApplicationForm.applicantRole}
+                        onChange={(event) =>
+                          setJvApplicationForm({ ...jvApplicationForm, applicantRole: event.target.value })
+                        }
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      >
+                        <option>Developer</option>
+                        <option>Investor</option>
+                        <option>Landowner</option>
+                        <option>Financier</option>
+                        <option>Construction Partner</option>
+                        <option>Marketing Partner</option>
+                        <option>Other</option>
+                      </select>
+
+                      <input
+                        value={jvApplicationForm.companyName}
+                        onChange={(event) =>
+                          setJvApplicationForm({ ...jvApplicationForm, companyName: event.target.value })
+                        }
+                        placeholder="Company name optional"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <input
+                      value={jvApplicationForm.budgetCapacity}
+                      onChange={(event) =>
+                        setJvApplicationForm({ ...jvApplicationForm, budgetCapacity: formatPriceInput(event.target.value) || event.target.value })
+                      }
+                      placeholder="Budget / funding capacity e.g. ₦500,000,000"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <textarea
+                      value={jvApplicationForm.experienceSummary}
+                      onChange={(event) =>
+                        setJvApplicationForm({ ...jvApplicationForm, experienceSummary: event.target.value })
+                      }
+                      placeholder="Experience summary e.g. Completed 24-unit terrace project in Abuja, handled approvals and construction finance."
+                      rows={3}
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <textarea
+                      value={jvApplicationForm.proposalMessage}
+                      onChange={(event) =>
+                        setJvApplicationForm({ ...jvApplicationForm, proposalMessage: event.target.value })
+                      }
+                      placeholder="Proposal message: what you can contribute, preferred sharing formula, timeline, or partnership terms."
+                      rows={4}
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <button className="rounded-2xl bg-purple-700 px-6 py-4 text-sm font-black text-white">
+                      Submit JV partnership application
+                    </button>
+                  </form>
+                )}
 
                 <form
                   onSubmit={submitPropertyInquiry}
@@ -9605,6 +10288,127 @@ export default function App() {
 
                 <div>
                   <h3 className="text-xl font-black text-[#0d1c38]">
+                    JV partnership applications
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {jvApplications.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No JV partnership applications yet.
+                      </p>
+                    )}
+
+                    {jvApplications.map((application) => {
+                      const applicationStatus = application.status || "New";
+                      const jvWhatsAppMessage = `Hello ${application.applicantName}, this is INAMAAD Real Estate. We received your JV partnership application for ${application.listingTitle}.`;
+
+                      return (
+                        <div key={application.id} className="rounded-2xl border border-purple-200 bg-purple-50/40 p-5">
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-700">
+                                  {application.listingTitle}
+                                </p>
+
+                                <span className={`rounded-full px-3 py-1 text-[11px] font-black ${jvApplicationStatusClass(applicationStatus)}`}>
+                                  {applicationStatus}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 font-black text-[#0d1c38]">
+                                {application.applicantName} • {application.applicantRole}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {application.companyName || "No company stated"} • {application.applicantEmail || "No email"} • {application.applicantPhone}
+                              </p>
+
+                              {application.budgetCapacity && (
+                                <p className="mt-1 text-sm font-bold text-slate-600">
+                                  Budget / capacity: {application.budgetCapacity}
+                                </p>
+                              )}
+
+                              {application.experienceSummary && (
+                                <p className="mt-3 text-sm leading-6 text-slate-600">
+                                  <span className="font-black text-[#0d1c38]">Experience:</span> {application.experienceSummary}
+                                </p>
+                              )}
+
+                              {application.proposalMessage && (
+                                <p className="mt-2 text-sm leading-6 text-slate-600">
+                                  <span className="font-black text-[#0d1c38]">Proposal:</span> {application.proposalMessage}
+                                </p>
+                              )}
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(application.createdAt)}
+                              </p>
+
+                              {renderLeadAssignmentControls(
+                                "jv_applications",
+                                application.id,
+                                application.assignedToEmail,
+                                application.staffNotes,
+                                application.priority || "Normal",
+                                application.followUpDate || "",
+                                application.lastContactedAt || ""
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <a href={createWhatsAppLeadLink(application.applicantPhone, jvWhatsAppMessage)} target="_blank" rel="noreferrer" className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white">
+                                WhatsApp
+                              </a>
+
+                              <a href={createCallLeadLink(application.applicantPhone)} className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white">
+                                Call
+                              </a>
+
+                              {application.applicantEmail && (
+                                <a href={createEmailLeadLink(application.applicantEmail, `INAMAAD JV application: ${application.listingTitle}`)} className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white">
+                                  Email
+                                </a>
+                              )}
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "New")} disabled={!canManageLeads} className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                New
+                              </button>
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "Reviewing")} disabled={!canManageLeads} className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Reviewing
+                              </button>
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "Shortlisted")} disabled={!canManageLeads} className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Shortlisted
+                              </button>
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "Accepted")} disabled={!canManageLeads} className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Accepted
+                              </button>
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "Rejected")} disabled={!canManageLeads} className="rounded-full bg-red-100 px-4 py-2 text-xs font-black text-red-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Rejected
+                              </button>
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "Closed")} disabled={!canManageLeads} className="rounded-full bg-slate-200 px-4 py-2 text-xs font-black text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Closed
+                              </button>
+
+                              <button onClick={() => deleteJvApplication(application.id)} disabled={!canDeleteLeads} className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
                     Property offers / reservations
                   </h3>
 
@@ -10241,3 +11045,7 @@ export default function App() {
 // Neighborhood and infrastructure upgrade: road access, power, water, security, nearby schools/hospitals/malls/transport, estate features, and neighborhood overview are now supported.
 
 // Owner/agent/developer contact profile upgrade: contact role, company, email, WhatsApp, visibility, address, and mandate status are now supported.
+
+// JV upgrade: JV listings now use project structure, landowner/developer/investor requirements, sharing formula, stage, expected units, project cost, and timeline instead of bedroom/bathroom fields.
+
+// Professional JV form separation upgrade: Submit Property and Submit JV Deal now open separate modes, and JV mode hides bedroom/bathroom/furnishing fields.

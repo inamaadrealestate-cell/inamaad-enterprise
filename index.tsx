@@ -38,12 +38,28 @@ type Lead = {
   status: "New" | "Contacted" | "Closed";
 };
 
+
+type Inspection = {
+  id: number;
+  listingId?: number;
+  listingTitle?: string;
+  name: string;
+  email: string;
+  phone: string;
+  preferredDate: string;
+  preferredTime: string;
+  note: string;
+  createdAt: string;
+  status: "New" | "Confirmed" | "Completed" | "Cancelled";
+};
+
 type ModalType =
   | "login"
   | "register"
   | "forgot"
   | "post"
   | "investor"
+  | "inspection"
   | "admin"
   | null;
 
@@ -341,6 +357,15 @@ export default function App() {
     }
   });
 
+  const [inspections, setInspections] = useState<Inspection[]>(() => {
+    try {
+      const savedInspections = localStorage.getItem("inamaad_inspections");
+      return savedInspections ? JSON.parse(savedInspections) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [keyword, setKeyword] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [type, setType] = useState("");
@@ -384,6 +409,17 @@ export default function App() {
     message: "",
   });
 
+  const [inspectionForm, setInspectionForm] = useState({
+    listingId: 0,
+    listingTitle: "",
+    name: "",
+    email: "",
+    phone: "",
+    preferredDate: "",
+    preferredTime: "",
+    note: "",
+  });
+
   const [newListing, setNewListing] = useState({
     title: "",
     location: "",
@@ -416,6 +452,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("inamaad_leads", JSON.stringify(leads));
   }, [leads]);
+
+  useEffect(() => {
+    localStorage.setItem("inamaad_inspections", JSON.stringify(inspections));
+  }, [inspections]);
 
   useEffect(() => {
     if (authUser) {
@@ -882,6 +922,75 @@ export default function App() {
     showMessage("Lead deleted.");
   }
 
+
+  function openInspectionForm(item?: Listing) {
+    setInspectionForm({
+      listingId: item?.id || 0,
+      listingTitle: item?.title || "",
+      name: authUser?.name || "",
+      email: authUser?.email || "",
+      phone: "",
+      preferredDate: "",
+      preferredTime: "",
+      note: item
+        ? `I want to inspect ${item.title} (${getListingReference(item.id)}) in ${item.location}.`
+        : "",
+    });
+
+    setSelectedListing(null);
+    setModal("inspection");
+  }
+
+  function handleInspectionSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    const createdInspection: Inspection = {
+      id: Date.now(),
+      listingId: inspectionForm.listingId || undefined,
+      listingTitle: inspectionForm.listingTitle || undefined,
+      name: inspectionForm.name.trim(),
+      email: inspectionForm.email.trim(),
+      phone: inspectionForm.phone.trim(),
+      preferredDate: inspectionForm.preferredDate,
+      preferredTime: inspectionForm.preferredTime,
+      note: inspectionForm.note.trim(),
+      createdAt: new Date().toISOString(),
+      status: "New",
+    };
+
+    setInspections((currentInspections) => [createdInspection, ...currentInspections]);
+
+    setInspectionForm({
+      listingId: 0,
+      listingTitle: "",
+      name: authUser?.name || "",
+      email: authUser?.email || "",
+      phone: "",
+      preferredDate: "",
+      preferredTime: "",
+      note: "",
+    });
+
+    setModal(null);
+    showMessage("Inspection request saved. Admin can confirm it from the dashboard.");
+  }
+
+  function updateInspectionStatus(id: number, status: Inspection["status"]) {
+    setInspections((currentInspections) =>
+      currentInspections.map((inspection) =>
+        inspection.id === id ? { ...inspection, status } : inspection
+      )
+    );
+    showMessage(`Inspection marked as ${status}.`);
+  }
+
+  function deleteInspection(id: number) {
+    setInspections((currentInspections) =>
+      currentInspections.filter((inspection) => inspection.id !== id)
+    );
+    showMessage("Inspection request deleted.");
+  }
+
   function renderPropertyCard(item: Listing, variant: "property" | "jv" = "property") {
     const isExpanded = expandedListingId === item.id;
     const isJV = variant === "jv" || isJVListing(item);
@@ -1110,9 +1219,17 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => openLeadForm(item)}
-                  className="rounded-xl bg-[#f0bf3c] px-4 py-3 text-sm font-black text-[#0d1c38] transition hover:bg-[#f7ce62] sm:col-span-2"
+                  className="rounded-xl bg-[#f0bf3c] px-4 py-3 text-sm font-black text-[#0d1c38] transition hover:bg-[#f7ce62]"
                 >
                   Request investment call
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => openInspectionForm(item)}
+                  className="rounded-xl border border-[#f0bf3c] bg-white px-4 py-3 text-sm font-black text-[#9b6b16] transition hover:bg-[#fff7df]"
+                >
+                  Book inspection
                 </button>
               </div>
             </div>
@@ -1477,7 +1594,7 @@ export default function App() {
               Save listings, open property details inside cards, contact INAMAAD through WhatsApp, and separate JV opportunities from standard property listings.
             </p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-5">
               <div className="rounded-2xl bg-[#f8fafc] p-4">
                 <p className="text-2xl font-black text-[#0d1c38]">{propertyListings.length}</p>
                 <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
@@ -1503,6 +1620,13 @@ export default function App() {
                 <p className="text-2xl font-black text-[#0d1c38]">{leads.length}</p>
                 <p className="mt-1 text-xs font-black uppercase tracking-wide text-blue-700">
                   Leads
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-purple-50 p-4">
+                <p className="text-2xl font-black text-[#0d1c38]">{inspections.length}</p>
+                <p className="mt-1 text-xs font-black uppercase tracking-wide text-purple-700">
+                  Inspections
                 </p>
               </div>
             </div>
@@ -1879,6 +2003,14 @@ export default function App() {
               >
                 Request investor access
               </button>
+
+              <button
+                type="button"
+                onClick={() => openInspectionForm(selectedListing)}
+                className="rounded-xl border border-[#f0bf3c] bg-[#fff7df] px-5 py-3 text-sm font-black text-[#9b6b16] hover:bg-[#f7e8bd] sm:col-span-2"
+              >
+                Book property inspection
+              </button>
             </div>
           </div>
         </div>
@@ -1898,6 +2030,7 @@ export default function App() {
                   {modal === "forgot" && "Forgot password"}
                   {modal === "post" && "Post opportunity"}
                   {modal === "investor" && "Request investor access"}
+                  {modal === "inspection" && "Book property inspection"}
                   {modal === "admin" && "Admin dashboard"}
                 </h2>
               </div>
@@ -2419,6 +2552,120 @@ export default function App() {
                             className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600"
                           >
                             Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
+                  <p className="mb-1 text-sm font-black text-[#0d1c38]">
+                    Inspection requests: {inspections.length}
+                  </p>
+                  <p className="text-xs text-purple-700">
+                    Confirm, complete, cancel, or remove property inspection requests.
+                  </p>
+                </div>
+
+                {inspections.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                      Property inspections
+                    </p>
+
+                    {inspections.slice(0, 5).map((inspection) => (
+                      <div
+                        key={inspection.id}
+                        className="rounded-2xl border border-slate-200 bg-white p-4"
+                      >
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-black text-[#0d1c38]">
+                              {inspection.name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {inspection.email} · {inspection.phone}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-black ${
+                              inspection.status === "New"
+                                ? "bg-purple-50 text-purple-700"
+                                : inspection.status === "Confirmed"
+                                  ? "bg-blue-50 text-blue-700"
+                                  : inspection.status === "Completed"
+                                    ? "bg-green-50 text-green-700"
+                                    : "bg-red-50 text-red-700"
+                            }`}
+                          >
+                            {inspection.status}
+                          </span>
+                        </div>
+
+                        {inspection.listingTitle ? (
+                          <p className="mb-2 text-xs font-black text-[#9b6b16]">
+                            Property: {inspection.listingTitle}
+                          </p>
+                        ) : null}
+
+                        <p className="mb-2 text-xs font-black text-slate-500">
+                          Preferred: {inspection.preferredDate} at {inspection.preferredTime}
+                        </p>
+
+                        {inspection.note ? (
+                          <p className="mb-3 text-sm leading-6 text-slate-600">
+                            {inspection.note}
+                          </p>
+                        ) : null}
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <a
+                            href={`https://wa.me/${inspection.phone.replace(/[^0-9]/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-xl bg-green-500 px-3 py-2 text-center text-xs font-black text-white"
+                          >
+                            WhatsApp
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateInspectionStatus(inspection.id, "Confirmed")
+                            }
+                            className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white"
+                          >
+                            Confirm
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateInspectionStatus(inspection.id, "Completed")
+                            }
+                            className="rounded-xl border border-green-200 px-3 py-2 text-xs font-black text-green-700"
+                          >
+                            Complete
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateInspectionStatus(inspection.id, "Cancelled")
+                            }
+                            className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600"
+                          >
+                            Cancel
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => deleteInspection(inspection.id)}
+                            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 sm:col-span-2"
+                          >
+                            Delete inspection
                           </button>
                         </div>
                       </div>

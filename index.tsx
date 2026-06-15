@@ -11,6 +11,17 @@ type Listing = {
   roi: string;
   status: string;
   summary: string;
+  bedrooms?: string;
+  bathrooms?: string;
+  landSize?: string;
+  documentTitle?: string;
+  ownerPhone?: string;
+  whatsapp?: string;
+  imageUrl?: string;
+  galleryUrls?: string[];
+  documentName?: string;
+  documentDataUrl?: string;
+  documentMimeType?: string;
 };
 
 type ModalType =
@@ -162,7 +173,9 @@ function getWhatsappUrl(item: Listing) {
   const message = `Hello INAMAAD Real Estate, I want details about ${item.title} (${getListingReference(
     item.id
   )}) in ${item.location}.`;
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  const rawPhone = (item.whatsapp || item.ownerPhone || WHATSAPP_NUMBER).replace(/[^0-9]/g, "");
+  const phone = rawPhone.startsWith("0") ? `234${rawPhone.slice(1)}` : rawPhone || WHATSAPP_NUMBER;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
 function SiteStyles() {
@@ -310,6 +323,14 @@ export default function App() {
   const [type, setType] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [savedListingIds, setSavedListingIds] = useState<number[]>(() => {
+    try {
+      const savedIds = localStorage.getItem("inamaad_saved_listing_ids");
+      return savedIds ? JSON.parse(savedIds) : [];
+    } catch {
+      return [];
+    }
+  });
   const [expandedListingId, setExpandedListingId] = useState<number | null>(null);
   const [modal, setModal] = useState<ModalType>(null);
   const [successMessage, setSuccessMessage] = useState("");
@@ -338,11 +359,26 @@ export default function App() {
     typeValue: "residential",
     roi: "",
     summary: "",
+    bedrooms: "",
+    bathrooms: "",
+    landSize: "",
+    documentTitle: "",
+    ownerPhone: "",
+    whatsapp: "",
+    imageUrl: "",
+    galleryUrls: [] as string[],
+    documentName: "",
+    documentDataUrl: "",
+    documentMimeType: "",
   });
 
   useEffect(() => {
     localStorage.setItem("inamaad_listings", JSON.stringify(listings));
   }, [listings]);
+
+  useEffect(() => {
+    localStorage.setItem("inamaad_saved_listing_ids", JSON.stringify(savedListingIds));
+  }, [savedListingIds]);
 
   useEffect(() => {
     if (authUser) {
@@ -362,6 +398,13 @@ export default function App() {
     const staticIds = new Set(postedJV.map((item) => item.id));
     return [...postedJV, ...STATIC_JV_DEALS.filter((item) => !staticIds.has(item.id))];
   }, [listings]);
+
+  const savedListings = useMemo(
+    () => listings.filter((item) => savedListingIds.includes(item.id)),
+    [listings, savedListingIds]
+  );
+
+  const featuredProperty = propertyListings[0] || listings[0] || null;
 
   const filteredProperties = propertyListings.filter((item) => {
     const keywordMatch =
@@ -429,6 +472,18 @@ export default function App() {
     setExpandedListingId((currentId) => (currentId === item.id ? null : item.id));
   }
 
+  function toggleSavedListing(item: Listing) {
+    setSavedListingIds((currentIds) => {
+      if (currentIds.includes(item.id)) {
+        showMessage("Property removed from saved list.");
+        return currentIds.filter((savedId) => savedId !== item.id);
+      }
+
+      showMessage("Property saved successfully.");
+      return [item.id, ...currentIds];
+    });
+  }
+
   function handlePostListing(e: React.FormEvent) {
     e.preventDefault();
 
@@ -443,6 +498,17 @@ export default function App() {
       roi: newListing.roi.trim() || "Pending",
       status: "Pending review",
       summary: newListing.summary.trim(),
+      bedrooms: newListing.bedrooms.trim(),
+      bathrooms: newListing.bathrooms.trim(),
+      landSize: newListing.landSize.trim(),
+      documentTitle: newListing.documentTitle.trim(),
+      ownerPhone: newListing.ownerPhone.trim(),
+      whatsapp: newListing.whatsapp.trim(),
+      imageUrl: newListing.imageUrl,
+      galleryUrls: newListing.galleryUrls,
+      documentName: newListing.documentName,
+      documentDataUrl: newListing.documentDataUrl,
+      documentMimeType: newListing.documentMimeType,
     };
 
     setListings([createdListing, ...listings]);
@@ -455,6 +521,17 @@ export default function App() {
       typeValue: "residential",
       roi: "",
       summary: "",
+      bedrooms: "",
+      bathrooms: "",
+      landSize: "",
+      documentTitle: "",
+      ownerPhone: "",
+      whatsapp: "",
+      imageUrl: "",
+      galleryUrls: [] as string[],
+      documentName: "",
+      documentDataUrl: "",
+      documentMimeType: "",
     });
 
     setModal(null);
@@ -505,6 +582,157 @@ export default function App() {
       `Password reset request received for ${forgotEmail}. Connect Supabase SMTP to send real reset emails.`
     );
     setForgotEmail("");
+  }
+
+
+  function handleNewListingImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showMessage("Please upload a valid image file.");
+      return;
+    }
+
+    if (file.size > 2.5 * 1024 * 1024) {
+      showMessage("Image is too large. Use an image below 2.5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setNewListing((current) => ({
+        ...current,
+        imageUrl: typeof reader.result === "string" ? reader.result : "",
+      }));
+      showMessage("Property image preview added.");
+    };
+
+    reader.onerror = () => {
+      showMessage("Image upload failed. Try another image.");
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+
+  function handleNewListingGalleryUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+
+    if (!files.length) return;
+
+    const remainingSlots = Math.max(0, 4 - newListing.galleryUrls.length);
+    const selectedFiles = files.slice(0, remainingSlots);
+
+    if (!selectedFiles.length) {
+      showMessage("Gallery limit reached. You can add up to 4 extra photos.");
+      return;
+    }
+
+    const validFiles = selectedFiles.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        showMessage("Only image files are allowed in the gallery.");
+        return false;
+      }
+
+      if (file.size > 1.5 * 1024 * 1024) {
+        showMessage("One gallery image is too large. Use images below 1.5MB.");
+        return false;
+      }
+
+      return true;
+    });
+
+    if (!validFiles.length) return;
+
+    Promise.all(
+      validFiles.map(
+        (file) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = () => {
+              if (typeof reader.result === "string") {
+                resolve(reader.result);
+              } else {
+                reject(new Error("Invalid image result"));
+              }
+            };
+
+            reader.onerror = () => reject(new Error("Gallery upload failed"));
+            reader.readAsDataURL(file);
+          })
+      )
+    )
+      .then((imageUrls) => {
+        setNewListing((current) => ({
+          ...current,
+          galleryUrls: [...current.galleryUrls, ...imageUrls].slice(0, 4),
+        }));
+        showMessage("Gallery photos added.");
+      })
+      .catch(() => {
+        showMessage("Gallery upload failed. Try again with smaller images.");
+      });
+  }
+
+  function removeGalleryImage(index: number) {
+    setNewListing((current) => ({
+      ...current,
+      galleryUrls: current.galleryUrls.filter((_, imageIndex) => imageIndex !== index),
+    }));
+  }
+
+  function handleDocumentUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      showMessage("Upload a PDF, JPG, PNG, or WEBP document only.");
+      return;
+    }
+
+    if (file.size > 1.2 * 1024 * 1024) {
+      showMessage("Document is too large. Use a file below 1.2MB for now.");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setNewListing((current) => ({
+        ...current,
+        documentName: file.name,
+        documentDataUrl: typeof reader.result === "string" ? reader.result : "",
+        documentMimeType: file.type,
+      }));
+      showMessage("Document preview added.");
+    };
+
+    reader.onerror = () => {
+      showMessage("Document upload failed. Try another file.");
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  function removeDocumentPreview() {
+    setNewListing((current) => ({
+      ...current,
+      documentName: "",
+      documentDataUrl: "",
+      documentMimeType: "",
+    }));
   }
 
   function signOut() {
@@ -558,6 +786,7 @@ export default function App() {
   function renderPropertyCard(item: Listing, variant: "property" | "jv" = "property") {
     const isExpanded = expandedListingId === item.id;
     const isJV = variant === "jv" || isJVListing(item);
+    const isSaved = savedListingIds.includes(item.id);
 
     return (
       <article
@@ -565,8 +794,16 @@ export default function App() {
         key={`${variant}-${item.id}`}
         className="property-card inamaad-card overflow-hidden rounded-2xl border border-slate-200 bg-white transition duration-300 hover:-translate-y-1"
       >
-        <div className={`h-36 ${isJV ? "bg-gradient-to-br from-[#0d1c38] via-[#1d3258] to-[#f0bf3c]" : "bg-gradient-to-br from-[#0d1c38] via-[#1c3158] to-[#52627a]"} relative`}>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.26),transparent_28%),radial-gradient(circle_at_80%_70%,rgba(240,191,60,0.28),transparent_30%)]" />
+        <div className={`h-36 ${isJV ? "bg-gradient-to-br from-[#0d1c38] via-[#1d3258] to-[#f0bf3c]" : "bg-gradient-to-br from-[#0d1c38] via-[#1c3158] to-[#52627a]"} relative overflow-hidden`}>
+          {item.imageUrl ? (
+            <img
+              src={item.imageUrl}
+              alt={item.title}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : null}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d1c38]/92 via-[#0d1c38]/35 to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.22),transparent_28%),radial-gradient(circle_at_80%_70%,rgba(240,191,60,0.22),transparent_30%)]" />
           <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
             <div>
               <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0d1c38]">
@@ -590,6 +827,19 @@ export default function App() {
                 {item.location}
               </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => toggleSavedListing(item)}
+              className={`shrink-0 rounded-full px-3 py-2 text-xs font-black transition ${
+                isSaved
+                  ? "bg-[#f0bf3c] text-[#0d1c38]"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              }`}
+              aria-label={isSaved ? "Remove saved property" : "Save property"}
+            >
+              {isSaved ? "Saved" : "Save"}
+            </button>
           </div>
 
           <p className="property-card-summary text-sm leading-6 text-slate-600">
@@ -619,6 +869,14 @@ export default function App() {
               </p>
               <p className="mt-1 text-xs font-black text-[#0d1c38]">{item.state}</p>
             </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-[#f8fafc] p-2">
+            {["Verified", "Direct enquiry", isJV ? "JV review" : "Docs review"].map((label) => (
+              <div key={label} className="rounded-xl bg-white px-2 py-2 text-center">
+                <p className="text-[10px] font-black text-[#0d1c38]">{label}</p>
+              </div>
+            ))}
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -680,6 +938,53 @@ export default function App() {
                   <p className="mt-1 text-sm font-black text-[#0d1c38]">{item.roi}</p>
                 </div>
               </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {[
+                  ["Bedrooms", item.bedrooms || "Not stated"],
+                  ["Bathrooms", item.bathrooms || "Not stated"],
+                  ["Land size", item.landSize || "Not stated"],
+                  ["Document", item.documentTitle || "Under review"],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-xl bg-white p-3">
+                    <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                      {label}
+                    </p>
+                    <p className="mt-1 text-sm font-black text-[#0d1c38]">
+                      {value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {item.galleryUrls && item.galleryUrls.length > 0 ? (
+                <div className="mt-3">
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-wide text-slate-400">
+                    Gallery
+                  </p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {item.galleryUrls.slice(0, 4).map((imageUrl, imageIndex) => (
+                      <img
+                        key={`${item.id}-gallery-${imageIndex}`}
+                        src={imageUrl}
+                        alt={`${item.title} gallery ${imageIndex + 1}`}
+                        className="h-16 w-full rounded-xl object-cover"
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {item.documentName ? (
+                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                    Document preview
+                  </p>
+                  <p className="mt-1 text-sm font-black text-[#0d1c38]">
+                    {item.documentName}
+                  </p>
+                </div>
+              ) : null}
 
               <p className="mt-3 text-sm leading-6 text-slate-700">
                 {item.summary}
@@ -1052,6 +1357,77 @@ export default function App() {
         </form>
       </div>
 
+      <section className="mx-auto max-w-7xl px-4 py-10 lg:px-10">
+        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
+            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
+              Professional marketplace tools
+            </p>
+            <h2 className="text-2xl font-black tracking-tight text-[#0d1c38]">
+              Faster property discovery for buyers, investors, and landowners.
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
+              Save listings, open property details inside cards, contact INAMAAD through WhatsApp, and separate JV opportunities from standard property listings.
+            </p>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl bg-[#f8fafc] p-4">
+                <p className="text-2xl font-black text-[#0d1c38]">{propertyListings.length}</p>
+                <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
+                  Properties
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-[#fff7df] p-4">
+                <p className="text-2xl font-black text-[#0d1c38]">{jvListings.length}</p>
+                <p className="mt-1 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
+                  JV Deals
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-emerald-50 p-4">
+                <p className="text-2xl font-black text-[#0d1c38]">{savedListings.length}</p>
+                <p className="mt-1 text-xs font-black uppercase tracking-wide text-emerald-700">
+                  Saved
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-slate-200 bg-[#0d1c38] p-5 text-white shadow-sm lg:p-6">
+            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
+              Quick access
+            </p>
+            <h3 className="text-xl font-black">Saved properties</h3>
+
+            {savedListings.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {savedListings.slice(0, 3).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      scrollToSection(isJVListing(item) ? "jv" : "properties");
+                      setExpandedListingId(item.id);
+                    }}
+                    className="w-full rounded-2xl bg-white/10 p-3 text-left hover:bg-white/15"
+                  >
+                    <p className="text-sm font-black text-white">{item.title}</p>
+                    <p className="mt-1 text-xs font-semibold text-white/55">
+                      {item.location} · {item.price}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm leading-7 text-white/60">
+                Tap the Save button on any property to keep it here for quick access.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section id="properties" className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
         <div className="mb-8 flex items-end justify-between gap-5">
           <div>
@@ -1223,6 +1599,44 @@ export default function App() {
         </div>
       </section>
 
+      <footer className="border-t border-slate-200 bg-white px-4 py-10 lg:px-10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-lg font-black tracking-[0.18em] text-[#0d1c38]">
+              INAMAAD
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Verified real estate, JV deals, and investor access across Nigeria.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => scrollToSection("properties")}
+              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-[#0d1c38]"
+            >
+              Properties
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("jv")}
+              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-[#0d1c38]"
+            >
+              JV Deals
+            </button>
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl bg-green-500 px-4 py-2 text-sm font-black text-white"
+            >
+              WhatsApp
+            </a>
+          </div>
+        </div>
+      </footer>
+
       {selectedListing && (
         <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-6 backdrop-blur-sm md:items-center">
           <div className="w-full max-w-2xl rounded-[1.5rem] bg-white p-5 shadow-2xl md:p-6">
@@ -1244,6 +1658,49 @@ export default function App() {
                 ×
               </button>
             </div>
+
+            {selectedListing.imageUrl ? (
+              <img
+                src={selectedListing.imageUrl}
+                alt={selectedListing.title}
+                className="mb-5 h-56 w-full rounded-2xl object-cover"
+              />
+            ) : null}
+
+            {selectedListing.galleryUrls && selectedListing.galleryUrls.length > 0 ? (
+              <div className="mb-5 grid grid-cols-4 gap-2">
+                {selectedListing.galleryUrls.slice(0, 4).map((imageUrl, imageIndex) => (
+                  <img
+                    key={`modal-gallery-${imageIndex}`}
+                    src={imageUrl}
+                    alt={`${selectedListing.title} gallery ${imageIndex + 1}`}
+                    className="h-20 w-full rounded-xl object-cover"
+                  />
+                ))}
+              </div>
+            ) : null}
+
+            {selectedListing.documentName ? (
+              <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                  Document preview
+                </p>
+                <p className="mt-1 font-black text-[#0d1c38]">
+                  {selectedListing.documentName}
+                </p>
+
+                {selectedListing.documentDataUrl ? (
+                  <a
+                    href={selectedListing.documentDataUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                  >
+                    Open uploaded document
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
 
             <p className="mb-5 text-sm leading-7 text-slate-600">
               {selectedListing.summary}
@@ -1271,6 +1728,22 @@ export default function App() {
                 <p className="text-xs text-slate-400">Status</p>
                 <p className="font-black text-[#0d1c38]">{selectedListing.status}</p>
               </div>
+            </div>
+
+            <div className="mb-6 grid grid-cols-2 gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+              {[
+                ["Bedrooms", selectedListing.bedrooms || "Not stated"],
+                ["Bathrooms", selectedListing.bathrooms || "Not stated"],
+                ["Land size", selectedListing.landSize || "Not stated"],
+                ["Document", selectedListing.documentTitle || "Under review"],
+                ["Owner phone", selectedListing.ownerPhone || "Contact INAMAAD"],
+                ["WhatsApp", selectedListing.whatsapp || "Contact INAMAAD"],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <p className="text-xs text-slate-400">{label}</p>
+                  <p className="font-black text-[#0d1c38]">{value}</p>
+                </div>
+              ))}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -1456,6 +1929,174 @@ export default function App() {
                   placeholder="Price, e.g. ₦500M"
                   className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
                 />
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    value={newListing.bedrooms}
+                    onChange={(e) =>
+                      setNewListing({ ...newListing, bedrooms: e.target.value })
+                    }
+                    placeholder="Bedrooms, e.g. 4"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <input
+                    value={newListing.bathrooms}
+                    onChange={(e) =>
+                      setNewListing({ ...newListing, bathrooms: e.target.value })
+                    }
+                    placeholder="Bathrooms, e.g. 5"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    value={newListing.landSize}
+                    onChange={(e) =>
+                      setNewListing({ ...newListing, landSize: e.target.value })
+                    }
+                    placeholder="Land size, e.g. 600sqm"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <input
+                    value={newListing.documentTitle}
+                    onChange={(e) =>
+                      setNewListing({ ...newListing, documentTitle: e.target.value })
+                    }
+                    placeholder="Document title, e.g. C of O"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    value={newListing.ownerPhone}
+                    onChange={(e) =>
+                      setNewListing({ ...newListing, ownerPhone: e.target.value })
+                    }
+                    placeholder="Owner phone"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <input
+                    value={newListing.whatsapp}
+                    onChange={(e) =>
+                      setNewListing({ ...newListing, whatsapp: e.target.value })
+                    }
+                    placeholder="WhatsApp number"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                  <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">
+                    Property image preview
+                  </label>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleNewListingImageUpload}
+                    className="w-full rounded-xl bg-white px-3 py-3 text-sm"
+                  />
+
+                  {newListing.imageUrl ? (
+                    <div className="mt-3">
+                      <img
+                        src={newListing.imageUrl}
+                        alt="Property preview"
+                        className="h-40 w-full rounded-xl object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setNewListing({ ...newListing, imageUrl: "" })}
+                        className="mt-2 text-xs font-black text-red-600"
+                      >
+                        Remove image
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Optional for now. Use a clear front-view property photo below 2.5MB.
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                  <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">
+                    Extra gallery photos
+                  </label>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleNewListingGalleryUpload}
+                    className="w-full rounded-xl bg-white px-3 py-3 text-sm"
+                  />
+
+                  {newListing.galleryUrls.length > 0 ? (
+                    <div className="mt-3 grid grid-cols-4 gap-2">
+                      {newListing.galleryUrls.map((imageUrl, imageIndex) => (
+                        <div key={`new-gallery-${imageIndex}`} className="relative">
+                          <img
+                            src={imageUrl}
+                            alt={`Gallery preview ${imageIndex + 1}`}
+                            className="h-20 w-full rounded-xl object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeGalleryImage(imageIndex)}
+                            className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-1 text-[10px] font-black text-white"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Optional. Add up to 4 extra photos below 1.5MB each.
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-dashed border-emerald-200 bg-emerald-50 p-4">
+                  <label className="mb-2 block text-xs font-black uppercase tracking-wide text-emerald-700">
+                    Document upload preview
+                  </label>
+
+                  <input
+                    type="file"
+                    accept=".pdf,image/jpeg,image/png,image/webp"
+                    onChange={handleDocumentUpload}
+                    className="w-full rounded-xl bg-white px-3 py-3 text-sm"
+                  />
+
+                  {newListing.documentName ? (
+                    <div className="mt-3 rounded-xl bg-white p-3">
+                      <p className="text-xs font-black text-[#0d1c38]">
+                        {newListing.documentName}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        This preview will be saved with the listing.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={removeDocumentPreview}
+                        className="mt-2 text-xs font-black text-red-600"
+                      >
+                        Remove document
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs leading-5 text-emerald-700">
+                      Optional. Upload C of O, survey, deed, allocation letter, or title preview below 1.2MB.
+                    </p>
+                  )}
+                </div>
 
                 <select
                   value={newListing.typeValue}

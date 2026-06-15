@@ -24,6 +24,20 @@ type Listing = {
   documentMimeType?: string;
 };
 
+
+type Lead = {
+  id: number;
+  listingId?: number;
+  listingTitle?: string;
+  name: string;
+  email: string;
+  phone: string;
+  budget: string;
+  message: string;
+  createdAt: string;
+  status: "New" | "Contacted" | "Closed";
+};
+
 type ModalType =
   | "login"
   | "register"
@@ -318,6 +332,15 @@ export default function App() {
     }
   });
 
+  const [leads, setLeads] = useState<Lead[]>(() => {
+    try {
+      const savedLeads = localStorage.getItem("inamaad_leads");
+      return savedLeads ? JSON.parse(savedLeads) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [keyword, setKeyword] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [type, setType] = useState("");
@@ -351,6 +374,16 @@ export default function App() {
 
   const [forgotEmail, setForgotEmail] = useState("");
 
+  const [leadForm, setLeadForm] = useState({
+    listingId: 0,
+    listingTitle: "",
+    name: "",
+    email: "",
+    phone: "",
+    budget: "",
+    message: "",
+  });
+
   const [newListing, setNewListing] = useState({
     title: "",
     location: "",
@@ -379,6 +412,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("inamaad_saved_listing_ids", JSON.stringify(savedListingIds));
   }, [savedListingIds]);
+
+  useEffect(() => {
+    localStorage.setItem("inamaad_leads", JSON.stringify(leads));
+  }, [leads]);
 
   useEffect(() => {
     if (authUser) {
@@ -783,6 +820,68 @@ export default function App() {
     showMessage("Property link copied.");
   }
 
+
+  function openLeadForm(item?: Listing) {
+    setLeadForm({
+      listingId: item?.id || 0,
+      listingTitle: item?.title || "",
+      name: authUser?.name || "",
+      email: authUser?.email || "",
+      phone: "",
+      budget: "",
+      message: item
+        ? `I am interested in ${item.title} (${getListingReference(item.id)}) in ${item.location}.`
+        : "",
+    });
+
+    setSelectedListing(null);
+    setModal("investor");
+  }
+
+  function handleLeadSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    const createdLead: Lead = {
+      id: Date.now(),
+      listingId: leadForm.listingId || undefined,
+      listingTitle: leadForm.listingTitle || undefined,
+      name: leadForm.name.trim(),
+      email: leadForm.email.trim(),
+      phone: leadForm.phone.trim(),
+      budget: leadForm.budget.trim(),
+      message: leadForm.message.trim(),
+      createdAt: new Date().toISOString(),
+      status: "New",
+    };
+
+    setLeads((currentLeads) => [createdLead, ...currentLeads]);
+
+    setLeadForm({
+      listingId: 0,
+      listingTitle: "",
+      name: authUser?.name || "",
+      email: authUser?.email || "",
+      phone: "",
+      budget: "",
+      message: "",
+    });
+
+    setModal(null);
+    showMessage("Investor enquiry saved. INAMAAD can follow up from the admin dashboard.");
+  }
+
+  function updateLeadStatus(id: number, status: Lead["status"]) {
+    setLeads((currentLeads) =>
+      currentLeads.map((lead) => (lead.id === id ? { ...lead, status } : lead))
+    );
+    showMessage(`Lead marked as ${status}.`);
+  }
+
+  function deleteLead(id: number) {
+    setLeads((currentLeads) => currentLeads.filter((lead) => lead.id !== id));
+    showMessage("Lead deleted.");
+  }
+
   function renderPropertyCard(item: Listing, variant: "property" | "jv" = "property") {
     const isExpanded = expandedListingId === item.id;
     const isJV = variant === "jv" || isJVListing(item);
@@ -1006,6 +1105,14 @@ export default function App() {
                   className="rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-black text-white transition hover:bg-[#162b52]"
                 >
                   Open full modal
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => openLeadForm(item)}
+                  className="rounded-xl bg-[#f0bf3c] px-4 py-3 text-sm font-black text-[#0d1c38] transition hover:bg-[#f7ce62] sm:col-span-2"
+                >
+                  Request investment call
                 </button>
               </div>
             </div>
@@ -1273,7 +1380,7 @@ export default function App() {
 
                 <button
                   type="button"
-                  onClick={() => setModal("investor")}
+                  onClick={() => openLeadForm(featuredProperty || undefined)}
                   className="mt-6 w-full rounded-xl bg-[#0d1c38] py-3 text-sm font-black text-white transition hover:bg-[#162b52]"
                 >
                   Request access
@@ -1370,7 +1477,7 @@ export default function App() {
               Save listings, open property details inside cards, contact INAMAAD through WhatsApp, and separate JV opportunities from standard property listings.
             </p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-4">
               <div className="rounded-2xl bg-[#f8fafc] p-4">
                 <p className="text-2xl font-black text-[#0d1c38]">{propertyListings.length}</p>
                 <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
@@ -1389,6 +1496,13 @@ export default function App() {
                 <p className="text-2xl font-black text-[#0d1c38]">{savedListings.length}</p>
                 <p className="mt-1 text-xs font-black uppercase tracking-wide text-emerald-700">
                   Saved
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-blue-50 p-4">
+                <p className="text-2xl font-black text-[#0d1c38]">{leads.length}</p>
+                <p className="mt-1 text-xs font-black uppercase tracking-wide text-blue-700">
+                  Leads
                 </p>
               </div>
             </div>
@@ -1490,7 +1604,7 @@ export default function App() {
 
             <button
               type="button"
-              onClick={() => setModal("investor")}
+              onClick={() => openLeadForm()}
               className="hidden text-sm font-black text-[#9b6b16] hover:text-[#f0bf3c] md:block"
             >
               Request JV access →
@@ -1759,8 +1873,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedListing(null);
-                  setModal("investor");
+                  openLeadForm(selectedListing);
                 }}
                 className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#162b52]"
               >
@@ -2138,37 +2251,57 @@ export default function App() {
             )}
 
             {modal === "investor" && (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setModal(null);
-                  showMessage("Investor access request submitted.");
-                }}
-                className="space-y-4"
-              >
+              <form onSubmit={handleLeadSubmit} className="space-y-4">
+                {leadForm.listingTitle ? (
+                  <div className="rounded-2xl bg-[#fff7df] p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-[#9b6b16]">
+                      Enquiry for
+                    </p>
+                    <p className="mt-1 text-sm font-black text-[#0d1c38]">
+                      {leadForm.listingTitle}
+                    </p>
+                  </div>
+                ) : null}
+
                 <input
                   required
+                  value={leadForm.name}
+                  onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })}
                   placeholder="Full name"
                   className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
                 />
                 <input
                   required
                   type="email"
+                  value={leadForm.email}
+                  onChange={(e) => setLeadForm({ ...leadForm, email: e.target.value })}
                   placeholder="Email address"
                   className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
                 />
                 <input
                   required
+                  value={leadForm.phone}
+                  onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })}
+                  placeholder="Phone / WhatsApp number"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                />
+                <input
+                  required
+                  value={leadForm.budget}
+                  onChange={(e) => setLeadForm({ ...leadForm, budget: e.target.value })}
                   placeholder="Investment budget, e.g. ₦100M - ₦500M"
                   className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
                 />
                 <textarea
+                  required
                   rows={4}
+                  value={leadForm.message}
+                  onChange={(e) => setLeadForm({ ...leadForm, message: e.target.value })}
                   placeholder="Tell us what kind of opportunity you want"
                   className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
                 />
                 <button className="w-full rounded-xl bg-[#0d1c38] py-3 text-sm font-black text-white">
-                  Submit request
+                  Submit enquiry
                 </button>
               </form>
             )}
@@ -2204,6 +2337,94 @@ export default function App() {
                     Approve pending opportunities or remove bad listings from the platform.
                   </p>
                 </div>
+
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                  <p className="mb-1 text-sm font-black text-[#0d1c38]">
+                    Investor leads: {leads.length}
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    Track enquiries from property details, JV deals, and investor request forms.
+                  </p>
+                </div>
+
+                {leads.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                      Recent enquiries
+                    </p>
+
+                    {leads.slice(0, 5).map((lead) => (
+                      <div key={lead.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-black text-[#0d1c38]">{lead.name}</p>
+                            <p className="text-xs text-slate-500">
+                              {lead.email} · {lead.phone}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-black ${
+                              lead.status === "New"
+                                ? "bg-blue-50 text-blue-700"
+                                : lead.status === "Contacted"
+                                  ? "bg-yellow-50 text-yellow-700"
+                                  : "bg-green-50 text-green-700"
+                            }`}
+                          >
+                            {lead.status}
+                          </span>
+                        </div>
+
+                        {lead.listingTitle ? (
+                          <p className="mb-2 text-xs font-black text-[#9b6b16]">
+                            Property: {lead.listingTitle}
+                          </p>
+                        ) : null}
+
+                        <p className="mb-2 text-xs font-black text-slate-500">
+                          Budget: {lead.budget}
+                        </p>
+                        <p className="mb-3 text-sm leading-6 text-slate-600">{lead.message}</p>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <a
+                            href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-xl bg-green-500 px-3 py-2 text-center text-xs font-black text-white"
+                          >
+                            WhatsApp
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={() => updateLeadStatus(lead.id, "Contacted")}
+                            className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white"
+                          >
+                            Mark contacted
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => updateLeadStatus(lead.id, "Closed")}
+                            className="rounded-xl border border-green-200 px-3 py-2 text-xs font-black text-green-700"
+                          >
+                            Close
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => deleteLead(lead.id)}
+                            className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {listings.map((item) => (
                   <div key={item.id} className="rounded-2xl border border-slate-200 p-4">

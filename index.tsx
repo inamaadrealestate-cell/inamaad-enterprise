@@ -2825,6 +2825,81 @@ function InamaadApp() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
+        <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
+            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
+              Buyer safety center
+            </p>
+            <h2 className="text-3xl font-black tracking-tight text-[#0d1c38]">
+              Safer property decisions before payment.
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-slate-500">
+              INAMAAD should help buyers and investors slow down, verify ownership, inspect documents, and contact only trusted parties before committing funds.
+            </p>
+
+            <div className="mt-6 grid gap-3">
+              {[
+                "Confirm owner / agent verification status",
+                "Check uploaded title or document preview",
+                "Book inspection before payment",
+                "Use WhatsApp enquiry for traceable communication",
+                "Save and compare properties before deciding",
+              ].map((item) => (
+                <div key={item} className="flex gap-3 rounded-2xl bg-[#f8fafc] p-4">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-black text-emerald-700">
+                    ✓
+                  </div>
+                  <p className="text-sm font-bold leading-7 text-[#0d1c38]">{item}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-slate-200 bg-[#0d1c38] p-5 text-white shadow-sm lg:p-6">
+            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
+              Help and FAQ
+            </p>
+            <h3 className="text-3xl font-black">Common questions</h3>
+
+            <div className="mt-6 space-y-3">
+              {[
+                [
+                  "How do I know a property is trusted?",
+                  "Check the Verified status, owner / agent verification badge, document preview, and use the inspection booking feature before payment.",
+                ],
+                [
+                  "Can I compare properties?",
+                  "Yes. Use the Compare button on property cards to compare price, ROI, location, trust signals, and details side by side.",
+                ],
+                [
+                  "Where do buyer enquiries go?",
+                  "Investor calls, buyer briefs, and inspection requests are saved into the Admin dashboard for follow-up.",
+                ],
+                [
+                  "Are JV deals separate from normal properties?",
+                  "Yes. Joint venture opportunities stay in the JV Deals section and do not use normal bedroom or bathroom logic.",
+                ],
+                [
+                  "Can admin export data?",
+                  "Yes. Admin can export listings, leads, inspections, and a full JSON backup.",
+                ],
+              ].map(([question, answer]) => (
+                <details
+                  key={question}
+                  className="rounded-2xl border border-white/10 bg-white/10 p-4 open:bg-white/15"
+                >
+                  <summary className="cursor-pointer text-sm font-black text-white">
+                    {question}
+                  </summary>
+                  <p className="mt-3 text-sm leading-7 text-white/65">{answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
         <div className="grid gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-[0.9fr_1.1fr] lg:p-6">
           <div className="rounded-[1.5rem] bg-[#0d1c38] p-6 text-white">
             <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
@@ -4434,6 +4509,33 @@ function InamaadApp() {
           </div>
         </div>
       )}
+
+      <div className="fixed bottom-6 right-6 z-[75] hidden flex-col gap-3 md:flex">
+        <button
+          type="button"
+          onClick={() => scrollToSection("properties")}
+          className="rounded-full bg-white px-5 py-3 text-sm font-black text-[#0d1c38] shadow-2xl hover:bg-slate-50"
+        >
+          Properties
+        </button>
+
+        <button
+          type="button"
+          onClick={() => scrollToSection("jv")}
+          className="rounded-full bg-white px-5 py-3 text-sm font-black text-[#0d1c38] shadow-2xl hover:bg-slate-50"
+        >
+          JV Deals
+        </button>
+
+        <a
+          href={`https://wa.me/${WHATSAPP_NUMBER}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-full bg-green-500 px-5 py-3 text-center text-sm font-black text-white shadow-2xl hover:bg-green-600"
+        >
+          WhatsApp
+        </a>
+      </div>
 
       <div className="mobile-bottom-nav md:hidden">
         <button type="button" onClick={() => scrollToSection("properties")}>

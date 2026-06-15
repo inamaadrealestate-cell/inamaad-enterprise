@@ -353,7 +353,7 @@ function SiteStyles() {
   );
 }
 
-export default function App() {
+function InamaadApp() {
   const [listings, setListings] = useState<Listing[]>(() => {
     try {
       const savedListings = localStorage.getItem("inamaad_listings");
@@ -4270,3 +4270,119 @@ export default function App() {
     </div>
   );
 }
+
+type InamaadErrorBoundaryState = {
+  hasError: boolean;
+  errorMessage: string;
+};
+
+class InamaadErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  InamaadErrorBoundaryState
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = {
+      hasError: false,
+      errorMessage: "",
+    };
+  }
+
+  static getDerivedStateFromError(error: Error): InamaadErrorBoundaryState {
+    return {
+      hasError: true,
+      errorMessage: error?.message || "The page failed to load.",
+    };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("INAMAAD frontend crash guard:", error, errorInfo);
+  }
+
+  resetLocalDataAndReload() {
+    [
+      "inamaad_listings",
+      "inamaad_auth_user",
+      "inamaad_saved_listing_ids",
+      "inamaad_saved_listing_notes",
+      "inamaad_leads",
+      "inamaad_inspections",
+      "inamaad_listing_views",
+      "inamaad_recent_listing_ids",
+      "inamaad_compare_listing_ids",
+    ].forEach((key) => localStorage.removeItem(key));
+
+    window.location.reload();
+  }
+
+  render() {
+    if (!this.state.hasError) {
+      return this.props.children;
+    }
+
+    return (
+      <div className="min-h-screen bg-[#f6f7fb] px-4 py-10 text-slate-950">
+        <div className="mx-auto max-w-2xl rounded-[2rem] border border-red-100 bg-white p-6 shadow-2xl">
+          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-2xl">
+            ⚠️
+          </div>
+
+          <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-red-600">
+            INAMAAD safety guard
+          </p>
+
+          <h1 className="text-3xl font-black tracking-tight text-[#0d1c38]">
+            The website was protected from a blank screen.
+          </h1>
+
+          <p className="mt-4 text-sm leading-7 text-slate-600">
+            A frontend error happened, but the safety guard stopped the app from staying blank.
+            Refresh the page first. If it still shows this screen, reset local browser data below.
+          </p>
+
+          {this.state.errorMessage ? (
+            <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                Technical message
+              </p>
+              <p className="mt-1 text-sm font-bold text-[#0d1c38]">
+                {this.state.errorMessage}
+              </p>
+            </div>
+          ) : null}
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#162b52]"
+            >
+              Refresh website
+            </button>
+
+            <button
+              type="button"
+              onClick={() => this.resetLocalDataAndReload()}
+              className="rounded-xl border border-red-200 px-5 py-3 text-sm font-black text-red-600 hover:bg-red-50"
+            >
+              Reset local data
+            </button>
+          </div>
+
+          <p className="mt-5 text-xs leading-5 text-slate-500">
+            Reset local data only clears data saved in this browser. It does not delete your deployed code.
+          </p>
+        </div>
+      </div>
+    );
+  }
+}
+
+export default function App() {
+  return (
+    <InamaadErrorBoundary>
+      <InamaadApp />
+    </InamaadErrorBoundary>
+  );
+}
+

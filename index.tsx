@@ -353,6 +353,87 @@ function SiteStyles() {
   );
 }
 
+function setOrCreateMetaTag(name: string, content: string, property = false) {
+  const attributeName = property ? "property" : "name";
+  let meta = document.head.querySelector<HTMLMetaElement>(
+    `meta[${attributeName}="${name}"]`
+  );
+
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute(attributeName, name);
+    document.head.appendChild(meta);
+  }
+
+  meta.setAttribute("content", content);
+}
+
+function setOrCreateLinkTag(rel: string, href: string) {
+  let link = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+
+  if (!link) {
+    link = document.createElement("link");
+    link.setAttribute("rel", rel);
+    document.head.appendChild(link);
+  }
+
+  link.setAttribute("href", href);
+}
+
+function installInamaadSeoMetadata() {
+  const siteTitle = "INAMAAD Real Estate | Verified Properties and JV Deals in Nigeria";
+  const siteDescription =
+    "Explore verified properties, joint venture opportunities, buyer concierge support, inspections, investor leads, and admin-ready real estate tools across Nigeria.";
+  const siteUrl = window.location.origin + window.location.pathname;
+
+  document.title = siteTitle;
+
+  setOrCreateMetaTag("description", siteDescription);
+  setOrCreateMetaTag("theme-color", "#0d1c38");
+  setOrCreateMetaTag("apple-mobile-web-app-capable", "yes");
+  setOrCreateMetaTag("apple-mobile-web-app-title", "INAMAAD");
+  setOrCreateMetaTag("application-name", "INAMAAD Real Estate");
+
+  setOrCreateMetaTag("og:title", siteTitle, true);
+  setOrCreateMetaTag("og:description", siteDescription, true);
+  setOrCreateMetaTag("og:type", "website", true);
+  setOrCreateMetaTag("og:url", siteUrl, true);
+  setOrCreateMetaTag("og:site_name", "INAMAAD Real Estate", true);
+
+  setOrCreateMetaTag("twitter:card", "summary_large_image");
+  setOrCreateMetaTag("twitter:title", siteTitle);
+  setOrCreateMetaTag("twitter:description", siteDescription);
+
+  setOrCreateLinkTag("canonical", siteUrl);
+
+  const schemaId = "inamaad-real-estate-schema";
+  let schema = document.getElementById(schemaId) as HTMLScriptElement | null;
+
+  if (!schema) {
+    schema = document.createElement("script");
+    schema.id = schemaId;
+    schema.type = "application/ld+json";
+    document.head.appendChild(schema);
+  }
+
+  schema.textContent = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    name: "INAMAAD Real Estate",
+    url: siteUrl,
+    areaServed: "Nigeria",
+    description: siteDescription,
+    serviceType: [
+      "Verified property marketplace",
+      "Joint venture real estate deals",
+      "Property inspection booking",
+      "Investor lead management",
+      "Buyer concierge support",
+    ],
+  });
+}
+
+
 function InamaadApp() {
   const [listings, setListings] = useState<Listing[]>(() => {
     try {
@@ -530,6 +611,10 @@ function InamaadApp() {
     ownerVerified: false,
     ownerVerificationNote: "",
   });
+
+  useEffect(() => {
+    installInamaadSeoMetadata();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("inamaad_listings", JSON.stringify(listings));
@@ -1308,6 +1393,24 @@ function InamaadApp() {
     );
 
     showMessage("Featured listing status updated.");
+  }
+
+  function shareMarketplace() {
+    const shareText =
+      "Explore verified properties and JV deals on INAMAAD Real Estate.";
+    const shareUrl = window.location.origin + window.location.pathname;
+
+    if (navigator.share) {
+      navigator.share({
+        title: "INAMAAD Real Estate",
+        text: shareText,
+        url: shareUrl,
+      });
+      return;
+    }
+
+    navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+    showMessage("Marketplace link copied.");
   }
 
   function shareListing(item: Listing) {
@@ -2894,6 +2997,45 @@ function InamaadApp() {
                   <p className="mt-3 text-sm leading-7 text-white/65">{answer}</p>
                 </details>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-4 lg:px-10">
+        <div className="rounded-[2rem] border border-[#f0bf3c]/30 bg-[#fff7df] p-5 shadow-sm lg:p-6">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
+                Professional web presence
+              </p>
+              <h2 className="text-2xl font-black tracking-tight text-[#0d1c38]">
+                SEO, social sharing, and trust metadata are now active.
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
+                INAMAAD now sets a professional browser title, description, Open Graph sharing tags, mobile app metadata, canonical link, and real estate structured data when the app loads.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={shareMarketplace}
+                className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#162b52]"
+              >
+                Share marketplace
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  installInamaadSeoMetadata();
+                  showMessage("SEO metadata refreshed.");
+                }}
+                className="rounded-xl border border-[#0d1c38] bg-white px-5 py-3 text-sm font-black text-[#0d1c38] hover:bg-slate-50"
+              >
+                Refresh metadata
+              </button>
             </div>
           </div>
         </div>
@@ -4525,6 +4667,14 @@ function InamaadApp() {
           className="rounded-full bg-white px-5 py-3 text-sm font-black text-[#0d1c38] shadow-2xl hover:bg-slate-50"
         >
           JV Deals
+        </button>
+
+        <button
+          type="button"
+          onClick={shareMarketplace}
+          className="rounded-full bg-[#f0bf3c] px-5 py-3 text-sm font-black text-[#0d1c38] shadow-2xl hover:bg-[#f7ce62]"
+        >
+          Share
         </button>
 
         <a

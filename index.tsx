@@ -15,8 +15,13 @@ type Listing = {
   bathrooms?: string;
   landSize?: string;
   documentTitle?: string;
+  ownerName?: string;
+  ownerRole?: string;
   ownerPhone?: string;
   whatsapp?: string;
+  ownerVerified?: boolean;
+  ownerVerificationNote?: string;
+  featured?: boolean;
   imageUrl?: string;
   galleryUrls?: string[];
   documentName?: string;
@@ -408,6 +413,26 @@ export default function App() {
       return {};
     }
   });
+  const [recentListingIds, setRecentListingIds] = useState<number[]>(() => {
+    try {
+      const savedRecent = localStorage.getItem("inamaad_recent_listing_ids");
+      return savedRecent ? JSON.parse(savedRecent) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [compareListingIds, setCompareListingIds] = useState<number[]>(() => {
+    try {
+      const savedCompare = localStorage.getItem("inamaad_compare_listing_ids");
+      return savedCompare ? JSON.parse(savedCompare) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [adminListingSearch, setAdminListingSearch] = useState("");
+  const [adminListingStatusFilter, setAdminListingStatusFilter] = useState("all");
   const [expandedListingId, setExpandedListingId] = useState<number | null>(null);
   const [modal, setModal] = useState<ModalType>(null);
   const [successMessage, setSuccessMessage] = useState("");
@@ -461,8 +486,11 @@ export default function App() {
     bathrooms: "",
     landSize: "",
     documentTitle: "",
+    ownerName: "",
+    ownerRole: "Owner",
     ownerPhone: "",
     whatsapp: "",
+    ownerVerificationNote: "",
     imageUrl: "",
     galleryUrls: [] as string[],
     documentName: "",
@@ -484,8 +512,12 @@ export default function App() {
     bathrooms: "",
     landSize: "",
     documentTitle: "",
+    ownerName: "",
+    ownerRole: "Owner",
     ownerPhone: "",
     whatsapp: "",
+    ownerVerified: false,
+    ownerVerificationNote: "",
   });
 
   useEffect(() => {
@@ -499,6 +531,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("inamaad_listing_views", JSON.stringify(listingViews));
   }, [listingViews]);
+
+  useEffect(() => {
+    localStorage.setItem("inamaad_recent_listing_ids", JSON.stringify(recentListingIds));
+  }, [recentListingIds]);
+
+  useEffect(() => {
+    localStorage.setItem("inamaad_compare_listing_ids", JSON.stringify(compareListingIds));
+  }, [compareListingIds]);
 
   useEffect(() => {
     localStorage.setItem("inamaad_leads", JSON.stringify(leads));
@@ -532,7 +572,49 @@ export default function App() {
     [listings, savedListingIds]
   );
 
-  const featuredProperty = propertyListings[0] || listings[0] || null;
+  const recentlyViewedListings = useMemo(
+    () =>
+      recentListingIds
+        .map((id) => listings.find((item) => item.id === id))
+        .filter((item): item is Listing => Boolean(item)),
+    [listings, recentListingIds]
+  );
+
+  const compareListings = useMemo(
+    () =>
+      compareListingIds
+        .map((id) => listings.find((item) => item.id === id))
+        .filter((item): item is Listing => Boolean(item)),
+    [compareListingIds, listings]
+  );
+
+  const featuredListings = useMemo(
+    () => listings.filter((item) => item.featured),
+    [listings]
+  );
+
+  const adminFilteredListings = useMemo(() => {
+    const searchTerm = adminListingSearch.trim().toLowerCase();
+
+    return listings.filter((item) => {
+      const searchMatch =
+        searchTerm === "" ||
+        item.title.toLowerCase().includes(searchTerm) ||
+        item.location.toLowerCase().includes(searchTerm) ||
+        item.state.toLowerCase().includes(searchTerm) ||
+        item.type.toLowerCase().includes(searchTerm) ||
+        item.status.toLowerCase().includes(searchTerm) ||
+        (item.ownerName || "").toLowerCase().includes(searchTerm);
+
+      const statusMatch =
+        adminListingStatusFilter === "all" ||
+        item.status.toLowerCase() === adminListingStatusFilter.toLowerCase();
+
+      return searchMatch && statusMatch;
+    });
+  }, [adminListingSearch, adminListingStatusFilter, listings]);
+
+  const featuredProperty = featuredListings[0] || propertyListings[0] || listings[0] || null;
 
   const totalListingViews = Object.values(listingViews).reduce(
     (totalViews, currentViews) => totalViews + Number(currentViews || 0),
@@ -580,6 +662,10 @@ export default function App() {
     });
 
     return [...nextProperties].sort((a, b) => {
+      if (Boolean(a.featured) !== Boolean(b.featured)) {
+        return Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+      }
+
       if (sortMode === "price_high") {
         return parseNairaValue(b.price) - parseNairaValue(a.price);
       }
@@ -648,6 +734,11 @@ export default function App() {
       ...currentViews,
       [item.id]: Number(currentViews[item.id] || 0) + 1,
     }));
+
+    setRecentListingIds((currentIds) => [
+      item.id,
+      ...currentIds.filter((currentId) => currentId !== item.id),
+    ].slice(0, 6));
   }
 
   function openProperty(item: Listing) {
@@ -678,6 +769,104 @@ export default function App() {
     });
   }
 
+  function toggleCompareListing(item: Listing) {
+    setCompareListingIds((currentIds) => {
+      if (currentIds.includes(item.id)) {
+        showMessage("Property removed from compare list.");
+        return currentIds.filter((savedId) => savedId !== item.id);
+      }
+
+      if (currentIds.length >= 3) {
+        showMessage("Compare list is full. Remove one property before adding another.");
+        return currentIds;
+      }
+
+      showMessage("Property added to compare list.");
+      return [...currentIds, item.id];
+    });
+  }
+
+  function clearCompareList() {
+    setCompareListingIds([]);
+    showMessage("Compare list cleared.");
+  }
+
+  function buildPropertySummary(item: Listing) {
+    return [
+      "INAMAAD Real Estate Property Summary",
+      `Reference: ${getListingReference(item.id)}`,
+      `Title: ${item.title}`,
+      `Type: ${item.type}`,
+      `Location: ${item.location}`,
+      `State: ${item.state}`,
+      `Price / Value: ${item.price}`,
+      `Projected ROI: ${item.roi}`,
+      `Status: ${item.status}`,
+      `Owner / Agent: ${item.ownerName || "INAMAAD contact"}`,
+      `Owner role: ${item.ownerRole || "Owner / Agent"}`,
+      `Owner verified: ${item.ownerVerified ? "Yes" : "Pending review"}`,
+      `Bedrooms: ${item.bedrooms || "Not stated"}`,
+      `Bathrooms: ${item.bathrooms || "Not stated"}`,
+      `Land size: ${item.landSize || "Not stated"}`,
+      `Document: ${item.documentTitle || "Under review"}`,
+      "",
+      item.summary,
+    ].join("\n");
+  }
+
+  async function copyPropertySummary(item: Listing) {
+    try {
+      await navigator.clipboard.writeText(buildPropertySummary(item));
+      showMessage("Property summary copied.");
+    } catch {
+      showMessage("Unable to copy summary on this browser.");
+    }
+  }
+
+  function printPropertySummary(item: Listing) {
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+
+    if (!printWindow) {
+      showMessage("Popup blocked. Allow popups to print property summary.");
+      return;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${item.title}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #0d1c38; padding: 32px; line-height: 1.6; }
+            h1 { margin-bottom: 4px; }
+            .badge { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff7df; color: #9b6b16; font-weight: 800; font-size: 12px; }
+            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 20px 0; }
+            .box { border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; }
+            .label { color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+            .value { font-weight: 900; margin-top: 4px; }
+            @media print { button { display: none; } }
+          </style>
+        </head>
+        <body>
+          <span class="badge">INAMAAD Property Summary</span>
+          <h1>${item.title}</h1>
+          <p>${item.summary}</p>
+          <div class="grid">
+            <div class="box"><div class="label">Reference</div><div class="value">${getListingReference(item.id)}</div></div>
+            <div class="box"><div class="label">Location</div><div class="value">${item.location}</div></div>
+            <div class="box"><div class="label">Price</div><div class="value">${item.price}</div></div>
+            <div class="box"><div class="label">ROI</div><div class="value">${item.roi}</div></div>
+            <div class="box"><div class="label">Owner / Agent</div><div class="value">${item.ownerName || "INAMAAD contact"}</div></div>
+            <div class="box"><div class="label">Verification</div><div class="value">${item.ownerVerified ? "Verified" : "Pending review"}</div></div>
+          </div>
+          <button onclick="window.print()">Print</button>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+  }
+
   function handlePostListing(e: React.FormEvent) {
     e.preventDefault();
 
@@ -696,8 +885,12 @@ export default function App() {
       bathrooms: newListing.bathrooms.trim(),
       landSize: newListing.landSize.trim(),
       documentTitle: newListing.documentTitle.trim(),
+      ownerName: newListing.ownerName.trim(),
+      ownerRole: newListing.ownerRole,
       ownerPhone: newListing.ownerPhone.trim(),
       whatsapp: newListing.whatsapp.trim(),
+      ownerVerified: false,
+      ownerVerificationNote: newListing.ownerVerificationNote.trim(),
       imageUrl: newListing.imageUrl,
       galleryUrls: newListing.galleryUrls,
       documentName: newListing.documentName,
@@ -719,8 +912,11 @@ export default function App() {
       bathrooms: "",
       landSize: "",
       documentTitle: "",
+      ownerName: "",
+      ownerRole: "Owner",
       ownerPhone: "",
       whatsapp: "",
+      ownerVerificationNote: "",
       imageUrl: "",
       galleryUrls: [] as string[],
       documentName: "",
@@ -975,8 +1171,12 @@ export default function App() {
       bathrooms: item.bathrooms || "",
       landSize: item.landSize || "",
       documentTitle: item.documentTitle || "",
+      ownerName: item.ownerName || "",
+      ownerRole: item.ownerRole || "Owner",
       ownerPhone: item.ownerPhone || "",
       whatsapp: item.whatsapp || "",
+      ownerVerified: Boolean(item.ownerVerified),
+      ownerVerificationNote: item.ownerVerificationNote || "",
     });
   }
 
@@ -995,8 +1195,12 @@ export default function App() {
       bathrooms: "",
       landSize: "",
       documentTitle: "",
+      ownerName: "",
+      ownerRole: "Owner",
       ownerPhone: "",
       whatsapp: "",
+      ownerVerified: false,
+      ownerVerificationNote: "",
     });
   }
 
@@ -1023,8 +1227,12 @@ export default function App() {
               bathrooms: editListingForm.bathrooms.trim(),
               landSize: editListingForm.landSize.trim(),
               documentTitle: editListingForm.documentTitle.trim(),
+              ownerName: editListingForm.ownerName.trim(),
+              ownerRole: editListingForm.ownerRole,
               ownerPhone: editListingForm.ownerPhone.trim(),
               whatsapp: editListingForm.whatsapp.trim(),
+              ownerVerified: editListingForm.ownerVerified,
+              ownerVerificationNote: editListingForm.ownerVerificationNote.trim(),
             }
           : item
       )
@@ -1044,6 +1252,51 @@ export default function App() {
 
     setListings((currentListings) => [duplicatedListing, ...currentListings]);
     showMessage("Listing duplicated as Pending review.");
+  }
+
+  function verifyListingOwner(id: number) {
+    setListings((currentListings) =>
+      currentListings.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              ownerVerified: true,
+              ownerVerificationNote:
+                item.ownerVerificationNote || "Owner / agent checked by INAMAAD admin.",
+            }
+          : item
+      )
+    );
+
+    showMessage("Owner / agent verified.");
+  }
+
+  function unverifyListingOwner(id: number) {
+    setListings((currentListings) =>
+      currentListings.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              ownerVerified: false,
+              ownerVerificationNote:
+                item.ownerVerificationNote || "Verification pending admin review.",
+            }
+          : item
+      )
+    );
+
+    showMessage("Owner / agent verification removed.");
+  }
+
+
+  function toggleFeaturedListing(id: number) {
+    setListings((currentListings) =>
+      currentListings.map((item) =>
+        item.id === id ? { ...item, featured: !item.featured } : item
+      )
+    );
+
+    showMessage("Featured listing status updated.");
   }
 
   function shareListing(item: Listing) {
@@ -1238,6 +1491,11 @@ export default function App() {
         "Bathrooms",
         "Land Size",
         "Document",
+        "Owner / Agent",
+        "Owner Role",
+        "Owner Verified",
+        "Featured",
+        "Owner Verification Note",
         "Owner Phone",
         "WhatsApp",
         "Summary",
@@ -1255,6 +1513,11 @@ export default function App() {
         item.bathrooms || "",
         item.landSize || "",
         item.documentTitle || "",
+        item.ownerName || "",
+        item.ownerRole || "",
+        item.ownerVerified ? "Yes" : "No",
+        item.featured ? "Yes" : "No",
+        item.ownerVerificationNote || "",
         item.ownerPhone || "",
         item.whatsapp || "",
         item.summary,
@@ -1341,6 +1604,8 @@ export default function App() {
       inspections,
       savedListingIds,
       listingViews,
+      recentListingIds,
+      compareListingIds,
     };
 
     downloadTextFile(
@@ -1388,6 +1653,14 @@ export default function App() {
           setListingViews(parsedBackup.listingViews);
         }
 
+        if (Array.isArray(parsedBackup.recentListingIds)) {
+          setRecentListingIds(parsedBackup.recentListingIds);
+        }
+
+        if (Array.isArray(parsedBackup.compareListingIds)) {
+          setCompareListingIds(parsedBackup.compareListingIds);
+        }
+
         showMessage("Backup restored successfully.");
       } catch {
         showMessage("Backup restore failed. Upload a valid INAMAAD JSON backup.");
@@ -1416,6 +1689,8 @@ export default function App() {
     setInspections([]);
     setSavedListingIds([]);
     setListingViews({});
+    setRecentListingIds([]);
+    setCompareListingIds([]);
     setExpandedListingId(null);
     setSelectedListing(null);
     showMessage("Local data reset to starter listings.");
@@ -1425,6 +1700,7 @@ export default function App() {
     const isExpanded = expandedListingId === item.id;
     const isJV = variant === "jv" || isJVListing(item);
     const isSaved = savedListingIds.includes(item.id);
+    const isCompared = compareListingIds.includes(item.id);
 
     return (
       <article
@@ -1444,9 +1720,27 @@ export default function App() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.22),transparent_28%),radial-gradient(circle_at_80%_70%,rgba(240,191,60,0.22),transparent_30%)]" />
           <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
             <div>
-              <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0d1c38]">
-                {item.status}
-              </span>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0d1c38]">
+                  {item.status}
+                </span>
+
+                {item.ownerVerified ? (
+                  <span className="rounded-full bg-emerald-400 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0d1c38]">
+                    Verified owner
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-white/75 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-700">
+                    Owner review
+                  </span>
+                )}
+
+                {item.featured ? (
+                  <span className="rounded-full bg-[#f0bf3c] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0d1c38]">
+                    Featured
+                  </span>
+                ) : null}
+              </div>
               <p className="mt-2 text-xl font-black text-white">{item.price}</p>
             </div>
             <span className="rounded-full bg-[#f0bf3c] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0d1c38]">
@@ -1517,6 +1811,32 @@ export default function App() {
             ))}
           </div>
 
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                  Owner / Agent
+                </p>
+                <p className="mt-1 text-sm font-black text-[#0d1c38]">
+                  {item.ownerName || "INAMAAD verified contact"}
+                </p>
+                <p className="text-xs font-semibold text-slate-500">
+                  {item.ownerRole || "Owner / Agent"}
+                </p>
+              </div>
+
+              <span
+                className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
+                  item.ownerVerified
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-yellow-50 text-yellow-700"
+                }`}
+              >
+                {item.ownerVerified ? "Verified" : "Pending"}
+              </span>
+            </div>
+          </div>
+
           <div className="mt-4 grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -1532,6 +1852,28 @@ export default function App() {
               className="rounded-xl border border-[#0d1c38] bg-white px-4 py-3 text-sm font-black text-[#0d1c38] transition hover:bg-slate-50"
             >
               Share
+            </button>
+          </div>
+
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => toggleCompareListing(item)}
+              className={`rounded-xl px-4 py-3 text-sm font-black transition ${
+                isCompared
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              }`}
+            >
+              {isCompared ? "Compared" : "Compare"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => copyPropertySummary(item)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+            >
+              Copy summary
             </button>
           </div>
 
@@ -1583,6 +1925,9 @@ export default function App() {
                   ["Bathrooms", item.bathrooms || "Not stated"],
                   ["Land size", item.landSize || "Not stated"],
                   ["Document", item.documentTitle || "Under review"],
+                  ["Owner", item.ownerName || "INAMAAD contact"],
+                  ["Owner role", item.ownerRole || "Owner / Agent"],
+                  ["Verification", item.ownerVerified ? "Verified owner" : "Pending review"],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-xl bg-white p-3">
                     <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
@@ -2176,6 +2521,103 @@ export default function App() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-7xl px-4 pb-4 lg:px-10">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="rounded-[2rem] border border-blue-100 bg-blue-50 p-5 lg:p-6">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-blue-700">
+                  Compare properties
+                </p>
+                <h3 className="mt-1 text-xl font-black text-[#0d1c38]">
+                  Compare up to 3 listings
+                </h3>
+              </div>
+
+              {compareListings.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={clearCompareList}
+                  className="rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+
+            {compareListings.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px] overflow-hidden rounded-2xl bg-white text-left text-xs">
+                  <thead className="bg-[#0d1c38] text-white">
+                    <tr>
+                      <th className="p-3">Property</th>
+                      <th className="p-3">Price</th>
+                      <th className="p-3">ROI</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Owner</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compareListings.map((item) => (
+                      <tr key={`compare-${item.id}`} className="border-t border-slate-100">
+                        <td className="p-3 font-black text-[#0d1c38]">
+                          {item.title}
+                          <p className="mt-1 font-semibold text-slate-500">{item.location}</p>
+                        </td>
+                        <td className="p-3 font-black text-[#0d1c38]">{item.price}</td>
+                        <td className="p-3 font-black text-[#0d1c38]">{item.roi}</td>
+                        <td className="p-3">{item.status}</td>
+                        <td className="p-3">
+                          {item.ownerVerified ? "Verified" : "Pending"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="rounded-2xl bg-white p-4 text-sm leading-7 text-slate-600">
+                Use the Compare button on property cards to compare price, ROI, status, and owner verification.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-[2rem] border border-orange-100 bg-orange-50 p-5 lg:p-6">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-700">
+              Recently viewed
+            </p>
+            <h3 className="mt-1 text-xl font-black text-[#0d1c38]">
+              Continue from where you stopped
+            </h3>
+
+            {recentlyViewedListings.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {recentlyViewedListings.slice(0, 4).map((item) => (
+                  <button
+                    key={`recent-${item.id}`}
+                    type="button"
+                    onClick={() => {
+                      scrollToSection(isJVListing(item) ? "jv" : "properties");
+                      setExpandedListingId(item.id);
+                    }}
+                    className="w-full rounded-2xl bg-white p-3 text-left shadow-sm hover:shadow-md"
+                  >
+                    <p className="text-sm font-black text-[#0d1c38]">{item.title}</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      {item.location} · {item.price} · {Number(listingViews[item.id] || 0)} views
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 rounded-2xl bg-white p-4 text-sm leading-7 text-slate-600">
+                Open a property details modal or inside-card details, and it will appear here.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section id="properties" className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
         <div className="mb-8 flex items-end justify-between gap-5">
           <div>
@@ -2506,6 +2948,9 @@ export default function App() {
                 ["Document", selectedListing.documentTitle || "Under review"],
                 ["Owner phone", selectedListing.ownerPhone || "Contact INAMAAD"],
                 ["WhatsApp", selectedListing.whatsapp || "Contact INAMAAD"],
+                ["Owner / Agent", selectedListing.ownerName || "INAMAAD contact"],
+                ["Owner role", selectedListing.ownerRole || "Owner / Agent"],
+                ["Owner verified", selectedListing.ownerVerified ? "Verified" : "Pending review"],
               ].map(([label, value]) => (
                 <div key={label}>
                   <p className="text-xs text-slate-400">{label}</p>
@@ -2537,9 +2982,25 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => openInspectionForm(selectedListing)}
-                className="rounded-xl border border-[#f0bf3c] bg-[#fff7df] px-5 py-3 text-sm font-black text-[#9b6b16] hover:bg-[#f7e8bd] sm:col-span-2"
+                className="rounded-xl border border-[#f0bf3c] bg-[#fff7df] px-5 py-3 text-sm font-black text-[#9b6b16] hover:bg-[#f7e8bd]"
               >
                 Book property inspection
+              </button>
+
+              <button
+                type="button"
+                onClick={() => copyPropertySummary(selectedListing)}
+                className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-black text-blue-700 hover:bg-blue-100"
+              >
+                Copy summary
+              </button>
+
+              <button
+                type="button"
+                onClick={() => printPropertySummary(selectedListing)}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 sm:col-span-2"
+              >
+                Print property summary
               </button>
             </div>
           </div>
@@ -2743,6 +3204,50 @@ export default function App() {
                     }
                     placeholder="Document title, e.g. C of O"
                     className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-[#f0bf3c]/30 bg-[#fff7df] p-4">
+                  <p className="mb-3 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
+                    Owner / Agent verification information
+                  </p>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <input
+                      value={newListing.ownerName}
+                      onChange={(e) =>
+                        setNewListing({ ...newListing, ownerName: e.target.value })
+                      }
+                      placeholder="Owner / Agent name"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={newListing.ownerRole}
+                      onChange={(e) =>
+                        setNewListing({ ...newListing, ownerRole: e.target.value })
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                    >
+                      <option value="Owner">Owner</option>
+                      <option value="Agent">Agent</option>
+                      <option value="Developer">Developer</option>
+                      <option value="Landowner">Landowner</option>
+                      <option value="Company Representative">Company Representative</option>
+                    </select>
+                  </div>
+
+                  <textarea
+                    value={newListing.ownerVerificationNote}
+                    onChange={(e) =>
+                      setNewListing({
+                        ...newListing,
+                        ownerVerificationNote: e.target.value,
+                      })
+                    }
+                    placeholder="Verification note, e.g. owner has C of O, direct mandate, company authorization..."
+                    rows={3}
+                    className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
                   />
                 </div>
 
@@ -3359,7 +3864,34 @@ export default function App() {
                   </div>
                 )}
 
-                {listings.map((item) => (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="mb-3 text-sm font-black text-[#0d1c38]">
+                    Admin listing search
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
+                    <input
+                      value={adminListingSearch}
+                      onChange={(e) => setAdminListingSearch(e.target.value)}
+                      placeholder="Search title, owner, state, status..."
+                      className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={adminListingStatusFilter}
+                      onChange={(e) => setAdminListingStatusFilter(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                    >
+                      <option value="all">All status</option>
+                      <option value="Verified">Verified</option>
+                      <option value="Pending review">Pending review</option>
+                    </select>
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    Showing {adminFilteredListings.length} of {listings.length} listings.
+                  </p>
+                </div>
+
+                {adminFilteredListings.map((item) => (
                   <div key={item.id} className="rounded-2xl border border-slate-200 p-4">
                     {editingListingId === item.id ? (
                       <form onSubmit={handleEditListingSubmit} className="space-y-3">
@@ -3550,6 +4082,36 @@ export default function App() {
                           />
                         </div>
 
+                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                          <label className="flex items-center gap-3 text-sm font-black text-[#0d1c38]">
+                            <input
+                              type="checkbox"
+                              checked={editListingForm.ownerVerified}
+                              onChange={(e) =>
+                                setEditListingForm({
+                                  ...editListingForm,
+                                  ownerVerified: e.target.checked,
+                                })
+                              }
+                              className="h-4 w-4"
+                            />
+                            Owner / agent verified by admin
+                          </label>
+
+                          <textarea
+                            value={editListingForm.ownerVerificationNote}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                ownerVerificationNote: e.target.value,
+                              })
+                            }
+                            placeholder="Verification note"
+                            rows={3}
+                            className="mt-3 w-full rounded-xl border border-emerald-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+                        </div>
+
                         <textarea
                           required
                           rows={4}
@@ -3623,6 +4185,34 @@ export default function App() {
                             className="rounded-xl border border-blue-200 py-2.5 text-sm font-black text-blue-700 hover:bg-blue-50"
                           >
                             Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleFeaturedListing(item.id)}
+                            className={`rounded-xl border py-2.5 text-sm font-black ${
+                              item.featured
+                                ? "border-orange-200 text-orange-700 hover:bg-orange-50"
+                                : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            {item.featured ? "Unfeature" : "Feature"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              item.ownerVerified
+                                ? unverifyListingOwner(item.id)
+                                : verifyListingOwner(item.id)
+                            }
+                            className={`rounded-xl border py-2.5 text-sm font-black ${
+                              item.ownerVerified
+                                ? "border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+                                : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                            }`}
+                          >
+                            {item.ownerVerified ? "Unverify owner" : "Verify owner"}
                           </button>
 
                           <button

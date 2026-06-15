@@ -474,6 +474,17 @@ function InamaadApp() {
     note: "",
   });
 
+  const [conciergeForm, setConciergeForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    budget: "",
+    location: "",
+    propertyType: "",
+    timeline: "",
+    message: "",
+  });
+
   const [newListing, setNewListing] = useState({
     title: "",
     location: "",
@@ -1696,6 +1707,42 @@ function InamaadApp() {
     showMessage("Local data reset to starter listings.");
   }
 
+
+  function handleConciergeSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    const createdLead: Lead = {
+      id: Date.now(),
+      name: conciergeForm.name.trim(),
+      email: conciergeForm.email.trim(),
+      phone: conciergeForm.phone.trim(),
+      budget: conciergeForm.budget.trim(),
+      message: [
+        `Preferred location: ${conciergeForm.location || "Not specified"}`,
+        `Property type: ${conciergeForm.propertyType || "Not specified"}`,
+        `Timeline: ${conciergeForm.timeline || "Not specified"}`,
+        `Message: ${conciergeForm.message || "No extra message"}`,
+      ].join("\n"),
+      createdAt: new Date().toISOString(),
+      status: "New",
+    };
+
+    setLeads((currentLeads) => [createdLead, ...currentLeads]);
+
+    setConciergeForm({
+      name: "",
+      email: "",
+      phone: "",
+      budget: "",
+      location: "",
+      propertyType: "",
+      timeline: "",
+      message: "",
+    });
+
+    showMessage("Buyer brief submitted. INAMAAD can follow up from the admin dashboard.");
+  }
+
   function renderPropertyCard(item: Listing, variant: "property" | "jv" = "property") {
     const isExpanded = expandedListingId === item.id;
     const isJV = variant === "jv" || isJVListing(item);
@@ -2774,6 +2821,145 @@ function InamaadApp() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
+        <div className="grid gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-[0.9fr_1.1fr] lg:p-6">
+          <div className="rounded-[1.5rem] bg-[#0d1c38] p-6 text-white">
+            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
+              Buyer concierge
+            </p>
+            <h2 className="text-3xl font-black leading-tight">
+              Need help choosing the right property?
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-white/60">
+              Submit your buying brief and INAMAAD can match you with verified properties, JV deals, or inspection options from the admin lead dashboard.
+            </p>
+
+            <div className="mt-6 grid gap-3">
+              {[
+                "Verified property matching",
+                "Inspection planning",
+                "Investor lead tracking",
+                "Owner / agent verification support",
+              ].map((item) => (
+                <div key={item} className="rounded-2xl bg-white/10 p-3">
+                  <p className="text-sm font-black text-white">✓ {item}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <form onSubmit={handleConciergeSubmit} className="grid gap-3">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
+                Submit buying brief
+              </p>
+              <h3 className="mt-1 text-2xl font-black text-[#0d1c38]">
+                Professional buyer request
+              </h3>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                required
+                value={conciergeForm.name}
+                onChange={(e) =>
+                  setConciergeForm({ ...conciergeForm, name: e.target.value })
+                }
+                placeholder="Full name"
+                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+              />
+
+              <input
+                required
+                type="email"
+                value={conciergeForm.email}
+                onChange={(e) =>
+                  setConciergeForm({ ...conciergeForm, email: e.target.value })
+                }
+                placeholder="Email address"
+                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+              />
+
+              <input
+                required
+                value={conciergeForm.phone}
+                onChange={(e) =>
+                  setConciergeForm({ ...conciergeForm, phone: e.target.value })
+                }
+                placeholder="Phone / WhatsApp"
+                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+              />
+
+              <input
+                required
+                value={conciergeForm.budget}
+                onChange={(e) =>
+                  setConciergeForm({ ...conciergeForm, budget: e.target.value })
+                }
+                placeholder="Budget, e.g. ₦100M - ₦500M"
+                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <input
+                value={conciergeForm.location}
+                onChange={(e) =>
+                  setConciergeForm({ ...conciergeForm, location: e.target.value })
+                }
+                placeholder="Preferred location"
+                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+              />
+
+              <select
+                value={conciergeForm.propertyType}
+                onChange={(e) =>
+                  setConciergeForm({
+                    ...conciergeForm,
+                    propertyType: e.target.value,
+                  })
+                }
+                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+              >
+                <option value="">Any type</option>
+                <option value="Residential">Residential</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Land">Land</option>
+                <option value="Joint Venture">Joint Venture</option>
+              </select>
+
+              <select
+                value={conciergeForm.timeline}
+                onChange={(e) =>
+                  setConciergeForm({ ...conciergeForm, timeline: e.target.value })
+                }
+                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+              >
+                <option value="">Timeline</option>
+                <option value="Immediately">Immediately</option>
+                <option value="This month">This month</option>
+                <option value="1-3 months">1-3 months</option>
+                <option value="Still researching">Still researching</option>
+              </select>
+            </div>
+
+            <textarea
+              value={conciergeForm.message}
+              onChange={(e) =>
+                setConciergeForm({ ...conciergeForm, message: e.target.value })
+              }
+              rows={4}
+              placeholder="Tell us what you want: location, property size, title/document preference, inspection needs..."
+              className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+            />
+
+            <button className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#162b52]">
+              Submit buyer brief
+            </button>
+          </form>
         </div>
       </section>
 

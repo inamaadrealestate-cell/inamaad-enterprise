@@ -2193,6 +2193,7 @@ function InamaadApp() {
               ["Properties", "properties"],
               ["JV Deals", "jv"],
               ["Investors", "why"],
+              ["Compliance", "compliance"],
               ["About", "about"],
             ].map(([label, id]) => (
               <button
@@ -3180,6 +3181,96 @@ function InamaadApp() {
         </div>
       </section>
 
+      <section id="compliance" className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
+        <div className="rounded-[2rem] border border-red-100 bg-white p-5 shadow-sm lg:p-6">
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="rounded-[1.5rem] bg-red-50 p-6">
+              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-red-600">
+                Compliance and fraud protection
+              </p>
+              <h2 className="text-3xl font-black tracking-tight text-[#0d1c38]">
+                Do not pay anyone without verification.
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-slate-600">
+                INAMAAD should guide buyers, landowners, developers, and investors to verify ownership, documents, inspection access, and stakeholder identity before payment or commitment.
+              </p>
+
+              <div className="mt-5 rounded-2xl border border-red-100 bg-white p-4">
+                <p className="text-sm font-black text-red-700">
+                  Important safety notice
+                </p>
+                <p className="mt-2 text-sm leading-7 text-slate-600">
+                  Avoid cash payments, private pressure deals, fake urgency, unverifiable agents, and payment into personal accounts without proper agreement, receipt, inspection, and document review.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                [
+                  "Document check",
+                  "Confirm title documents, survey plans, allocation letters, deeds, or C of O before moving forward.",
+                ],
+                [
+                  "Owner / agent check",
+                  "Use the owner verification badge, admin verification note, and direct contact details before negotiation.",
+                ],
+                [
+                  "Inspection first",
+                  "Book inspection and confirm the property physically before payment or final commitment.",
+                ],
+                [
+                  "Agreement trail",
+                  "Keep written agreements, receipts, WhatsApp records, and stakeholder names for accountability.",
+                ],
+                [
+                  "JV due diligence",
+                  "For JV deals, confirm land title, sharing formula, developer capacity, project stage, and legal structure.",
+                ],
+                [
+                  "Admin backup",
+                  "Export leads, inspections, and listing backups regularly before major business decisions.",
+                ],
+              ].map(([title, body]) => (
+                <div key={title} className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-4">
+                  <p className="text-sm font-black text-[#0d1c38]">{title}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 rounded-[1.5rem] border border-slate-200 bg-[#f8fafc] p-4 lg:grid-cols-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                Buyer responsibility
+              </p>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Buyers should independently verify documents and inspect properties before payment.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                Platform role
+              </p>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                INAMAAD helps organize verified opportunities, enquiries, inspections, and records.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                Professional advice
+              </p>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Use a lawyer, surveyor, valuer, or qualified real estate professional for final checks.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="about" className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
         <div className="flex flex-col items-start justify-between gap-8 rounded-[2rem] bg-[#0d1c38] px-6 py-10 md:flex-row md:items-center lg:px-10">
           <div>
@@ -3237,6 +3328,13 @@ function InamaadApp() {
               className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-[#0d1c38]"
             >
               JV Deals
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("compliance")}
+              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-[#0d1c38]"
+            >
+              Compliance
             </button>
             <a
               href={`https://wa.me/${WHATSAPP_NUMBER}`}

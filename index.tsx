@@ -335,6 +335,8 @@ const SUPABASE_KEY =
 const supabase =
   SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
+const LIVE_SITE_URL = "https://project-65njf.vercel.app";
+
 function getAppBaseUrl() {
   const configuredUrl =
     (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) ||
@@ -343,9 +345,21 @@ function getAppBaseUrl() {
 
   if (configuredUrl) return configuredUrl.replace(/\/+$/, "");
 
-  if (typeof window !== "undefined") return window.location.origin;
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin;
 
-  return "";
+    if (
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.includes("0.0.0.0")
+    ) {
+      return LIVE_SITE_URL;
+    }
+
+    return origin.replace(/\/+$/, "");
+  }
+
+  return LIVE_SITE_URL;
 }
 
 function getAuthRedirectUrl(authMode: "email-confirmed" | "reset-password") {
@@ -1578,6 +1592,704 @@ function getUserInitials(nameOrEmail: string) {
 
   return namePart.slice(0, 2).toUpperCase();
 }
+
+
+function MobileUsabilityStyles() {
+  return (
+    <style>{`
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        overflow-x: hidden;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      img,
+      video,
+      iframe {
+        max-width: 100%;
+      }
+
+      input,
+      select,
+      textarea,
+      button {
+        font: inherit;
+      }
+
+      @media (max-width: 768px) {
+        html,
+        body,
+        #root {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
+        body {
+          -webkit-text-size-adjust: 100%;
+        }
+
+        section {
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
+        h1 {
+          font-size: clamp(2.05rem, 10vw, 3rem) !important;
+          line-height: 1.05 !important;
+          letter-spacing: -0.045em !important;
+        }
+
+        h2 {
+          font-size: clamp(1.75rem, 8vw, 2.45rem) !important;
+          line-height: 1.1 !important;
+        }
+
+        h3 {
+          font-size: clamp(1.25rem, 6vw, 1.8rem) !important;
+          line-height: 1.15 !important;
+        }
+
+        p {
+          overflow-wrap: anywhere;
+        }
+
+        a,
+        button {
+          min-height: 44px;
+          touch-action: manipulation;
+        }
+
+        input,
+        select,
+        textarea {
+          width: 100%;
+          min-height: 48px;
+          font-size: 16px !important;
+        }
+
+        textarea {
+          min-height: 120px;
+        }
+
+        .mobile-tap-target {
+          min-height: 52px;
+        }
+
+        [class*="max-w-7xl"],
+        [class*="max-w-6xl"],
+        [class*="max-w-5xl"],
+        [class*="max-w-4xl"],
+        [class*="max-w-3xl"],
+        [class*="max-w-2xl"],
+        [class*="max-w-xl"] {
+          max-width: 100% !important;
+        }
+
+        [class*="px-10"] {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+        }
+
+        [class*="px-8"] {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+        }
+
+        [class*="px-6"] {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+        }
+
+        [class*="p-10"] {
+          padding: 1.25rem !important;
+        }
+
+        [class*="p-8"] {
+          padding: 1.1rem !important;
+        }
+
+        [class*="rounded-[32px]"],
+        [class*="rounded-[30px]"],
+        [class*="rounded-[28px]"] {
+          border-radius: 1.35rem !important;
+        }
+
+        [class*="fixed"][class*="inset-0"] {
+          align-items: flex-start !important;
+          justify-content: center !important;
+          padding: 0.75rem !important;
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        [class*="max-h-[90vh]"] {
+          max-height: calc(100dvh - 1.5rem) !important;
+        }
+
+        [class*="w-[90%]"] {
+          width: calc(100% - 1rem) !important;
+        }
+
+        [class*="h-72"] {
+          height: 14rem !important;
+        }
+
+        [class*="h-80"] {
+          height: 16rem !important;
+        }
+
+        [class*="grid-cols-2"]:not([class*="lg:grid-cols"]):not([class*="md:grid-cols"]) {
+          grid-template-columns: 1fr !important;
+        }
+
+        table {
+          display: block;
+          width: 100%;
+          overflow-x: auto;
+          white-space: nowrap;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .inamaad-mobile-bottom-nav {
+          position: fixed;
+          left: 0.75rem;
+          right: 0.75rem;
+          bottom: calc(0.75rem + env(safe-area-inset-bottom));
+          z-index: 120;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0.45rem;
+          border: 1px solid rgba(15, 23, 42, 0.1);
+          border-radius: 1.35rem;
+          background: rgba(255, 255, 255, 0.96);
+          padding: 0.55rem;
+          box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+          backdrop-filter: blur(18px);
+        }
+
+        .inamaad-mobile-bottom-nav a,
+        .inamaad-mobile-bottom-nav button {
+          display: flex;
+          min-width: 0;
+          min-height: 48px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 1rem;
+          padding: 0.65rem 0.35rem;
+          text-align: center;
+          font-size: 0.72rem;
+          font-weight: 900;
+          color: #0d1c38;
+          background: #f7f8fb;
+        }
+
+        .inamaad-mobile-bottom-nav .primary {
+          color: white;
+          background: #0d1c38;
+        }
+
+        .inamaad-mobile-bottom-nav .gold {
+          color: #0d1c38;
+          background: #f0bf3c;
+        }
+      }
+
+      @media (min-width: 769px) {
+        .inamaad-mobile-bottom-nav {
+          display: none;
+        }
+      }
+    `}</style>
+  );
+}
+
+function MobileBottomNavigation({
+  setModal,
+}: {
+  setModal: React.Dispatch<React.SetStateAction<ModalType>>;
+}) {
+  return (
+    <div className="inamaad-mobile-bottom-nav lg:hidden">
+      <a href="#properties">Properties</a>
+      <a href="#jv">JV Deals</a>
+      <button
+        type="button"
+        onClick={() => setModal("post")}
+        className="gold"
+      >
+        Post
+      </button>
+      <button
+        type="button"
+        onClick={() => setModal("signin")}
+        className="primary"
+      >
+        Account
+      </button>
+    </div>
+  );
+}
+
+
+
+function ClassicResponsiveWebsiteStyles() {
+  return (
+    <style>{`
+      :root {
+        --inamaad-navy: #0d1c38;
+        --inamaad-navy-soft: #13284f;
+        --inamaad-gold: #f0bf3c;
+        --inamaad-bg: #f6f7fb;
+        --inamaad-card: #ffffff;
+        --inamaad-muted: #64748b;
+        --inamaad-border: rgba(15, 23, 42, 0.1);
+      }
+
+      body {
+        background:
+          radial-gradient(circle at top left, rgba(240, 191, 60, 0.13), transparent 32rem),
+          radial-gradient(circle at top right, rgba(13, 28, 56, 0.08), transparent 30rem),
+          var(--inamaad-bg);
+      }
+
+      .inamaad-classic-card {
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(15, 23, 42, 0.09);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(14px);
+      }
+
+      header {
+        box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      }
+
+      header nav a {
+        position: relative;
+      }
+
+      header nav a::after {
+        content: "";
+        position: absolute;
+        left: 1rem;
+        right: 1rem;
+        bottom: 0.55rem;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--inamaad-gold);
+        transform: scaleX(0);
+        transform-origin: center;
+        transition: transform 180ms ease;
+      }
+
+      header nav a:hover::after {
+        transform: scaleX(1);
+      }
+
+      main section:first-child {
+        border-bottom-left-radius: 2.8rem;
+        border-bottom-right-radius: 2.8rem;
+        box-shadow: 0 35px 90px rgba(13, 28, 56, 0.18);
+      }
+
+      #properties article,
+      #jv article {
+        transform: translateZ(0);
+      }
+
+      #properties article:hover,
+      #jv article:hover {
+        border-color: rgba(240, 191, 60, 0.65);
+      }
+
+      #properties article img {
+        filter: saturate(1.08) contrast(1.03);
+      }
+
+      #properties article h4,
+      #jv article h4 {
+        letter-spacing: -0.025em;
+      }
+
+      #properties select,
+      #properties input,
+      #jv select,
+      #jv input,
+      textarea {
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+      }
+
+      .classic-floating-search {
+        margin-top: -2.5rem;
+        position: relative;
+        z-index: 10;
+      }
+
+      .inamaad-category-strip > div,
+      .inamaad-property-grid > article,
+      .inamaad-jv-grid > article {
+        will-change: transform;
+      }
+
+      .inamaad-sync-hidden {
+        display: none !important;
+      }
+
+      @media (min-width: 1024px) {
+        .inamaad-property-grid,
+        .inamaad-jv-grid {
+          align-items: stretch;
+        }
+
+        .inamaad-property-grid > article:nth-child(3n + 2) {
+          transform: translateY(1rem);
+        }
+
+        .inamaad-jv-grid > article:nth-child(3n + 2) {
+          transform: translateY(0.75rem);
+        }
+
+        .inamaad-property-grid > article:nth-child(3n + 2):hover,
+        .inamaad-jv-grid > article:nth-child(3n + 2):hover {
+          transform: translateY(0.25rem);
+        }
+      }
+
+      @media (max-width: 768px) {
+        main {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.74) 18rem),
+            var(--inamaad-bg);
+        }
+
+        header {
+          position: sticky;
+          top: 0;
+          border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+          background: rgba(255,255,255,0.94) !important;
+          backdrop-filter: blur(18px);
+        }
+
+        header > div:first-child {
+          padding-top: 0.85rem !important;
+          padding-bottom: 0.85rem !important;
+        }
+
+        header [class*="h-11"][class*="w-11"] {
+          width: 2.65rem !important;
+          height: 2.65rem !important;
+          border-radius: 1rem !important;
+          box-shadow: 0 12px 22px rgba(13, 28, 56, 0.16);
+        }
+
+        header a[href="#"] > div:last-child > div:first-child {
+          font-size: 0.9rem !important;
+          letter-spacing: 0.06em !important;
+        }
+
+        header a[href="#"] > div:last-child > div:last-child {
+          font-size: 0.68rem !important;
+        }
+
+        header button[class*="lg:hidden"] {
+          border-radius: 999px !important;
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+          background: var(--inamaad-navy) !important;
+          box-shadow: 0 12px 25px rgba(13, 28, 56, 0.22);
+        }
+
+        header > div:nth-child(2) {
+          margin: 0 0.75rem 0.75rem !important;
+          border: 1px solid rgba(15,23,42,0.08) !important;
+          border-radius: 1.4rem;
+          background: rgba(255,255,255,0.98) !important;
+          box-shadow: 0 20px 50px rgba(15, 23, 42, 0.14);
+        }
+
+        header > div:nth-child(2) .grid a,
+        header > div:nth-child(2) .grid button {
+          min-height: 52px;
+          display: flex;
+          align-items: center;
+          border-radius: 1rem;
+          background: #f8fafc;
+          padding: 0.95rem 1rem;
+          font-weight: 900;
+        }
+
+        main section:first-child {
+          border-bottom-left-radius: 2rem;
+          border-bottom-right-radius: 2rem;
+        }
+
+        main section:first-child > div.relative {
+          padding-top: 2rem !important;
+          padding-bottom: 2.5rem !important;
+        }
+
+        main section:first-child h1 {
+          max-width: 100% !important;
+          font-size: clamp(2.35rem, 11.5vw, 3.65rem) !important;
+          line-height: 0.98 !important;
+        }
+
+        main section:first-child p {
+          font-size: 0.98rem !important;
+          line-height: 1.75 !important;
+        }
+
+        main section:first-child .grid.gap-10 {
+          gap: 1.35rem !important;
+        }
+
+        main section:first-child .grid.gap-3.sm\:grid-cols-2.lg\:grid-cols-4 {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 0.7rem !important;
+        }
+
+        main section:first-child .grid.gap-3.sm\:grid-cols-2.lg\:grid-cols-4 a,
+        main section:first-child .grid.gap-3.sm\:grid-cols-2.lg\:grid-cols-4 button {
+          min-height: 54px;
+          border-radius: 1.05rem !important;
+          padding: 0.8rem 0.7rem !important;
+          font-size: 0.78rem !important;
+          line-height: 1.25 !important;
+          box-shadow: 0 12px 28px rgba(13, 28, 56, 0.16);
+        }
+
+        main section:first-child [class*="rounded-[32px]"][class*="bg-white"] {
+          border-radius: 1.65rem !important;
+          padding: 0.8rem !important;
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
+        }
+
+        main section:first-child [class*="rounded-[26px]"] {
+          border-radius: 1.35rem !important;
+          padding: 1rem !important;
+        }
+
+        main section:first-child input,
+        main section:first-child select {
+          height: 3.35rem !important;
+          border-radius: 1rem !important;
+        }
+
+        main section:first-child .mt-5.grid.gap-3.sm\:grid-cols-2 {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 0.7rem !important;
+        }
+
+        main section:first-child .mt-5.grid.gap-3.sm\:grid-cols-2 > div {
+          border-radius: 1.25rem !important;
+          padding: 1rem !important;
+          min-height: 8rem;
+        }
+
+        main section:nth-of-type(2) > div {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 0.75rem !important;
+          padding-top: 1.5rem !important;
+          padding-bottom: 1.5rem !important;
+        }
+
+        main section:nth-of-type(2) > div > div {
+          border-radius: 1.35rem;
+          background: #fff;
+          padding: 1rem 0.75rem;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+        }
+
+        main section:nth-of-type(2) [class*="text-4xl"] {
+          font-size: 1.7rem !important;
+        }
+
+        .inamaad-category-strip {
+          display: grid !important;
+          grid-auto-flow: column;
+          grid-auto-columns: 84%;
+          grid-template-columns: none !important;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          padding-bottom: 0.35rem;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .inamaad-category-strip::-webkit-scrollbar {
+          display: none;
+        }
+
+        .inamaad-category-strip > div {
+          scroll-snap-align: start;
+          min-height: 15rem;
+          border-radius: 1.55rem !important;
+          padding: 1.35rem !important;
+          box-shadow: 0 18px 36px rgba(15, 23, 42, 0.09);
+        }
+
+        #properties,
+        #jv {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+          padding-top: 3rem !important;
+          padding-bottom: 3.5rem !important;
+        }
+
+        #properties > div > div:first-child,
+        #jv > div > div:first-child {
+          gap: 1rem !important;
+        }
+
+        #properties h2,
+        #jv h2 {
+          font-size: clamp(2rem, 9vw, 2.7rem) !important;
+          letter-spacing: -0.055em !important;
+        }
+
+        #properties button,
+        #jv button,
+        #properties a,
+        #jv a {
+          min-height: 48px;
+        }
+
+        #properties .mt-10.flex.flex-wrap {
+          flex-wrap: nowrap !important;
+          overflow-x: auto;
+          padding-bottom: 0.35rem;
+          margin-left: -1rem;
+          margin-right: -1rem;
+          padding-left: 1rem;
+          padding-right: 1rem;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        #properties .mt-10.flex.flex-wrap::-webkit-scrollbar {
+          display: none;
+        }
+
+        #properties .mt-10.flex.flex-wrap button {
+          flex: 0 0 auto;
+          white-space: nowrap;
+          border-radius: 999px !important;
+          box-shadow: 0 10px 20px rgba(15, 23, 42, 0.07);
+        }
+
+        #properties [class*="rounded-[28px]"][class*="bg-white"],
+        #jv [class*="rounded-[28px]"][class*="bg-white"] {
+          border-radius: 1.55rem !important;
+        }
+
+        .inamaad-property-grid {
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 1rem !important;
+          margin-top: 1.5rem !important;
+        }
+
+        .inamaad-property-grid > article {
+          border-radius: 1.55rem !important;
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1) !important;
+          overflow: hidden;
+        }
+
+        .inamaad-property-grid > article [class*="relative h-72"] {
+          height: 13.5rem !important;
+        }
+
+        .inamaad-property-grid > article > div:not(:first-child) {
+          padding: 1rem !important;
+        }
+
+        .inamaad-property-grid h3,
+        .inamaad-property-grid h4 {
+          font-size: 1.18rem !important;
+          line-height: 1.2 !important;
+        }
+
+        .inamaad-property-grid [class*="grid-cols-3"] {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 0.45rem !important;
+        }
+
+        .inamaad-property-grid [class*="grid-cols-3"] > div {
+          border-radius: 0.95rem !important;
+          padding: 0.65rem 0.35rem !important;
+          text-align: center;
+        }
+
+        .inamaad-jv-grid {
+          display: grid !important;
+          grid-auto-flow: column;
+          grid-auto-columns: 88%;
+          grid-template-columns: none !important;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          gap: 1rem !important;
+          padding-bottom: 0.35rem;
+          margin-left: -1rem;
+          margin-right: -1rem;
+          padding-left: 1rem;
+          padding-right: 1rem;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .inamaad-jv-grid::-webkit-scrollbar {
+          display: none;
+        }
+
+        .inamaad-jv-grid > article {
+          scroll-snap-align: start;
+          border-radius: 1.55rem !important;
+          padding: 1.1rem !important;
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18) !important;
+        }
+
+        .inamaad-mobile-bottom-nav {
+          left: 0.65rem !important;
+          right: 0.65rem !important;
+          bottom: calc(0.65rem + env(safe-area-inset-bottom)) !important;
+          border-radius: 1.55rem !important;
+          padding: 0.45rem !important;
+          box-shadow: 0 22px 55px rgba(13, 28, 56, 0.28) !important;
+        }
+
+        .inamaad-mobile-bottom-nav a,
+        .inamaad-mobile-bottom-nav button {
+          min-height: 49px !important;
+          border-radius: 1.2rem !important;
+          font-size: 0.68rem !important;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+        }
+      }
+
+      @media (max-width: 430px) {
+        main section:first-child .grid.gap-3.sm\:grid-cols-2.lg\:grid-cols-4 {
+          grid-template-columns: 1fr 1fr !important;
+        }
+
+        main section:first-child .mt-5.grid.gap-3.sm\:grid-cols-2 {
+          grid-template-columns: 1fr !important;
+        }
+
+        .inamaad-category-strip {
+          grid-auto-columns: 88%;
+        }
+
+        .inamaad-jv-grid {
+          grid-auto-columns: 90%;
+        }
+      }
+    `}</style>
+  );
+}
+
 
 export default function App() {
   const [listings, setListings] = useState<Listing[]>(seedListings);
@@ -6289,12 +7001,16 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f8fb] text-slate-950">
+    <div className="min-h-screen bg-[#f6f7fb] pb-24 text-slate-950 lg:pb-0">
       <datalist id="nigeria-location-options">
         {nigeriaLocationLabels.map((location) => (
           <option key={location} value={location} />
         ))}
       </datalist>
+
+      <MobileUsabilityStyles />
+      <ClassicResponsiveWebsiteStyles />
+      <MobileBottomNavigation setModal={setModal} />
 
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
@@ -6405,7 +7121,7 @@ export default function App() {
 
           <button
             onClick={() => setMobileOpen((current) => !current)}
-            className="rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-bold text-white lg:hidden"
+            className="mobile-tap-target rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-bold text-white lg:hidden"
           >
             Menu
           </button>
@@ -6657,7 +7373,7 @@ export default function App() {
                 )}
               </div>
 
-              <div className="rounded-[32px] border border-white/10 bg-white p-5 text-[#0d1c38] shadow-2xl">
+              <div className="inamaad-classic-card rounded-[32px] border border-white/10 bg-white p-5 text-[#0d1c38] shadow-2xl">
                 <div className="rounded-[26px] bg-[#f7f8fb] p-5">
                   <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                     <div>
@@ -6784,7 +7500,7 @@ export default function App() {
         </section>
 
         <section className="bg-[#f7f8fb] px-6 py-16 lg:px-10">
-          <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
+          <div className="inamaad-category-strip mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
             {categoryCards.map((card) => (
               <div
                 key={card.title}
@@ -6961,7 +7677,7 @@ export default function App() {
                 Loading listings...
               </div>
             ) : (
-              <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              <div className="inamaad-property-grid mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {filteredPropertyListings.map((listing) => (
                   <article
                     key={listing.id}
@@ -7333,7 +8049,7 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="inamaad-jv-grid mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {filteredJvListings.map((listing) => (
                     <article
                       key={listing.id}
@@ -7794,11 +8510,7 @@ export default function App() {
         </div>
       )}
 
-      {isRefreshingData && (
-        <div className="fixed right-6 top-24 z-[130] rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#0d1c38] shadow-xl">
-          Syncing latest data...
-        </div>
-      )}
+      {false && isRefreshingData && <div className="inamaad-sync-hidden" />}
 
       {modal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm">

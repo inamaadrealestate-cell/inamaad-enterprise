@@ -2291,6 +2291,533 @@ function ClassicResponsiveWebsiteStyles() {
 }
 
 
+
+function CompactPropertyCardStyles() {
+  return (
+    <style>{`
+      /* Extra compact property cards, safely inserted once to avoid build errors */
+      .inamaad-property-grid {
+        gap: 1rem !important;
+      }
+
+      .inamaad-property-grid > article {
+        min-height: auto !important;
+        overflow: hidden !important;
+        border-radius: 1.15rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="relative h-72"],
+      .inamaad-property-grid > article [class*="h-72"],
+      .inamaad-property-grid > article [class*="h-80"] {
+        height: 9rem !important;
+        min-height: 9rem !important;
+        max-height: 9rem !important;
+      }
+
+      .inamaad-property-grid > article > div:not(:first-child) {
+        padding: 0.7rem !important;
+      }
+
+      .inamaad-property-grid > article h3,
+      .inamaad-property-grid > article h4 {
+        font-size: 0.92rem !important;
+        line-height: 1.1 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0.18rem !important;
+        letter-spacing: -0.02em !important;
+      }
+
+      .inamaad-property-grid > article p {
+        display: -webkit-box !important;
+        -webkit-box-orient: vertical !important;
+        -webkit-line-clamp: 1 !important;
+        overflow: hidden !important;
+        font-size: 0.72rem !important;
+        line-height: 1.3 !important;
+        margin-top: 0.2rem !important;
+      }
+
+      .inamaad-property-grid > article span,
+      .inamaad-property-grid > article div,
+      .inamaad-property-grid > article a,
+      .inamaad-property-grid > article button {
+        font-size: 0.72rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="text-3xl"],
+      .inamaad-property-grid > article [class*="text-2xl"],
+      .inamaad-property-grid > article [class*="text-xl"] {
+        font-size: 0.95rem !important;
+        line-height: 1.1 !important;
+      }
+
+      .inamaad-property-grid > article [class*="text-lg"] {
+        font-size: 0.84rem !important;
+        line-height: 1.12 !important;
+      }
+
+      .inamaad-property-grid > article [class*="text-sm"] {
+        font-size: 0.67rem !important;
+        line-height: 1.22 !important;
+      }
+
+      .inamaad-property-grid > article [class*="text-xs"] {
+        font-size: 0.58rem !important;
+        line-height: 1.15 !important;
+      }
+
+      .inamaad-property-grid > article [class*="mt-6"],
+      .inamaad-property-grid > article [class*="mt-5"],
+      .inamaad-property-grid > article [class*="mt-4"],
+      .inamaad-property-grid > article [class*="mt-3"] {
+        margin-top: 0.35rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="mb-4"],
+      .inamaad-property-grid > article [class*="mb-3"] {
+        margin-bottom: 0.28rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="gap-4"] {
+        gap: 0.42rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="gap-3"] {
+        gap: 0.35rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="gap-2"] {
+        gap: 0.25rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="grid-cols-3"] {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      }
+
+      .inamaad-property-grid > article [class*="grid-cols-3"] > div {
+        min-height: auto !important;
+        padding: 0.34rem 0.14rem !important;
+        border-radius: 0.58rem !important;
+      }
+
+      .inamaad-property-grid > article a,
+      .inamaad-property-grid > article button {
+        min-height: 32px !important;
+        padding: 0.38rem 0.45rem !important;
+        border-radius: 0.62rem !important;
+        line-height: 1.1 !important;
+      }
+
+      .inamaad-property-grid > article img {
+        object-fit: cover !important;
+      }
+
+      @media (min-width: 1024px) {
+        .inamaad-property-grid {
+          gap: 0.95rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="relative h-72"],
+        .inamaad-property-grid > article [class*="h-72"],
+        .inamaad-property-grid > article [class*="h-80"] {
+          height: 8.6rem !important;
+          min-height: 8.6rem !important;
+          max-height: 8.6rem !important;
+        }
+
+        .inamaad-property-grid > article > div:not(:first-child) {
+          padding: 0.68rem !important;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .inamaad-property-grid {
+          gap: 0.65rem !important;
+        }
+
+        .inamaad-property-grid > article {
+          border-radius: 1rem !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.09) !important;
+        }
+
+        .inamaad-property-grid > article [class*="relative h-72"],
+        .inamaad-property-grid > article [class*="h-72"],
+        .inamaad-property-grid > article [class*="h-80"] {
+          height: 7.75rem !important;
+          min-height: 7.75rem !important;
+          max-height: 7.75rem !important;
+        }
+
+        .inamaad-property-grid > article > div:not(:first-child) {
+          padding: 0.55rem !important;
+        }
+
+        .inamaad-property-grid > article h3,
+        .inamaad-property-grid > article h4 {
+          font-size: 0.82rem !important;
+          line-height: 1.08 !important;
+          margin-bottom: 0.12rem !important;
+        }
+
+        .inamaad-property-grid > article p {
+          -webkit-line-clamp: 1 !important;
+          font-size: 0.64rem !important;
+          line-height: 1.22 !important;
+        }
+
+        .inamaad-property-grid > article span,
+        .inamaad-property-grid > article div,
+        .inamaad-property-grid > article a,
+        .inamaad-property-grid > article button {
+          font-size: 0.65rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="text-3xl"],
+        .inamaad-property-grid > article [class*="text-2xl"],
+        .inamaad-property-grid > article [class*="text-xl"] {
+          font-size: 0.82rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="text-lg"] {
+          font-size: 0.76rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="text-sm"] {
+          font-size: 0.62rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="text-xs"] {
+          font-size: 0.55rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="mt-6"],
+        .inamaad-property-grid > article [class*="mt-5"],
+        .inamaad-property-grid > article [class*="mt-4"],
+        .inamaad-property-grid > article [class*="mt-3"] {
+          margin-top: 0.25rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="grid-cols-3"] > div {
+          padding: 0.28rem 0.1rem !important;
+          border-radius: 0.5rem !important;
+        }
+
+        .inamaad-property-grid > article a,
+        .inamaad-property-grid > article button {
+          min-height: 30px !important;
+          padding: 0.32rem 0.38rem !important;
+          border-radius: 0.55rem !important;
+          font-size: 0.62rem !important;
+        }
+      }
+
+      @media (max-width: 430px) {
+        .inamaad-property-grid > article [class*="relative h-72"],
+        .inamaad-property-grid > article [class*="h-72"],
+        .inamaad-property-grid > article [class*="h-80"] {
+          height: 7.15rem !important;
+          min-height: 7.15rem !important;
+          max-height: 7.15rem !important;
+        }
+
+        .inamaad-property-grid > article > div:not(:first-child) {
+          padding: 0.5rem !important;
+        }
+
+        .inamaad-property-grid > article h3,
+        .inamaad-property-grid > article h4 {
+          font-size: 0.78rem !important;
+        }
+
+        .inamaad-property-grid > article p {
+          font-size: 0.6rem !important;
+        }
+      }
+    `}</style>
+  );
+}
+
+
+
+function ReliablePropertyAccessStyles() {
+  return (
+    <style>{`
+      .inamaad-reliable-property-access {
+        margin-top: 0.7rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(240, 191, 60, 0.35);
+        background: linear-gradient(180deg, #fff8e6 0%, #ffffff 70%);
+        padding: 0.75rem;
+      }
+
+      .inamaad-reliable-property-access-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+        margin-bottom: 0.6rem;
+      }
+
+      .inamaad-reliable-property-access-title p:first-child {
+        font-size: 0.62rem !important;
+        line-height: 1.1 !important;
+        font-weight: 1000 !important;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #9b6b16 !important;
+      }
+
+      .inamaad-reliable-property-access-title p:last-child {
+        border-radius: 999px;
+        background: #0d1c38;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.58rem !important;
+        line-height: 1 !important;
+        font-weight: 1000 !important;
+        color: white !important;
+        white-space: nowrap;
+      }
+
+      .inamaad-reliable-property-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+      }
+
+      .inamaad-reliable-property-item {
+        min-width: 0;
+        border-radius: 0.75rem;
+        background: #f8fafc;
+        padding: 0.5rem;
+      }
+
+      .inamaad-reliable-property-label {
+        font-size: 0.52rem !important;
+        line-height: 1.1 !important;
+        font-weight: 1000 !important;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b !important;
+      }
+
+      .inamaad-reliable-property-value {
+        margin-top: 0.18rem;
+        font-size: 0.68rem !important;
+        line-height: 1.25 !important;
+        font-weight: 1000 !important;
+        color: #0d1c38 !important;
+        overflow-wrap: anywhere;
+      }
+
+      .inamaad-reliable-property-description {
+        margin-top: 0.55rem;
+        display: block !important;
+        border-radius: 0.75rem;
+        background: white;
+        padding: 0.6rem;
+        font-size: 0.66rem !important;
+        line-height: 1.45 !important;
+        color: #475569 !important;
+        -webkit-line-clamp: unset !important;
+        overflow: visible !important;
+      }
+
+      .inamaad-reliable-property-actions {
+        margin-top: 0.6rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+      }
+
+      .inamaad-reliable-property-actions a,
+      .inamaad-reliable-property-actions button {
+        min-height: 34px !important;
+        border-radius: 0.7rem !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.4rem 0.45rem !important;
+        font-size: 0.62rem !important;
+        font-weight: 1000 !important;
+        line-height: 1.1 !important;
+        text-align: center;
+      }
+
+      .inamaad-reliable-primary {
+        background: #0d1c38 !important;
+        color: white !important;
+      }
+
+      .inamaad-reliable-gold {
+        background: #f0bf3c !important;
+        color: #0d1c38 !important;
+      }
+
+      .inamaad-reliable-outline {
+        border: 1px solid #0d1c38 !important;
+        background: white !important;
+        color: #0d1c38 !important;
+      }
+
+      .inamaad-reliable-whatsapp {
+        background: #22c55e !important;
+        color: white !important;
+      }
+
+      @media (min-width: 1024px) {
+        .inamaad-reliable-property-access {
+          padding: 0.68rem;
+        }
+
+        .inamaad-reliable-property-actions a,
+        .inamaad-reliable-property-actions button {
+          min-height: 32px !important;
+          font-size: 0.6rem !important;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .inamaad-reliable-property-access {
+          margin-top: 0.55rem;
+          padding: 0.58rem;
+          border-radius: 0.85rem;
+        }
+
+        .inamaad-reliable-property-grid {
+          gap: 0.35rem;
+        }
+
+        .inamaad-reliable-property-item {
+          padding: 0.42rem;
+          border-radius: 0.62rem;
+        }
+
+        .inamaad-reliable-property-label {
+          font-size: 0.48rem !important;
+        }
+
+        .inamaad-reliable-property-value {
+          font-size: 0.6rem !important;
+        }
+
+        .inamaad-reliable-property-description {
+          padding: 0.5rem;
+          font-size: 0.6rem !important;
+          line-height: 1.35 !important;
+        }
+
+        .inamaad-reliable-property-actions {
+          gap: 0.35rem;
+        }
+
+        .inamaad-reliable-property-actions a,
+        .inamaad-reliable-property-actions button {
+          min-height: 31px !important;
+          border-radius: 0.55rem !important;
+          padding: 0.32rem 0.35rem !important;
+          font-size: 0.55rem !important;
+        }
+      }
+    `}</style>
+  );
+}
+
+function ReliablePropertyAccess({
+  listing,
+  galleryImages,
+  onOpenModal,
+  onShare,
+}: {
+  listing: Listing;
+  galleryImages: string[];
+  onOpenModal: () => void;
+  onShare: () => void;
+}) {
+  const isJV = isJointVentureListing(listing);
+  const whatsappPhone =
+    normalizeNigeriaWhatsApp(listing.contactWhatsapp || listing.ownerPhone) ||
+    WHATSAPP_NUMBER;
+
+  const enquiryMessage = `Hello INAMAAD Real Estate, I want full details about ${listing.title} (${buildListingReference(
+    listing.id
+  )}) in ${listing.location}.`;
+
+  const detailItems = isJV
+    ? [
+        ["Ref", buildListingReference(listing.id)],
+        ["Location", buildPublicLocationText(listing)],
+        ["Land size", listing.landSize || "Not stated"],
+        ["JV type", listing.jvStructure || listing.type || "JV deal"],
+        ["Stage", listing.jvProjectStage || "Not stated"],
+        ["Title", listing.jvLandTitleStatus || listing.documentStatus || "Review"],
+      ]
+    : [
+        ["Ref", buildListingReference(listing.id)],
+        ["Location", buildPublicLocationText(listing)],
+        ["Price", listing.price],
+        ["Purpose", listing.category || "Property"],
+        ["Beds", listing.bedrooms ? `${listing.bedrooms}` : "N/A"],
+        ["Baths", listing.bathrooms ? `${listing.bathrooms}` : "N/A"],
+      ];
+
+  return (
+    <div id={`property-full-${listing.id}`} className="inamaad-reliable-property-access">
+      <div className="inamaad-reliable-property-access-title">
+        <p>Property details</p>
+        <p>{galleryImages.length ? `${galleryImages.length} Photos` : "Verified"}</p>
+      </div>
+
+      <div className="inamaad-reliable-property-grid">
+        {detailItems.map(([label, value]) => (
+          <div key={label} className="inamaad-reliable-property-item">
+            <p className="inamaad-reliable-property-label">{label}</p>
+            <p className="inamaad-reliable-property-value">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="inamaad-reliable-property-description">
+        {listing.description || "No description provided yet."}
+      </p>
+
+      <div className="inamaad-reliable-property-actions">
+        <a
+          href={`#property-full-${listing.id}`}
+          className="inamaad-reliable-gold"
+        >
+          View Here
+        </a>
+
+        <button
+          type="button"
+          onClick={onOpenModal}
+          className="inamaad-reliable-primary"
+        >
+          Open Modal
+        </button>
+
+        <a
+          href={createWhatsAppLeadLink(whatsappPhone, enquiryMessage)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inamaad-reliable-whatsapp"
+        >
+          WhatsApp
+        </a>
+
+        <button
+          type="button"
+          onClick={onShare}
+          className="inamaad-reliable-outline"
+        >
+          Share
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 export default function App() {
   const [listings, setListings] = useState<Listing[]>(seedListings);
   const [investorRequests, setInvestorRequests] = useState<InvestorRequest[]>(
@@ -7010,6 +7537,8 @@ export default function App() {
 
       <MobileUsabilityStyles />
       <ClassicResponsiveWebsiteStyles />
+      <CompactPropertyCardStyles />
+      <ReliablePropertyAccessStyles />
       <MobileBottomNavigation setModal={setModal} />
 
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
@@ -8513,7 +9042,7 @@ export default function App() {
       {false && isRefreshingData && <div className="inamaad-sync-hidden" />}
 
       {modal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[30px] bg-white p-6 shadow-2xl md:p-8">
             <div className="mb-6 flex items-start justify-between gap-5">
               <div>

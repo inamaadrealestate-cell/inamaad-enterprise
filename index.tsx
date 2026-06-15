@@ -208,6 +208,25 @@ function getWhatsappUrl(item: Listing) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
+function parseNairaValue(price: string) {
+  const cleanPrice = price.toLowerCase().replace(/,/g, "");
+  const numericValue = Number(cleanPrice.replace(/[^0-9.]/g, ""));
+
+  if (!Number.isFinite(numericValue)) return 0;
+
+  if (cleanPrice.includes("b")) return numericValue * 1_000_000_000;
+  if (cleanPrice.includes("m")) return numericValue * 1_000_000;
+  if (cleanPrice.includes("k")) return numericValue * 1_000;
+
+  return numericValue;
+}
+
+function parseRoiValue(roi: string) {
+  const numericValue = Number(roi.replace(/[^0-9.]/g, ""));
+
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
 function SiteStyles() {
   return (
     <style>{`
@@ -369,6 +388,8 @@ export default function App() {
   const [keyword, setKeyword] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [type, setType] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortMode, setSortMode] = useState("newest");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [savedListingIds, setSavedListingIds] = useState<number[]>(() => {
@@ -377,6 +398,14 @@ export default function App() {
       return savedIds ? JSON.parse(savedIds) : [];
     } catch {
       return [];
+    }
+  });
+  const [listingViews, setListingViews] = useState<Record<number, number>>(() => {
+    try {
+      const savedViews = localStorage.getItem("inamaad_listing_views");
+      return savedViews ? JSON.parse(savedViews) : {};
+    } catch {
+      return {};
     }
   });
   const [expandedListingId, setExpandedListingId] = useState<number | null>(null);
@@ -441,6 +470,24 @@ export default function App() {
     documentMimeType: "",
   });
 
+  const [editingListingId, setEditingListingId] = useState<number | null>(null);
+  const [editListingForm, setEditListingForm] = useState({
+    title: "",
+    location: "",
+    state: "",
+    price: "",
+    typeValue: "residential",
+    roi: "",
+    status: "Pending review",
+    summary: "",
+    bedrooms: "",
+    bathrooms: "",
+    landSize: "",
+    documentTitle: "",
+    ownerPhone: "",
+    whatsapp: "",
+  });
+
   useEffect(() => {
     localStorage.setItem("inamaad_listings", JSON.stringify(listings));
   }, [listings]);
@@ -448,6 +495,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("inamaad_saved_listing_ids", JSON.stringify(savedListingIds));
   }, [savedListingIds]);
+
+  useEffect(() => {
+    localStorage.setItem("inamaad_listing_views", JSON.stringify(listingViews));
+  }, [listingViews]);
 
   useEffect(() => {
     localStorage.setItem("inamaad_leads", JSON.stringify(leads));
@@ -483,21 +534,71 @@ export default function App() {
 
   const featuredProperty = propertyListings[0] || listings[0] || null;
 
-  const filteredProperties = propertyListings.filter((item) => {
-    const keywordMatch =
-      keyword.trim() === "" ||
-      item.title.toLowerCase().includes(keyword.toLowerCase()) ||
-      item.location.toLowerCase().includes(keyword.toLowerCase()) ||
-      item.summary.toLowerCase().includes(keyword.toLowerCase());
+  const totalListingViews = Object.values(listingViews).reduce(
+    (totalViews, currentViews) => totalViews + Number(currentViews || 0),
+    0
+  );
 
-    const stateMatch =
-      selectedState.trim() === "" ||
-      item.state.toLowerCase().includes(selectedState.toLowerCase());
+  const topViewedListings = useMemo(
+    () =>
+      [...listings]
+        .map((item) => ({
+          ...item,
+          viewCount: Number(listingViews[item.id] || 0),
+        }))
+        .sort((a, b) => b.viewCount - a.viewCount)
+        .slice(0, 5),
+    [listingViews, listings]
+  );
 
-    const typeMatch = type === "" || item.typeValue === type;
+  const averageListingViews =
+    listings.length > 0 ? Math.round(totalListingViews / listings.length) : 0;
 
-    return keywordMatch && stateMatch && typeMatch;
-  });
+  const filteredProperties = useMemo(() => {
+    const searchTerm = keyword.trim().toLowerCase();
+    const stateTerm = selectedState.trim().toLowerCase();
+
+    const nextProperties = propertyListings.filter((item) => {
+      const keywordMatch =
+        searchTerm === "" ||
+        item.title.toLowerCase().includes(searchTerm) ||
+        item.location.toLowerCase().includes(searchTerm) ||
+        item.state.toLowerCase().includes(searchTerm) ||
+        item.price.toLowerCase().includes(searchTerm) ||
+        item.type.toLowerCase().includes(searchTerm) ||
+        item.summary.toLowerCase().includes(searchTerm);
+
+      const stateMatch =
+        stateTerm === "" || item.state.toLowerCase().includes(stateTerm);
+
+      const typeMatch = type === "" || item.typeValue === type;
+
+      const statusMatch =
+        statusFilter === "all" || item.status.toLowerCase() === statusFilter.toLowerCase();
+
+      return keywordMatch && stateMatch && typeMatch && statusMatch;
+    });
+
+    return [...nextProperties].sort((a, b) => {
+      if (sortMode === "price_high") {
+        return parseNairaValue(b.price) - parseNairaValue(a.price);
+      }
+
+      if (sortMode === "price_low") {
+        return parseNairaValue(a.price) - parseNairaValue(b.price);
+      }
+
+      if (sortMode === "roi_high") {
+        return parseRoiValue(b.roi) - parseRoiValue(a.roi);
+      }
+
+      if (sortMode === "title_az") {
+        return a.title.localeCompare(b.title);
+      }
+
+      return b.id - a.id;
+    });
+  }, [keyword, propertyListings, selectedState, sortMode, statusFilter, type]);
 
   function showMessage(message: string) {
     setSuccessMessage(message);
@@ -527,6 +628,8 @@ export default function App() {
     setKeyword("");
     setSelectedState("");
     setType("");
+    setStatusFilter("all");
+    setSortMode("newest");
   }
 
   function handleCategoryClick(categoryType: string) {
@@ -540,13 +643,27 @@ export default function App() {
     window.setTimeout(() => scrollToSection("properties"), 50);
   }
 
+  function recordListingView(item: Listing) {
+    setListingViews((currentViews) => ({
+      ...currentViews,
+      [item.id]: Number(currentViews[item.id] || 0) + 1,
+    }));
+  }
+
   function openProperty(item: Listing) {
+    recordListingView(item);
     setSelectedListing(item);
     setExpandedListingId(item.id);
   }
 
   function toggleInlineDetails(item: Listing) {
-    setExpandedListingId((currentId) => (currentId === item.id ? null : item.id));
+    const shouldOpen = expandedListingId !== item.id;
+
+    if (shouldOpen) {
+      recordListingView(item);
+    }
+
+    setExpandedListingId(shouldOpen ? item.id : null);
   }
 
   function toggleSavedListing(item: Listing) {
@@ -843,6 +960,92 @@ export default function App() {
     showMessage("Listing deleted successfully.");
   }
 
+  function startEditingListing(item: Listing) {
+    setEditingListingId(item.id);
+    setEditListingForm({
+      title: item.title,
+      location: item.location,
+      state: item.state,
+      price: item.price,
+      typeValue: item.typeValue,
+      roi: item.roi,
+      status: item.status,
+      summary: item.summary,
+      bedrooms: item.bedrooms || "",
+      bathrooms: item.bathrooms || "",
+      landSize: item.landSize || "",
+      documentTitle: item.documentTitle || "",
+      ownerPhone: item.ownerPhone || "",
+      whatsapp: item.whatsapp || "",
+    });
+  }
+
+  function cancelEditingListing() {
+    setEditingListingId(null);
+    setEditListingForm({
+      title: "",
+      location: "",
+      state: "",
+      price: "",
+      typeValue: "residential",
+      roi: "",
+      status: "Pending review",
+      summary: "",
+      bedrooms: "",
+      bathrooms: "",
+      landSize: "",
+      documentTitle: "",
+      ownerPhone: "",
+      whatsapp: "",
+    });
+  }
+
+  function handleEditListingSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!editingListingId) return;
+
+    setListings((currentListings) =>
+      currentListings.map((item) =>
+        item.id === editingListingId
+          ? {
+              ...item,
+              title: editListingForm.title.trim(),
+              location: editListingForm.location.trim(),
+              state: editListingForm.state.trim(),
+              price: editListingForm.price.trim(),
+              type: getTypeLabel(editListingForm.typeValue),
+              typeValue: editListingForm.typeValue,
+              roi: editListingForm.roi.trim() || "Pending",
+              status: editListingForm.status,
+              summary: editListingForm.summary.trim(),
+              bedrooms: editListingForm.bedrooms.trim(),
+              bathrooms: editListingForm.bathrooms.trim(),
+              landSize: editListingForm.landSize.trim(),
+              documentTitle: editListingForm.documentTitle.trim(),
+              ownerPhone: editListingForm.ownerPhone.trim(),
+              whatsapp: editListingForm.whatsapp.trim(),
+            }
+          : item
+      )
+    );
+
+    cancelEditingListing();
+    showMessage("Listing updated successfully.");
+  }
+
+  function duplicateListing(item: Listing) {
+    const duplicatedListing: Listing = {
+      ...item,
+      id: Date.now(),
+      title: `${item.title} Copy`,
+      status: "Pending review",
+    };
+
+    setListings((currentListings) => [duplicatedListing, ...currentListings]);
+    showMessage("Listing duplicated as Pending review.");
+  }
+
   function shareListing(item: Listing) {
     const shareText = `INAMAAD Real Estate: ${item.title} - ${item.price} in ${item.location}`;
     const shareUrl = `${window.location.origin}${window.location.pathname}#property-${item.id}`;
@@ -991,6 +1194,233 @@ export default function App() {
     showMessage("Inspection request deleted.");
   }
 
+
+  function downloadTextFile(filename: string, content: string, mimeType: string) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+  }
+
+  function escapeCsvValue(value: unknown) {
+    const textValue = String(value ?? "");
+
+    if (/[",\n\r]/.test(textValue)) {
+      return `"${textValue.replace(/"/g, '""')}"`;
+    }
+
+    return textValue;
+  }
+
+  function createCsv(rows: unknown[][]) {
+    return rows.map((row) => row.map(escapeCsvValue).join(",")).join("\n");
+  }
+
+  function exportListingsCsv() {
+    const rows = [
+      [
+        "Reference",
+        "Title",
+        "Type",
+        "Location",
+        "State",
+        "Price",
+        "ROI",
+        "Status",
+        "Bedrooms",
+        "Bathrooms",
+        "Land Size",
+        "Document",
+        "Owner Phone",
+        "WhatsApp",
+        "Summary",
+      ],
+      ...listings.map((item) => [
+        getListingReference(item.id),
+        item.title,
+        item.type,
+        item.location,
+        item.state,
+        item.price,
+        item.roi,
+        item.status,
+        item.bedrooms || "",
+        item.bathrooms || "",
+        item.landSize || "",
+        item.documentTitle || "",
+        item.ownerPhone || "",
+        item.whatsapp || "",
+        item.summary,
+      ]),
+    ];
+
+    downloadTextFile("inamaad-listings.csv", createCsv(rows), "text/csv;charset=utf-8");
+    showMessage("Listings CSV exported.");
+  }
+
+  function exportLeadsCsv() {
+    const rows = [
+      [
+        "ID",
+        "Listing",
+        "Name",
+        "Email",
+        "Phone",
+        "Budget",
+        "Status",
+        "Message",
+        "Created At",
+      ],
+      ...leads.map((lead) => [
+        lead.id,
+        lead.listingTitle || "",
+        lead.name,
+        lead.email,
+        lead.phone,
+        lead.budget,
+        lead.status,
+        lead.message,
+        lead.createdAt,
+      ]),
+    ];
+
+    downloadTextFile("inamaad-leads.csv", createCsv(rows), "text/csv;charset=utf-8");
+    showMessage("Leads CSV exported.");
+  }
+
+  function exportInspectionsCsv() {
+    const rows = [
+      [
+        "ID",
+        "Listing",
+        "Name",
+        "Email",
+        "Phone",
+        "Preferred Date",
+        "Preferred Time",
+        "Status",
+        "Note",
+        "Created At",
+      ],
+      ...inspections.map((inspection) => [
+        inspection.id,
+        inspection.listingTitle || "",
+        inspection.name,
+        inspection.email,
+        inspection.phone,
+        inspection.preferredDate,
+        inspection.preferredTime,
+        inspection.status,
+        inspection.note,
+        inspection.createdAt,
+      ]),
+    ];
+
+    downloadTextFile(
+      "inamaad-inspections.csv",
+      createCsv(rows),
+      "text/csv;charset=utf-8"
+    );
+    showMessage("Inspections CSV exported.");
+  }
+
+  function exportFullBackupJson() {
+    const backup = {
+      app: "INAMAAD Real Estate",
+      version: "local-backup-v1",
+      exportedAt: new Date().toISOString(),
+      listings,
+      leads,
+      inspections,
+      savedListingIds,
+      listingViews,
+    };
+
+    downloadTextFile(
+      `inamaad-full-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      JSON.stringify(backup, null, 2),
+      "application/json;charset=utf-8"
+    );
+
+    showMessage("Full INAMAAD backup exported.");
+  }
+
+  function handleRestoreBackup(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const parsedBackup = JSON.parse(String(reader.result || "{}"));
+
+        if (!parsedBackup || parsedBackup.app !== "INAMAAD Real Estate") {
+          showMessage("Invalid backup file.");
+          return;
+        }
+
+        if (Array.isArray(parsedBackup.listings)) {
+          setListings(parsedBackup.listings);
+        }
+
+        if (Array.isArray(parsedBackup.leads)) {
+          setLeads(parsedBackup.leads);
+        }
+
+        if (Array.isArray(parsedBackup.inspections)) {
+          setInspections(parsedBackup.inspections);
+        }
+
+        if (Array.isArray(parsedBackup.savedListingIds)) {
+          setSavedListingIds(parsedBackup.savedListingIds);
+        }
+
+        if (parsedBackup.listingViews && typeof parsedBackup.listingViews === "object") {
+          setListingViews(parsedBackup.listingViews);
+        }
+
+        showMessage("Backup restored successfully.");
+      } catch {
+        showMessage("Backup restore failed. Upload a valid INAMAAD JSON backup.");
+      } finally {
+        e.target.value = "";
+      }
+    };
+
+    reader.onerror = () => {
+      showMessage("Backup file could not be read.");
+      e.target.value = "";
+    };
+
+    reader.readAsText(file);
+  }
+
+  function clearDemoDataConfirm() {
+    const confirmed = window.confirm(
+      "This will remove all local listings, leads, inspections, and saved properties from this browser. Export a backup first. Continue?"
+    );
+
+    if (!confirmed) return;
+
+    setListings(INITIAL_LISTINGS);
+    setLeads([]);
+    setInspections([]);
+    setSavedListingIds([]);
+    setListingViews({});
+    setExpandedListingId(null);
+    setSelectedListing(null);
+    showMessage("Local data reset to starter listings.");
+  }
+
   function renderPropertyCard(item: Listing, variant: "property" | "jv" = "property") {
     const isExpanded = expandedListingId === item.id;
     const isJV = variant === "jv" || isJVListing(item);
@@ -1054,7 +1484,7 @@ export default function App() {
             {item.summary}
           </p>
 
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div className="property-card-stat rounded-xl bg-slate-50 p-3">
               <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
                 Ref
@@ -1518,7 +1948,7 @@ export default function App() {
               Search investments
             </p>
 
-            {(keyword || selectedState || type) && (
+            {(keyword || selectedState || type || statusFilter !== "all" || sortMode !== "newest") && (
               <button
                 type="button"
                 onClick={resetFilters}
@@ -1529,7 +1959,7 @@ export default function App() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-6">
             <div>
               <label className="mb-1.5 block text-xs font-bold text-slate-500">
                 Keyword
@@ -1571,11 +2001,84 @@ export default function App() {
               </select>
             </div>
 
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-slate-500">
+                Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+              >
+                <option value="all">All status</option>
+                <option value="Verified">Verified only</option>
+                <option value="Pending review">Pending review</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-slate-500">
+                Sort
+              </label>
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+              >
+                <option value="newest">Newest first</option>
+                <option value="price_high">Price high to low</option>
+                <option value="price_low">Price low to high</option>
+                <option value="roi_high">Highest ROI</option>
+                <option value="title_az">Title A-Z</option>
+              </select>
+            </div>
+
             <button
               type="submit"
               className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white transition hover:bg-[#162b52]"
             >
               Search
+            </button>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              ["Verified", "Verified"],
+              ["Pending", "Pending review"],
+              ["Residential", "residential"],
+              ["Commercial", "commercial"],
+              ["Land", "land"],
+            ].map(([label, value]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  if (value === "Verified" || value === "Pending review") {
+                    setStatusFilter(value);
+                  } else {
+                    setType(value);
+                  }
+                }}
+                className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black text-slate-600 transition hover:border-[#f0bf3c] hover:bg-[#fff7df] hover:text-[#9b6b16]"
+              >
+                {label}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setSortMode("price_high")}
+              className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black text-slate-600 transition hover:border-[#f0bf3c] hover:bg-[#fff7df] hover:text-[#9b6b16]"
+            >
+              Highest price
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSortMode("roi_high")}
+              className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black text-slate-600 transition hover:border-[#f0bf3c] hover:bg-[#fff7df] hover:text-[#9b6b16]"
+            >
+              Highest ROI
             </button>
           </div>
         </form>
@@ -1594,7 +2097,7 @@ export default function App() {
               Save listings, open property details inside cards, contact INAMAAD through WhatsApp, and separate JV opportunities from standard property listings.
             </p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-5">
+            <div className="mt-5 grid gap-3 sm:grid-cols-6">
               <div className="rounded-2xl bg-[#f8fafc] p-4">
                 <p className="text-2xl font-black text-[#0d1c38]">{propertyListings.length}</p>
                 <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
@@ -1627,6 +2130,13 @@ export default function App() {
                 <p className="text-2xl font-black text-[#0d1c38]">{inspections.length}</p>
                 <p className="mt-1 text-xs font-black uppercase tracking-wide text-purple-700">
                   Inspections
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-orange-50 p-4">
+                <p className="text-2xl font-black text-[#0d1c38]">{totalListingViews}</p>
+                <p className="mt-1 text-xs font-black uppercase tracking-wide text-orange-700">
+                  Views
                 </p>
               </div>
             </div>
@@ -1676,9 +2186,29 @@ export default function App() {
               Premium verified listings
             </h2>
             <p className="mt-2 text-sm font-medium text-slate-500">
-              Showing {filteredProperties.length} verified property result
+              Showing {filteredProperties.length} property result
               {filteredProperties.length === 1 ? "" : "s"}
             </p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {type ? (
+                <span className="rounded-full bg-[#fff7df] px-3 py-1 text-[11px] font-black text-[#9b6b16]">
+                  Type: {getTypeLabel(type)}
+                </span>
+              ) : null}
+
+              {statusFilter !== "all" ? (
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-blue-700">
+                  Status: {statusFilter}
+                </span>
+              ) : null}
+
+              {sortMode !== "newest" ? (
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-black text-emerald-700">
+                  Sort: {sortMode.replace("_", " ")}
+                </span>
+              ) : null}
+            </div>
           </div>
 
           <button
@@ -2471,6 +3001,162 @@ export default function App() {
                   </p>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-green-50 p-4">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {listings.filter((item) => item.status === "Verified").length}
+                    </p>
+                    <p className="mt-1 text-xs font-black uppercase tracking-wide text-green-700">
+                      Verified
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-yellow-50 p-4">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {listings.filter((item) => item.status !== "Verified").length}
+                    </p>
+                    <p className="mt-1 text-xs font-black uppercase tracking-wide text-yellow-700">
+                      Pending / Review
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Property views analytics
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-orange-700">
+                        Tracks views when users open full modal or property details inside cards.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {totalListingViews}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-orange-700">
+                        Total views
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {averageListingViews}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
+                        Avg / listing
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {topViewedListings[0]?.viewCount || 0}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
+                        Top listing
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">
+                      Top viewed listings
+                    </p>
+
+                    {topViewedListings.map((item) => (
+                      <div
+                        key={`view-${item.id}`}
+                        className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-[#0d1c38]">
+                            {item.title}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {item.location} · {item.price}
+                          </p>
+                        </div>
+
+                        <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black text-orange-700">
+                          {item.viewCount} views
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="mb-4">
+                    <p className="text-sm font-black text-[#0d1c38]">
+                      Data backup and exports
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Export listings, leads, inspections, or a full JSON backup before major edits or deployment.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={exportListingsCsv}
+                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-[#0d1c38] hover:bg-slate-50"
+                    >
+                      Export listings CSV
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportLeadsCsv}
+                      className="rounded-xl border border-blue-200 px-3 py-2.5 text-xs font-black text-blue-700 hover:bg-blue-50"
+                    >
+                      Export leads CSV
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportInspectionsCsv}
+                      className="rounded-xl border border-purple-200 px-3 py-2.5 text-xs font-black text-purple-700 hover:bg-purple-50"
+                    >
+                      Export inspections CSV
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportFullBackupJson}
+                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
+                    >
+                      Full JSON backup
+                    </button>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3">
+                    <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">
+                      Restore full JSON backup
+                    </label>
+                    <input
+                      type="file"
+                      accept="application/json,.json"
+                      onChange={handleRestoreBackup}
+                      className="w-full rounded-xl bg-white px-3 py-2 text-xs"
+                    />
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Only restore backups exported from this INAMAAD admin panel.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={clearDemoDataConfirm}
+                    className="mt-3 w-full rounded-xl border border-red-200 px-3 py-2.5 text-xs font-black text-red-600 hover:bg-red-50"
+                  >
+                    Reset local demo data
+                  </button>
+                </div>
+
                 <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
                   <p className="mb-1 text-sm font-black text-[#0d1c38]">
                     Investor leads: {leads.length}
@@ -2675,47 +3361,288 @@ export default function App() {
 
                 {listings.map((item) => (
                   <div key={item.id} className="rounded-2xl border border-slate-200 p-4">
-                    <div className="mb-3 flex items-start justify-between gap-4">
-                      <div>
-                        <p className="mb-1 text-xs font-black text-[#9b6b16]">
-                          {item.type}
+                    {editingListingId === item.id ? (
+                      <form onSubmit={handleEditListingSubmit} className="space-y-3">
+                        <div className="rounded-2xl bg-[#fff7df] p-3">
+                          <p className="text-xs font-black uppercase tracking-wide text-[#9b6b16]">
+                            Editing listing
+                          </p>
+                          <p className="mt-1 text-sm font-black text-[#0d1c38]">
+                            {item.title}
+                          </p>
+                        </div>
+
+                        <input
+                          required
+                          value={editListingForm.title}
+                          onChange={(e) =>
+                            setEditListingForm({
+                              ...editListingForm,
+                              title: e.target.value,
+                            })
+                          }
+                          placeholder="Listing title"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                        />
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <input
+                            required
+                            value={editListingForm.location}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                location: e.target.value,
+                              })
+                            }
+                            placeholder="Location"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+
+                          <input
+                            required
+                            value={editListingForm.state}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                state: e.target.value,
+                              })
+                            }
+                            placeholder="State"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <input
+                            required
+                            value={editListingForm.price}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                price: e.target.value,
+                              })
+                            }
+                            placeholder="Price / value"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+
+                          <input
+                            value={editListingForm.roi}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                roi: e.target.value,
+                              })
+                            }
+                            placeholder="ROI"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <select
+                            value={editListingForm.typeValue}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                typeValue: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          >
+                            <option value="residential">Residential</option>
+                            <option value="commercial">Commercial</option>
+                            <option value="land">Land</option>
+                            <option value="joint_venture">Joint Venture</option>
+                          </select>
+
+                          <select
+                            value={editListingForm.status}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                status: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          >
+                            <option value="Verified">Verified</option>
+                            <option value="Pending review">Pending review</option>
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <input
+                            value={editListingForm.bedrooms}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                bedrooms: e.target.value,
+                              })
+                            }
+                            placeholder="Bedrooms"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+
+                          <input
+                            value={editListingForm.bathrooms}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                bathrooms: e.target.value,
+                              })
+                            }
+                            placeholder="Bathrooms"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <input
+                            value={editListingForm.landSize}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                landSize: e.target.value,
+                              })
+                            }
+                            placeholder="Land size"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+
+                          <input
+                            value={editListingForm.documentTitle}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                documentTitle: e.target.value,
+                              })
+                            }
+                            placeholder="Document title"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <input
+                            value={editListingForm.ownerPhone}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                ownerPhone: e.target.value,
+                              })
+                            }
+                            placeholder="Owner phone"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+
+                          <input
+                            value={editListingForm.whatsapp}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                whatsapp: e.target.value,
+                              })
+                            }
+                            placeholder="WhatsApp"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+                        </div>
+
+                        <textarea
+                          required
+                          rows={4}
+                          value={editListingForm.summary}
+                          onChange={(e) =>
+                            setEditListingForm({
+                              ...editListingForm,
+                              summary: e.target.value,
+                            })
+                          }
+                          placeholder="Summary"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                        />
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            className="rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-black text-white"
+                          >
+                            Save changes
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={cancelEditingListing}
+                            className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="mb-3 flex items-start justify-between gap-4">
+                          <div>
+                            <p className="mb-1 text-xs font-black text-[#9b6b16]">
+                              {item.type}
+                            </p>
+                            <h3 className="font-black text-[#0d1c38]">{item.title}</h3>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {item.location} · {item.price}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-black ${
+                              item.status === "Verified"
+                                ? "bg-green-50 text-green-700"
+                                : "bg-yellow-50 text-yellow-700"
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+                        </div>
+
+                        <p className="mb-4 text-sm leading-6 text-slate-500">
+                          {item.summary}
                         </p>
-                        <h3 className="font-black text-[#0d1c38]">{item.title}</h3>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {item.location} · {item.price}
-                        </p>
-                      </div>
 
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-black ${
-                          item.status === "Verified"
-                            ? "bg-green-50 text-green-700"
-                            : "bg-yellow-50 text-yellow-700"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => approveListing(item.id)}
+                            className="rounded-xl bg-[#0d1c38] py-2.5 text-sm font-black text-white hover:bg-[#162b52]"
+                          >
+                            Approve
+                          </button>
 
-                    <p className="mb-4 text-sm leading-6 text-slate-500">{item.summary}</p>
+                          <button
+                            type="button"
+                            onClick={() => startEditingListing(item)}
+                            className="rounded-xl border border-blue-200 py-2.5 text-sm font-black text-blue-700 hover:bg-blue-50"
+                          >
+                            Edit
+                          </button>
 
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => approveListing(item.id)}
-                        className="flex-1 rounded-xl bg-[#0d1c38] py-2.5 text-sm font-black text-white hover:bg-[#162b52]"
-                      >
-                        Approve
-                      </button>
+                          <button
+                            type="button"
+                            onClick={() => duplicateListing(item)}
+                            className="rounded-xl border border-[#f0bf3c] py-2.5 text-sm font-black text-[#9b6b16] hover:bg-[#fff7df]"
+                          >
+                            Duplicate
+                          </button>
 
-                      <button
-                        type="button"
-                        onClick={() => deleteListing(item.id)}
-                        className="flex-1 rounded-xl border border-red-200 py-2.5 text-sm font-black text-red-600 hover:bg-red-50"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                          <button
+                            type="button"
+                            onClick={() => deleteListing(item.id)}
+                            className="rounded-xl border border-red-200 py-2.5 text-sm font-black text-red-600 hover:bg-red-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
 

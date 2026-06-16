@@ -1,1037 +1,1650 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createClient, type User } from "@supabase/supabase-js";
+
+type ModalType =
+  | null
+  | "signin"
+  | "register"
+  | "post"
+  | "investor"
+  | "admin"
+  | "details"
+  | "edit";
+
+type ListingStatus = "Verified" | "Pending Review";
+type AvailabilityStatus = "Available" | "Reserved" | "Sold" | "Rented" | "Leased" | "Off Market";
+type JVDealStatus = "New JV" | "Under Review" | "Due Diligence" | "Negotiation" | "Agreement Drafting" | "Approved" | "Rejected" | "Closed";
+type LeadStatus = "New" | "Contacted" | "Closed";
+type LeadPriority = "Low" | "Normal" | "High" | "Urgent";
+type InspectionStatus = "New" | "Scheduled" | "Completed" | "Cancelled";
+type OfferStatus = "New" | "Reviewing" | "Accepted" | "Rejected" | "Closed";
+type JVApplicationStatus = "New" | "Reviewing" | "Shortlisted" | "Accepted" | "Rejected" | "Closed";
+type JVDocumentReviewStatus = "Not Reviewed" | "Under Review" | "Verified" | "Rejected";
+type JVRiskLevel = "Low" | "Normal" | "High" | "Critical";
+type LeadKind =
+  | "investor_requests"
+  | "property_inquiries"
+  | "property_offers"
+  | "jv_applications"
+  | "contact_messages"
+  | "inspection_bookings";
 
 type Listing = {
   id: number;
   title: string;
   location: string;
-  state: string;
+  stateName?: string;
+  cityArea?: string;
+  fullAddress?: string;
+  nearbyLandmark?: string;
+  googleMapLink?: string;
+  showExactAddress?: boolean;
+  videoUrl?: string;
+  virtualTourUrl?: string;
+  droneVideoUrl?: string;
+  showVideoPublicly?: boolean;
   price: string;
-  type: string;
-  typeValue: string;
-  roi: string;
-  status: string;
-  summary: string;
-  bedrooms?: string;
-  bathrooms?: string;
+  value: number;
+  agencyFee?: string;
+  legalFee?: string;
+  serviceCharge?: string;
+  cautionFee?: string;
+  surveyFee?: string;
+  developmentFee?: string;
+  totalEstimatedCost?: string;
+  paymentPlanAvailable?: boolean;
+  installmentDetails?: string;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  toilets?: number | null;
+  parkingSpaces?: number | null;
   landSize?: string;
-  documentTitle?: string;
+  propertySize?: string;
+  furnishingStatus?: string;
+  propertyCondition?: string;
+  amenities?: string;
+  jvStructure?: string;
+  jvLandContribution?: string;
+  jvDeveloperRequirement?: string;
+  jvInvestorRequirement?: string;
+  jvSharingFormula?: string;
+  jvProjectStage?: string;
+  jvExpectedUnits?: string;
+  jvEstimatedProjectCost?: string;
+  jvCompletionTimeline?: string;
+  jvTerms?: string;
+  jvFeasibilityStudyUrl?: string;
+  jvArchitecturalConceptUrl?: string;
+  jvEstateLayoutUrl?: string;
+  jvBoqUrl?: string;
+  jvProposalDocumentUrl?: string;
+  jvLandTitleStatus?: "Not Reviewed" | "Under Review" | "Verified" | "Rejected";
+  jvDevelopmentApprovalStatus?: "Not Required" | "Not Reviewed" | "Under Review" | "Approved" | "Rejected";
+  jvDealStatus?: JVDealStatus;
+  jvNextAction?: string;
+  jvNextActionDate?: string;
+  jvInternalNotes?: string;
+  neighborhoodOverview?: string;
+  roadAccess?: string;
+  powerSupply?: string;
+  waterSupply?: string;
+  securityFeatures?: string;
+  nearbySchools?: string;
+  nearbyHospitals?: string;
+  nearbyMalls?: string;
+  nearbyTransport?: string;
+  distanceToMajorRoad?: string;
+  estateFeatures?: string;
+  type: string;
+  category: string;
+  yieldText: string;
+  description: string;
+  status: ListingStatus;
+  availabilityStatus?: AvailabilityStatus;
+  availabilityNote?: string;
+  availableFrom?: string;
   ownerName?: string;
-  ownerRole?: string;
   ownerPhone?: string;
-  whatsapp?: string;
+  contactRole?: string;
+  companyName?: string;
+  contactEmail?: string;
+  contactWhatsapp?: string;
+  contactAddress?: string;
+  publicContactVisibility?: string;
+  mandateStatus?: string;
+  identityType?: string;
+  identityNumber?: string;
+  companyRegistrationNumber?: string;
+  mandateDocumentStatus?: string;
+  contactProfileVerified?: boolean;
+  contactVerificationNotes?: string;
+  identityDocumentUrl?: string;
+  cacDocumentUrl?: string;
+  mandateDocumentUrl?: string;
+  documentTitle?: string;
+  documentStatus?: string;
+  documentDetails?: string;
+  documentFileUrl?: string;
+  titleVerified?: boolean;
   ownerVerified?: boolean;
-  ownerVerificationNote?: string;
-  valuationNote?: string;
-  featured?: boolean;
+  siteInspected?: boolean;
+  priceChecked?: boolean;
+  legalReviewStatus?: "Not Reviewed" | "Under Review" | "Verified" | "Rejected";
+  verificationNotes?: string;
   imageUrl?: string;
-  galleryUrls?: string[];
-  documentName?: string;
-  documentDataUrl?: string;
-  documentMimeType?: string;
+  featured?: boolean;
+  featuredRank?: number;
+  createdAt?: string;
 };
 
-
-type LeadStage =
-  | "New"
-  | "Contacted"
-  | "Qualified"
-  | "Inspection"
-  | "Negotiation"
-  | "Closed";
-
-type LeadPriority = "Low" | "Medium" | "High" | "Hot";
-
-type Lead = {
+type PropertyImage = {
   id: number;
-  listingId?: number;
-  listingTitle?: string;
+  listingId: number;
+  imageUrl: string;
+  caption?: string;
+  displayOrder?: number;
+  isMain?: boolean;
+  createdAt?: string;
+};
+
+type InvestorRequest = {
+  id: number;
   name: string;
   email: string;
   phone: string;
   budget: string;
+  interest: string;
   message: string;
-  createdAt: string;
-  status: "New" | "Contacted" | "Closed";
-  crmStage?: LeadStage;
+  status: LeadStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
   priority?: LeadPriority;
-  source?: string;
   followUpDate?: string;
-  notes?: string;
+  lastContactedAt?: string;
+  experienceRating?: number;
+  financialCapacityRating?: number;
+  trackRecordRating?: number;
+  documentReviewStatus?: JVDocumentReviewStatus;
+  riskLevel?: JVRiskLevel;
+  evaluationNotes?: string;
+  evaluatedByEmail?: string;
+  evaluatedAt?: string;
+  createdAt: string;
 };
 
-
-type Inspection = {
+type PropertyInquiry = {
   id: number;
-  listingId?: number;
-  listingTitle?: string;
+  listingId?: number | null;
+  listingTitle: string;
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+  status: LeadStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
+  createdAt: string;
+};
+
+type ContactMessage = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  status: LeadStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
+  createdAt: string;
+};
+
+type InspectionBooking = {
+  id: number;
+  listingId?: number | null;
+  listingTitle: string;
   name: string;
   email: string;
   phone: string;
   preferredDate: string;
   preferredTime: string;
-  note: string;
+  message: string;
+  status: InspectionStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
   createdAt: string;
-  status: "New" | "Confirmed" | "Completed" | "Cancelled";
 };
 
-type ActivityLog = {
+type PropertyOffer = {
   id: number;
-  action: string;
-  detail: string;
-  category: "Listing" | "Lead" | "Inspection" | "Admin" | "Backup" | "System";
+  listingId?: number | null;
+  listingTitle: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  offerAmount: string;
+  paymentPlan: string;
+  message: string;
+  status: OfferStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
   createdAt: string;
 };
 
-type AdminTask = {
+type JVApplication = {
+  id: number;
+  listingId?: number | null;
+  listingTitle: string;
+  applicantName: string;
+  applicantEmail: string;
+  applicantPhone: string;
+  applicantRole: string;
+  companyName?: string;
+  budgetCapacity?: string;
+  experienceSummary?: string;
+  proposalMessage?: string;
+  companyProfileUrl?: string;
+  cacCertificateUrl?: string;
+  portfolioUrl?: string;
+  financialProofUrl?: string;
+  proposalDocumentUrl?: string;
+  otherDocumentUrl?: string;
+  experienceRating?: number;
+  financialCapacityRating?: number;
+  trackRecordRating?: number;
+  documentReviewStatus?: JVDocumentReviewStatus;
+  riskLevel?: JVRiskLevel;
+  evaluationNotes?: string;
+  evaluatedByEmail?: string;
+  evaluatedAt?: string;
+  status: JVApplicationStatus;
+  assignedToEmail?: string;
+  staffNotes?: string;
+  priority?: LeadPriority;
+  followUpDate?: string;
+  lastContactedAt?: string;
+  createdAt: string;
+};
+
+type PropertyView = {
+  id: number;
+  listingId: number;
+  listingTitle: string;
+  viewedAt: string;
+};
+
+type StaffNotification = {
   id: number;
   title: string;
-  assignee: string;
-  dueDate: string;
-  priority: "Low" | "Medium" | "High" | "Urgent";
-  status: "Open" | "In Progress" | "Done";
-  note: string;
+  message: string;
+  type: string;
+  isRead: boolean;
   createdAt: string;
-  completedAt?: string;
 };
 
-type ModalType =
-  | "login"
-  | "register"
-  | "forgot"
-  | "post"
-  | "investor"
-  | "inspection"
-  | "admin"
-  | null;
+type AdminActivityLog = {
+  id: number;
+  adminEmail: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  details: string;
+  createdAt: string;
+};
 
-type AuthUser = {
-  name: string;
+type StaffRole = "Super Admin" | "Admin" | "Manager" | "Agent" | "Viewer";
+
+type StaffMember = {
   email: string;
+  fullName: string;
+  role: StaffRole;
+  isActive: boolean;
+  createdAt: string;
 };
 
 const WHATSAPP_NUMBER = "2348106350486";
-const ADMIN_PASSWORD = "admin123";
+const LOCAL_ADMIN_PASSWORD = "admin123";
+const staffRoleOptions: StaffRole[] = [
+  "Super Admin",
+  "Admin",
+  "Manager",
+  "Agent",
+  "Viewer",
+];
 
-const LEAD_PIPELINE_STAGES: LeadStage[] = [
-  "New",
-  "Contacted",
-  "Qualified",
-  "Inspection",
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_KEY =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined);
+
+const supabase =
+  SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+const navLinks = [
+  { label: "Home", href: "#" },
+  { label: "Properties", href: "#properties" },
+  { label: "Calculator", href: "#calculator" },
+  { label: "JV Deals", href: "#jv" },
+  { label: "About", href: "#about" },
+  { label: "Contact", href: "#contact" },
+];
+
+const nigeriaStateOptions = [
+  "Abia",
+  "Adamawa",
+  "Akwa Ibom",
+  "Anambra",
+  "Bauchi",
+  "Bayelsa",
+  "Benue",
+  "Borno",
+  "Cross River",
+  "Delta",
+  "Ebonyi",
+  "Edo",
+  "Ekiti",
+  "Enugu",
+  "Gombe",
+  "Imo",
+  "Jigawa",
+  "Kaduna",
+  "Kano",
+  "Katsina",
+  "Kebbi",
+  "Kogi",
+  "Kwara",
+  "Lagos",
+  "Nasarawa",
+  "Niger",
+  "Ogun",
+  "Ondo",
+  "Osun",
+  "Oyo",
+  "Plateau",
+  "Rivers",
+  "Sokoto",
+  "Taraba",
+  "Yobe",
+  "Zamfara",
+];
+
+const nigeriaLocationOptions = [
+  { label: "FCT Abuja", value: "Abuja" },
+  ...nigeriaStateOptions.map((state) => ({ label: state, value: state })),
+];
+
+const nigeriaLocationLabels = [
+  "FCT Abuja",
+  ...nigeriaStateOptions,
+];
+
+const propertyTypeOptions = [
+  "Residential",
+  "Apartment / Flat",
+  "Mini Flat",
+  "Self Contain",
+  "Studio Apartment",
+  "Bungalow",
+  "Terrace",
+  "Terrace Duplex",
+  "Duplex",
+  "Semi-detached Duplex",
+  "Detached Duplex",
+  "Mansion",
+  "Penthouse",
+  "Short-let Apartment",
+  "Land",
+  "Estate Plot",
+  "Farm Land",
+  "Commercial",
+  "Office Space",
+  "Shop / Retail Space",
+  "Plaza",
+  "Warehouse",
+  "Hotel / Guest House",
+  "Mixed-use",
+  "Joint Venture",
+  "Estate Development",
+];
+
+const listingPurposeOptions = [
+  "For Sale",
+  "For Rent",
+  "Short Let",
+  "Lease",
+  "Commercial Lease",
+  "Investment",
+  "Land Banking",
+  "Joint Venture",
+  "JV Partnership",
+  "Off-plan",
+  "Distress Sale",
+];
+
+const jvStructureOptions = [
+  "Landowner + Developer JV",
+  "Landowner + Investor JV",
+  "Developer + Investor Partnership",
+  "Equity Partnership",
+  "Build-to-Sell JV",
+  "Build-to-Rent JV",
+  "Revenue Share",
+  "Profit Share",
+  "Other JV Structure",
+];
+
+const jvProjectStageOptions = [
+  "Concept Stage",
+  "Land Available",
+  "Design / Approval Stage",
+  "Seeking Developer",
+  "Seeking Investor",
+  "Under Negotiation",
+  "Under Construction",
+  "Completed Project",
+];
+
+const jvLandTitleStatusOptions = [
+  "Not Reviewed",
+  "Under Review",
+  "Verified",
+  "Rejected",
+];
+
+const jvDevelopmentApprovalStatusOptions = [
+  "Not Required",
+  "Not Reviewed",
+  "Under Review",
+  "Approved",
+  "Rejected",
+];
+
+const jvDealStatusOptions: JVDealStatus[] = [
+  "New JV",
+  "Under Review",
+  "Due Diligence",
   "Negotiation",
+  "Agreement Drafting",
+  "Approved",
+  "Rejected",
   "Closed",
 ];
 
-const LEAD_PRIORITIES: LeadPriority[] = ["Low", "Medium", "High", "Hot"];
-
-function getLeadStage(lead: Lead): LeadStage {
-  if (lead.crmStage) return lead.crmStage;
-  if (lead.status === "Closed") return "Closed";
-  if (lead.status === "Contacted") return "Contacted";
-  return "New";
+function isJointVentureListing(input: { type?: string; category?: string }) {
+  const type = (input.type || "").toLowerCase();
+  const category = (input.category || "").toLowerCase();
+  return (
+    type.includes("joint venture") ||
+    type.includes("estate development") ||
+    category.includes("joint venture") ||
+    category.includes("jv")
+  );
 }
 
-function getLeadPriority(lead: Lead): LeadPriority {
-  return lead.priority || "Medium";
-}
-
-function getLeadSource(lead: Lead) {
-  return lead.source || (lead.listingTitle ? "Property enquiry" : "Buyer brief");
-}
-
-const STATS = [
-  { num: "2,400+", label: "Verified listings" },
-  { num: "₦840B+", label: "Total deal value" },
-  { num: "1,100+", label: "Active investors" },
-  { num: "180+", label: "JV opportunities" },
+const furnishingStatusOptions = [
+  "Not Specified",
+  "Furnished",
+  "Semi Furnished",
+  "Unfurnished",
 ];
 
-const CATEGORIES = [
-  { label: "Residential", count: "847", icon: "🏠", typeValue: "residential" },
-  { label: "Commercial", count: "312", icon: "🏢", typeValue: "commercial" },
-  { label: "Land", count: "593", icon: "🗺️", typeValue: "land" },
-  { label: "Joint Ventures", count: "183", icon: "🤝", typeValue: "joint_venture" },
+const propertyConditionOptions = [
+  "Not Specified",
+  "Newly Built",
+  "Fairly Used",
+  "Renovated",
+  "Off-plan",
+  "Under Construction",
 ];
 
-const INITIAL_LISTINGS: Listing[] = [
+const amenityOptions = [
+  "24/7 Security",
+  "CCTV",
+  "Swimming Pool",
+  "Gym",
+  "Serviced Estate",
+  "Constant Power",
+  "Water Supply",
+  "Borehole",
+  "POP Ceiling",
+  "Fitted Kitchen",
+  "Wardrobes",
+  "BQ",
+  "Parking Space",
+  "Paved Road",
+  "Drainage",
+  "Gated Estate",
+];
+
+const availabilityStatusOptions: AvailabilityStatus[] = [
+  "Available",
+  "Reserved",
+  "Sold",
+  "Rented",
+  "Leased",
+  "Off Market",
+];
+
+const contactRoleOptions = [
+  "Owner",
+  "Agent",
+  "Developer",
+  "Landlord",
+  "Company",
+  "Mandate Holder",
+];
+
+const publicContactVisibilityOptions = [
+  "Hide Phone",
+  "Show Phone",
+  "Show WhatsApp",
+  "Show Email",
+  "Show All",
+];
+
+const mandateStatusOptions = [
+  "Not Confirmed",
+  "Direct Owner",
+  "Authorized Agent",
+  "Developer Mandate",
+  "Company Mandate",
+];
+
+const identityTypeOptions = [
+  "Not Provided",
+  "NIN",
+  "International Passport",
+  "Driver's License",
+  "Voter's Card",
+  "CAC Certificate",
+  "Company Representative ID",
+  "Other",
+];
+
+const mandateDocumentStatusOptions = [
+  "Not Provided",
+  "Provided",
+  "Under Review",
+  "Verified",
+  "Rejected",
+];
+
+const documentTitleOptions = [
+  "C of O / Certificate of Occupancy",
+  "R of O / Right of Occupancy",
+  "Governor's Consent",
+  "Deed of Assignment",
+  "Registered Deed",
+  "Survey Plan",
+  "Excision",
+  "Gazette",
+  "Letter of Allocation",
+  "Building Approval",
+  "Approved Layout",
+  "Deed of Lease",
+  "Power of Attorney",
+  "Probate / Letter of Administration",
+  "Family Receipt",
+  "Agreement / Contract of Sale",
+  "Processing",
+  "Not Available Yet",
+  "Other",
+];
+
+const documentStatusOptions = [
+  "Available",
+  "Verified",
+  "Processing",
+  "Pending Verification",
+  "Not Available",
+];
+
+const legalReviewStatusOptions = [
+  "Not Reviewed",
+  "Under Review",
+  "Verified",
+  "Rejected",
+];
+
+const investorInterestOptions = [
+  "Residential",
+  "Rental Income / For Rent",
+  "Apartment / Flat",
+  "Bungalow",
+  "Terrace",
+  "Terrace Duplex",
+  "Duplex",
+  "Land Banking",
+  "Commercial Property",
+  "Joint Venture",
+  "Short-let Income Property",
+  "Estate Development",
+  "Off-plan Investment",
+];
+
+const seedListings: Listing[] = [
   {
     id: 1,
     title: "Luxury Apartments in Abuja",
     location: "Maitama, Abuja",
-    state: "Abuja",
     price: "₦450M",
+    value: 450000000,
     type: "Residential",
-    typeValue: "residential",
-    roi: "18%",
+    category: "For Sale",
+    yieldText: "Premium capital appreciation in Abuja’s prime district",
+    description:
+      "A high-end residential investment opportunity positioned for strong rental income, resale value, and long-term wealth preservation.",
     status: "Verified",
-    summary:
-      "Premium residential apartment investment in Maitama with verified ownership documents and strong rental potential.",
+    availabilityStatus: "Available",
+    createdAt: new Date().toISOString(),
   },
   {
     id: 2,
     title: "Commercial Plaza in Lagos",
     location: "Victoria Island, Lagos",
-    state: "Lagos",
     price: "₦1.2B",
+    value: 1200000000,
     type: "Commercial",
-    typeValue: "commercial",
-    roi: "22%",
+    category: "Investment",
+    yieldText: "Strong commercial rental potential",
+    description:
+      "A premium commercial asset located in one of Lagos’ strongest business districts, suitable for corporate tenants and long-term income.",
     status: "Verified",
-    summary:
-      "High-value commercial plaza opportunity in Victoria Island for institutional investors and business operators.",
+    availabilityStatus: "Available",
+    createdAt: new Date().toISOString(),
   },
   {
     id: 3,
     title: "Prime Development Land",
     location: "Lekki, Lagos",
-    state: "Lagos",
     price: "₦800M",
+    value: 800000000,
     type: "Land",
-    typeValue: "land",
-    roi: "30%",
+    category: "Land Banking",
+    yieldText: "Strategic location for development or resale",
+    description:
+      "A large land asset in a fast-growing corridor suitable for residential development, estate layout, or strategic land banking.",
     status: "Verified",
-    summary:
-      "Strategic land investment in Lekki suitable for estate development, commercial projects, or long-term appreciation.",
+    availabilityStatus: "Available",
+    createdAt: new Date().toISOString(),
   },
   {
     id: 4,
-    title: "Residential JV Estate Land",
-    location: "Ibeju-Lekki, Lagos",
-    state: "Lagos",
+    title: "Joint Venture Estate Project",
+    location: "Gwarinpa, Abuja",
     price: "JV Partnership",
+    value: 350000000,
     type: "Joint Venture",
-    typeValue: "joint_venture",
-    roi: "28%",
+    category: "JV",
+    yieldText: "Developer and landowner partnership structure available",
+    description:
+      "A structured joint venture opportunity for developers and investors interested in residential estate development.",
     status: "Verified",
-    summary:
-      "Landowner and developer partnership opportunity for a residential estate project with structured sharing formula.",
-  },
-];
-
-const STATIC_JV_DEALS: Listing[] = [
-  {
-    id: 1001,
-    title: "Luxury Mixed-use Development",
-    location: "Wuse 2, Abuja",
-    state: "Abuja",
-    price: "₦3.5B",
-    type: "Joint Venture",
-    typeValue: "joint_venture",
-    roi: "24%",
-    status: "JV OPEN",
-    summary:
-      "Verified developer-backed mixed-use opportunity with clear equity structure, document review, and investor access process.",
+    availabilityStatus: "Available",
+    createdAt: new Date().toISOString(),
   },
   {
-    id: 1002,
-    title: "Residential Estate Joint Venture",
+    id: 5,
+    title: "Smart Duplex Investment",
+    location: "Lekki Phase 1, Lagos",
+    price: "₦185M",
+    value: 185000000,
+    type: "Residential",
+    category: "For Sale",
+    yieldText: "Estimated 14% yearly appreciation",
+    description:
+      "A modern duplex in a high-demand residential market with strong resale and rental potential.",
+    status: "Verified",
+    availabilityStatus: "Available",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 6,
+    title: "Serviced Estate Plots",
     location: "Ibeju-Lekki, Lagos",
-    state: "Lagos",
-    price: "₦5.8B",
-    type: "Joint Venture",
-    typeValue: "joint_venture",
-    roi: "28%",
-    status: "JV OPEN",
-    summary:
-      "Large-scale estate development JV for landowners, developers, and investors with strong projected demand.",
+    price: "₦18.5M",
+    value: 18500000,
+    type: "Land",
+    category: "Investment",
+    yieldText: "High-growth corridor near major infrastructure",
+    description:
+      "Documented serviced plots suitable for land banking, resale, and long-term property investment.",
+    status: "Verified",
+    availabilityStatus: "Available",
+    createdAt: new Date().toISOString(),
   },
 ];
 
-const WHY = [
+const stats = [
+  { value: "2,500+", label: "Verified listings" },
+  { value: "10,000+", label: "Registered users" },
+  { value: "150+", label: "JV opportunities" },
+  { value: "36", label: "States + FCT" },
+];
+
+const categoryCards = [
   {
-    title: "Verified opportunities only",
-    body: "Every listing is reviewed. Owners, documents, and titles are validated before going live.",
+    title: "Residential",
+    text: "Premium homes, apartments, duplexes, and estate opportunities for buyers and investors.",
   },
   {
-    title: "Document-backed listings",
-    body: "C of O, survey plans, and deeds are uploaded and reviewed to give investors full visibility.",
+    title: "Land & Commercial",
+    text: "Strategic land, commercial plazas, office assets, and long-term real estate opportunities.",
   },
   {
-    title: "Direct stakeholder access",
-    body: "Message verified owners, developers, and landowners directly without fake agents or middlemen.",
+    title: "JV Opportunities",
+    text: "Connect landowners, developers, and investors for profitable development partnerships.",
   },
 ];
 
-function getTypeLabel(value: string) {
-  if (value === "commercial") return "Commercial";
-  if (value === "land") return "Land";
-  if (value === "joint_venture") return "Joint Venture";
-  return "Residential";
+const processSteps = [
+  {
+    title: "Submit opportunity",
+    text: "Owners, developers, landowners, and agents submit properties, land, or joint venture deals.",
+  },
+  {
+    title: "Verification review",
+    text: "INAMAAD reviews key details such as ownership, location, value, opportunity strength, and investment fit.",
+  },
+  {
+    title: "Investor connection",
+    text: "Qualified investors discover opportunities based on budget, location, asset type, and strategy.",
+  },
+];
+
+const verificationItems = [
+  "Property and ownership review",
+  "Market value and location assessment",
+  "Developer, seller, or landowner screening",
+  "Investor risk and opportunity review",
+];
+
+const faqItems = [
+  {
+    question: "Is INAMAAD only for buying property?",
+    answer:
+      "No. INAMAAD supports property sales, land investments, commercial assets, joint ventures, and investor matching.",
+  },
+  {
+    question: "Can developers post opportunities?",
+    answer:
+      "Yes. Developers can submit projects, JV proposals, off-plan opportunities, and investment-ready real estate deals.",
+  },
+  {
+    question: "Can investors request private deals?",
+    answer:
+      "Yes. Investors can submit their budget and interest so INAMAAD can match them with suitable opportunities.",
+  },
+  {
+    question: "Are all listings verified?",
+    answer:
+      "Listings marked as verified have passed internal review. New submissions remain pending until admin approval.",
+  },
+];
+
+function formatDate(value?: string) {
+  if (!value) return "Recently";
+
+  return new Date(value).toLocaleDateString("en-NG", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
-function getListingReference(id: number) {
-  return `INM-${String(id).padStart(6, "0")}`;
-}
-
-function isJVListing(item: Listing) {
-  return item.typeValue === "joint_venture" || item.type.toLowerCase().includes("joint");
-}
-
-function getWhatsappUrl(item: Listing) {
-  const message = `Hello INAMAAD Real Estate, I want details about ${item.title} (${getListingReference(
-    item.id
-  )}) in ${item.location}.`;
-  const rawPhone = (item.whatsapp || item.ownerPhone || WHATSAPP_NUMBER).replace(/[^0-9]/g, "");
-  const phone = rawPhone.startsWith("0") ? `234${rawPhone.slice(1)}` : rawPhone || WHATSAPP_NUMBER;
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-}
-
-function parseNairaValue(price: string) {
-  const cleanPrice = price.toLowerCase().replace(/,/g, "");
-  const numericValue = Number(cleanPrice.replace(/[^0-9.]/g, ""));
-
-  if (!Number.isFinite(numericValue)) return 0;
-
-  if (cleanPrice.includes("b")) return numericValue * 1_000_000_000;
-  if (cleanPrice.includes("m")) return numericValue * 1_000_000;
-  if (cleanPrice.includes("k")) return numericValue * 1_000;
-
-  return numericValue;
-}
-
-function parseBudgetRangeValue(value: string) {
-  const cleanValue = String(value || "").toLowerCase().replace(/,/g, "");
-  const matches = cleanValue.match(/[0-9]+(?:\.[0-9]+)?\s*[bmk]?/g);
-
-  if (!matches || matches.length === 0) {
-    return parseNairaValue(cleanValue);
+function availabilityBadgeClass(status?: string) {
+  switch (status) {
+    case "Available":
+      return "bg-emerald-500 text-white";
+    case "Reserved":
+      return "bg-amber-400 text-[#0d1c38]";
+    case "Sold":
+      return "bg-red-600 text-white";
+    case "Rented":
+      return "bg-blue-600 text-white";
+    case "Leased":
+      return "bg-purple-600 text-white";
+    case "Off Market":
+      return "bg-slate-700 text-white";
+    default:
+      return "bg-emerald-500 text-white";
   }
-
-  const values = matches
-    .map((match) => {
-      const token = match.trim();
-      const amount = Number(token.replace(/[^0-9.]/g, ""));
-
-      if (!Number.isFinite(amount)) return 0;
-      if (token.includes("b")) return amount * 1_000_000_000;
-      if (token.includes("m")) return amount * 1_000_000;
-      if (token.includes("k")) return amount * 1_000;
-
-      return amount;
-    })
-    .filter((amount) => amount > 0);
-
-  if (values.length === 0) return 0;
-
-  return Math.round(values.reduce((total, amount) => total + amount, 0) / values.length);
 }
 
-function parseRoiValue(roi: string) {
-  const numericValue = Number(roi.replace(/[^0-9.]/g, ""));
+function availabilityShortNote(status?: string) {
+  switch (status) {
+    case "Available":
+      return "Open for enquiries";
+    case "Reserved":
+      return "Temporarily reserved";
+    case "Sold":
+      return "Sold property";
+    case "Rented":
+      return "Already rented";
+    case "Leased":
+      return "Currently leased";
+    case "Off Market":
+      return "Not currently active";
+    default:
+      return "Open for enquiries";
+  }
+}
 
-  return Number.isFinite(numericValue) ? numericValue : 0;
+function buildListingReference(listingId?: number | null) {
+  const safeId = Number(listingId || 0);
+  return `INM-${String(safeId).padStart(6, "0")}`;
+}
+
+function currencyToValue(value: string) {
+  const cleaned = value.replace(/[^\d]/g, "");
+  return Number(cleaned || 0);
+}
+
+function formatNairaFull(value: string | number) {
+  const numericValue =
+    typeof value === "number" ? value : currencyToValue(String(value));
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return "";
+
+  return `₦${numericValue.toLocaleString("en-NG")}`;
+}
+
+function formatPriceInput(value: string) {
+  const numericValue = currencyToValue(value);
+  return numericValue > 0 ? formatNairaFull(numericValue) : "";
+}
+
+function formatPricePreview(value: string) {
+  const numericValue = currencyToValue(value);
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return "₦0";
+
+  return `${formatNairaFull(numericValue)} (${formatNairaCompact(numericValue)})`;
+}
+
+type PriceBreakdownInput = {
+  price?: string;
+  agencyFee?: string;
+  legalFee?: string;
+  serviceCharge?: string;
+  cautionFee?: string;
+  surveyFee?: string;
+  developmentFee?: string;
+};
+
+function calculateTotalEstimatedCost(input: PriceBreakdownInput) {
+  const total = [
+    input.price,
+    input.agencyFee,
+    input.legalFee,
+    input.serviceCharge,
+    input.cautionFee,
+    input.surveyFee,
+    input.developmentFee,
+  ].reduce((sum, item) => sum + currencyToValue(String(item || "")), 0);
+
+  return total > 0 ? formatNairaFull(total) : "";
+}
+
+function hasPriceBreakdown(listing: Listing) {
+  return Boolean(
+    listing.agencyFee ||
+      listing.legalFee ||
+      listing.serviceCharge ||
+      listing.cautionFee ||
+      listing.surveyFee ||
+      listing.developmentFee ||
+      listing.totalEstimatedCost ||
+      listing.paymentPlanAvailable ||
+      listing.installmentDetails
+  );
 }
 
 function formatNairaCompact(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return "Not enough data";
+  if (!Number.isFinite(value) || value <= 0) return "₦0";
 
   if (value >= 1_000_000_000) {
-    return `₦${(value / 1_000_000_000).toFixed(2)}B`;
+    return `₦${(value / 1_000_000_000).toFixed(value % 1_000_000_000 === 0 ? 0 : 1)}B`;
   }
 
   if (value >= 1_000_000) {
-    return `₦${(value / 1_000_000).toFixed(2)}M`;
+    return `₦${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 1)}M`;
   }
 
   if (value >= 1_000) {
-    return `₦${Math.round(value / 1_000).toLocaleString()}K`;
+    return `₦${(value / 1_000).toFixed(value % 1_000 === 0 ? 0 : 1)}K`;
   }
 
-  return `₦${Math.round(value).toLocaleString()}`;
+  return `₦${value.toLocaleString("en-NG")}`;
 }
 
-type PriceIntelligence = {
-  label: "Opportunity" | "Fair" | "Premium" | "High" | "Review" | "JV review";
-  confidence: "Low" | "Medium" | "High" | "Special";
-  stateAverage: number;
-  comparableCount: number;
-  percentVsMarket: number;
-  guidance: string;
-};
+function normalizePhoneForLink(phone: string) {
+  const digits = phone.replace(/\D/g, "");
 
-function getPriceIntelligence(item: Listing, allListings: Listing[]): PriceIntelligence {
-  const priceValue = parseNairaValue(item.price);
-
-  if (isJVListing(item)) {
-    return {
-      label: "JV review",
-      confidence: "Special",
-      stateAverage: 0,
-      comparableCount: 0,
-      percentVsMarket: 0,
-      guidance:
-        "JV pricing should be reviewed by land value, title strength, sharing formula, construction cost, and developer capacity.",
-    };
+  if (digits.startsWith("0")) {
+    return `234${digits.slice(1)}`;
   }
 
-  const comparablePrices = allListings
-    .filter(
-      (listing) =>
-        !isJVListing(listing) &&
-        listing.id !== item.id &&
-        listing.state === item.state &&
-        parseNairaValue(listing.price) > 0
-    )
-    .map((listing) => parseNairaValue(listing.price));
+  return digits;
+}
 
-  const fallbackPrices = allListings
-    .filter((listing) => !isJVListing(listing) && parseNairaValue(listing.price) > 0)
-    .map((listing) => parseNairaValue(listing.price));
+function createWhatsAppLeadLink(phone: string, message: string) {
+  return `https://wa.me/${normalizePhoneForLink(phone)}?text=${encodeURIComponent(
+    message
+  )}`;
+}
 
-  const comparisonPrices =
-    comparablePrices.length >= 1 ? comparablePrices : fallbackPrices.filter(Boolean);
+function createCallLeadLink(phone: string) {
+  return `tel:${phone.replace(/\s/g, "")}`;
+}
 
-  const stateAverage =
-    comparisonPrices.length > 0
-      ? comparisonPrices.reduce((total, value) => total + value, 0) / comparisonPrices.length
-      : 0;
+function createEmailLeadLink(email: string, subject: string) {
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+}
 
-  if (!priceValue || !stateAverage) {
-    return {
-      label: "Review",
-      confidence: "Low",
-      stateAverage,
-      comparableCount: comparisonPrices.length,
-      percentVsMarket: 0,
-      guidance:
-        "Price guidance needs a clearer price value and more comparable listings before a strong decision can be made.",
-    };
+function buildListingShareUrl(listingId: number) {
+  const url = new URL(window.location.origin);
+  url.pathname = window.location.pathname;
+  url.searchParams.set("property", String(listingId));
+  url.hash = "properties";
+  return url.toString();
+}
+
+function buildListingShareText(listing: Listing) {
+  return `INAMAAD Real Estate: ${listing.title} (${buildListingReference(listing.id)}) - ${listing.price} in ${listing.location}. View details: ${buildListingShareUrl(
+    listing.id
+  )}`;
+}
+
+function extractPropertyDocumentPath(documentFileUrl: string) {
+  if (!documentFileUrl) return "";
+
+  const cleanValue = documentFileUrl.split("?")[0];
+  const bucketMarker = "property-documents/";
+
+  if (cleanValue.includes(bucketMarker)) {
+    return decodeURIComponent(cleanValue.split(bucketMarker).pop() || "");
   }
 
-  const ratio = priceValue / stateAverage;
-  const percentVsMarket = Math.round((ratio - 1) * 100);
-
-  let label: PriceIntelligence["label"] = "Fair";
-  let guidance =
-    "This listing is close to the current marketplace comparison range. Still verify documents, location, and inspection results.";
-
-  if (ratio <= 0.9) {
-    label = "Opportunity";
-    guidance =
-      "This listing appears below nearby marketplace comparison range. Treat it as a possible opportunity, but verify ownership and documents carefully.";
-  } else if (ratio <= 1.15) {
-    label = "Fair";
-  } else if (ratio <= 1.45) {
-    label = "Premium";
-    guidance =
-      "This listing is above the current marketplace comparison range. Confirm location quality, title strength, and special features before negotiation.";
-  } else {
-    label = "High";
-    guidance =
-      "This listing is significantly above the current marketplace comparison range. Review valuation, documents, and negotiation room before proceeding.";
+  if (!cleanValue.includes("/")) {
+    return cleanValue;
   }
 
-  const confidence: PriceIntelligence["confidence"] =
-    comparisonPrices.length >= 3 && item.ownerVerified && Boolean(item.documentTitle || item.documentName)
-      ? "High"
-      : comparisonPrices.length >= 2 || item.ownerVerified
-        ? "Medium"
-        : "Low";
+  return decodeURIComponent(cleanValue.split("/").pop() || "");
+}
 
+function extractStorageObjectPath(fileUrl: string, bucketName: string) {
+  if (!fileUrl) return "";
+
+  const cleanValue = fileUrl.split("?")[0];
+  const bucketMarker = `${bucketName}/`;
+
+  if (cleanValue.includes(bucketMarker)) {
+    return decodeURIComponent(cleanValue.split(bucketMarker).pop() || "");
+  }
+
+  if (!cleanValue.includes("/")) {
+    return cleanValue;
+  }
+
+  return decodeURIComponent(cleanValue.split("/").pop() || "");
+}
+
+function leadStatusClass(status: LeadStatus) {
+  if (status === "Closed") return "bg-emerald-100 text-emerald-700";
+  if (status === "Contacted") return "bg-blue-100 text-blue-700";
+  return "bg-amber-100 text-amber-700";
+}
+
+function inspectionStatusClass(status: InspectionStatus) {
+  if (status === "Completed") return "bg-emerald-100 text-emerald-700";
+  if (status === "Scheduled") return "bg-blue-100 text-blue-700";
+  if (status === "Cancelled") return "bg-red-100 text-red-700";
+  return "bg-amber-100 text-amber-700";
+}
+
+function offerStatusClass(status: OfferStatus) {
+  if (status === "Accepted") return "bg-emerald-100 text-emerald-700";
+  if (status === "Reviewing") return "bg-blue-100 text-blue-700";
+  if (status === "Rejected") return "bg-red-100 text-red-700";
+  if (status === "Closed") return "bg-slate-200 text-slate-700";
+  return "bg-amber-100 text-amber-700";
+}
+
+function jvApplicationStatusClass(status: JVApplicationStatus) {
+  if (status === "Accepted") return "bg-emerald-100 text-emerald-700";
+  if (status === "Shortlisted") return "bg-purple-100 text-purple-700";
+  if (status === "Reviewing") return "bg-blue-100 text-blue-700";
+  if (status === "Rejected") return "bg-red-100 text-red-700";
+  if (status === "Closed") return "bg-slate-200 text-slate-700";
+  return "bg-amber-100 text-amber-700";
+}
+
+function getTopCount(items: string[]) {
+  const counts = items.reduce<Record<string, number>>((accumulator, item) => {
+    const key = item || "Unknown";
+    accumulator[key] = (accumulator[key] || 0) + 1;
+    return accumulator;
+  }, {});
+
+  return (
+    Object.entries(counts).sort((first, second) => second[1] - first[1])[0] || [
+      "None yet",
+      0,
+    ]
+  );
+}
+
+function buildPublicLocationText(listing: Pick<Listing, "location" | "stateName" | "cityArea">) {
+  const parts = [listing.cityArea, listing.stateName].filter(Boolean);
+  return parts.length ? parts.join(", ") : listing.location || "Location not stated";
+}
+
+function buildExactLocationText(listing: Listing) {
+  if (listing.showExactAddress && listing.fullAddress) return listing.fullAddress;
+  return buildPublicLocationText(listing);
+}
+
+function cleanPhoneForLink(phone?: string) {
+  return (phone || "").replace(/[^0-9]/g, "");
+}
+
+function normalizeNigeriaWhatsApp(phone?: string) {
+  const cleaned = cleanPhoneForLink(phone);
+  if (!cleaned) return "";
+  if (cleaned.startsWith("234")) return cleaned;
+  if (cleaned.startsWith("0")) return `234${cleaned.slice(1)}`;
+  return cleaned;
+}
+
+function canShowPublicPhone(listing: Listing) {
+  const visibility = listing.publicContactVisibility || "Hide Phone";
+  return visibility === "Show Phone" || visibility === "Show All";
+}
+
+function canShowPublicWhatsapp(listing: Listing) {
+  const visibility = listing.publicContactVisibility || "Hide Phone";
+  return visibility === "Show WhatsApp" || visibility === "Show All";
+}
+
+function canShowPublicEmail(listing: Listing) {
+  const visibility = listing.publicContactVisibility || "Hide Phone";
+  return visibility === "Show Email" || visibility === "Show All";
+}
+
+function getListingContactName(listing: Listing) {
+  return listing.companyName || listing.ownerName || "Not provided";
+}
+
+function buildListingLocationValue(form: { stateName?: string; cityArea?: string; location?: string }) {
+  const parts = [form.cityArea, form.stateName].filter(Boolean);
+  return parts.length ? parts.join(", ") : form.location || "Nigeria";
+}
+
+function mapListingRow(row: any): Listing {
   return {
-    label,
-    confidence,
-    stateAverage,
-    comparableCount: comparisonPrices.length,
-    percentVsMarket,
-    guidance,
+    id: Number(row.id),
+    title: row.title,
+    location: row.location,
+    stateName: row.state_name || "",
+    cityArea: row.city_area || "",
+    fullAddress: row.full_address || "",
+    nearbyLandmark: row.nearby_landmark || "",
+    googleMapLink: row.google_map_link || "",
+    showExactAddress: Boolean(row.show_exact_address),
+    videoUrl: row.video_url || "",
+    virtualTourUrl: row.virtual_tour_url || "",
+    droneVideoUrl: row.drone_video_url || "",
+    showVideoPublicly: row.show_video_publicly !== false,
+    price: row.price,
+    value: Number(row.value || 0),
+    agencyFee: row.agency_fee || "",
+    legalFee: row.legal_fee || "",
+    serviceCharge: row.service_charge || "",
+    cautionFee: row.caution_fee || "",
+    surveyFee: row.survey_fee || "",
+    developmentFee: row.development_fee || "",
+    totalEstimatedCost: row.total_estimated_cost || "",
+    paymentPlanAvailable: Boolean(row.payment_plan_available),
+    installmentDetails: row.installment_details || "",
+    bedrooms: row.bedrooms == null ? undefined : Number(row.bedrooms),
+    bathrooms: row.bathrooms == null ? undefined : Number(row.bathrooms),
+    toilets: row.toilets == null ? undefined : Number(row.toilets),
+    parkingSpaces: row.parking_spaces == null ? undefined : Number(row.parking_spaces),
+    landSize: row.land_size || "",
+    propertySize: row.property_size || "",
+    furnishingStatus: row.furnishing_status || "Not Specified",
+    propertyCondition: row.property_condition || "Not Specified",
+    amenities: row.amenities || "",
+    jvStructure: row.jv_structure || "",
+    jvLandContribution: row.jv_land_contribution || "",
+    jvDeveloperRequirement: row.jv_developer_requirement || "",
+    jvInvestorRequirement: row.jv_investor_requirement || "",
+    jvSharingFormula: row.jv_sharing_formula || "",
+    jvProjectStage: row.jv_project_stage || "",
+    jvExpectedUnits: row.jv_expected_units || "",
+    jvEstimatedProjectCost: row.jv_estimated_project_cost || "",
+    jvCompletionTimeline: row.jv_completion_timeline || "",
+    jvTerms: row.jv_terms || "",
+    jvFeasibilityStudyUrl: row.jv_feasibility_study_url || "",
+    jvArchitecturalConceptUrl: row.jv_architectural_concept_url || "",
+    jvEstateLayoutUrl: row.jv_estate_layout_url || "",
+    jvBoqUrl: row.jv_boq_url || "",
+    jvProposalDocumentUrl: row.jv_proposal_document_url || "",
+    jvLandTitleStatus: row.jv_land_title_status || "Not Reviewed",
+    jvDevelopmentApprovalStatus: row.jv_development_approval_status || "Not Reviewed",
+    jvDealStatus: row.jv_deal_status || "New JV",
+    jvNextAction: row.jv_next_action || "",
+    jvNextActionDate: row.jv_next_action_date || "",
+    jvInternalNotes: row.jv_internal_notes || "",
+    neighborhoodOverview: row.neighborhood_overview || "",
+    roadAccess: row.road_access || "",
+    powerSupply: row.power_supply || "",
+    waterSupply: row.water_supply || "",
+    securityFeatures: row.security_features || "",
+    nearbySchools: row.nearby_schools || "",
+    nearbyHospitals: row.nearby_hospitals || "",
+    nearbyMalls: row.nearby_malls || "",
+    nearbyTransport: row.nearby_transport || "",
+    distanceToMajorRoad: row.distance_to_major_road || "",
+    estateFeatures: row.estate_features || "",
+    type: row.type,
+    category: row.category,
+    yieldText: row.yield_text,
+    description: row.description,
+    status: row.status,
+    availabilityStatus: row.availability_status || "Available",
+    availabilityNote: row.availability_note || "",
+    availableFrom: row.available_from || "",
+    ownerName: row.owner_name || "",
+    ownerPhone: row.owner_phone || "",
+    contactRole: row.contact_role || "Owner",
+    companyName: row.company_name || "",
+    contactEmail: row.contact_email || "",
+    contactWhatsapp: row.contact_whatsapp || "",
+    contactAddress: row.contact_address || "",
+    publicContactVisibility: row.public_contact_visibility || "Hide Phone",
+    mandateStatus: row.mandate_status || "Not Confirmed",
+    identityType: row.identity_type || "Not Provided",
+    identityNumber: row.identity_number || "",
+    companyRegistrationNumber: row.company_registration_number || "",
+    mandateDocumentStatus: row.mandate_document_status || "Not Provided",
+    contactProfileVerified: Boolean(row.contact_profile_verified),
+    contactVerificationNotes: row.contact_verification_notes || "",
+    identityDocumentUrl: row.identity_document_url || "",
+    cacDocumentUrl: row.cac_document_url || "",
+    mandateDocumentUrl: row.mandate_document_url || "",
+    documentTitle: row.document_title || "",
+    documentStatus: row.document_status || "",
+    documentDetails: row.document_details || "",
+    documentFileUrl: row.document_file_url || "",
+    titleVerified: Boolean(row.title_verified),
+    ownerVerified: Boolean(row.owner_verified),
+    siteInspected: Boolean(row.site_inspected),
+    priceChecked: Boolean(row.price_checked),
+    legalReviewStatus: row.legal_review_status || "Not Reviewed",
+    verificationNotes: row.verification_notes || "",
+    imageUrl: row.image_url || "",
+    featured: Boolean(row.featured),
+    featuredRank: Number(row.featured_rank || 0),
+    createdAt: row.created_at,
   };
 }
 
-function getPriceBadgeClass(label: PriceIntelligence["label"]) {
-  if (label === "Opportunity") return "bg-emerald-50 text-emerald-700";
-  if (label === "Fair") return "bg-blue-50 text-blue-700";
-  if (label === "Premium") return "bg-[#fff7df] text-[#9b6b16]";
-  if (label === "High") return "bg-red-50 text-red-700";
-  if (label === "JV review") return "bg-purple-50 text-purple-700";
-
-  return "bg-slate-100 text-slate-600";
+function mapInvestorRow(row: any): InvestorRequest {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    budget: row.budget,
+    interest: row.interest,
+    message: row.message || "",
+    status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
+    createdAt: row.created_at,
+  };
 }
 
-type DueDiligenceCheck = {
-  label: string;
-  passed: boolean;
-  detail: string;
-  weight: number;
-};
-
-function getDueDiligenceChecks(item: Listing): DueDiligenceCheck[] {
-  const hasDocument = Boolean(item.documentTitle || item.documentName);
-  const hasOwnerContact = Boolean(item.ownerPhone || item.whatsapp);
-  const hasSizeDetail = Boolean(item.landSize || item.bedrooms || item.bathrooms);
-  const hasMedia = Boolean(item.imageUrl || (item.galleryUrls && item.galleryUrls.length > 0));
-
-  if (isJVListing(item)) {
-    return [
-      {
-        label: "JV structure described",
-        passed: Boolean(item.summary && item.summary.length > 80),
-        detail: "JV deals need a clear project structure, partner role, sharing formula, and execution path.",
-        weight: 18,
-      },
-      {
-        label: "Location stated",
-        passed: Boolean(item.location && item.state),
-        detail: "Location and state help buyers verify land demand, access, and development potential.",
-        weight: 12,
-      },
-      {
-        label: "Owner / agent verified",
-        passed: Boolean(item.ownerVerified),
-        detail: "A verified owner or mandate holder improves JV trust before negotiation.",
-        weight: 22,
-      },
-      {
-        label: "Document evidence",
-        passed: hasDocument,
-        detail: "JV should have title evidence, survey details, allocation proof, or legal basis.",
-        weight: 20,
-      },
-      {
-        label: "Direct contact available",
-        passed: hasOwnerContact,
-        detail: "Admin should have a reachable owner, agent, developer, or landowner contact.",
-        weight: 12,
-      },
-      {
-        label: "Media / site context",
-        passed: hasMedia,
-        detail: "Images or site context help early review before inspection.",
-        weight: 8,
-      },
-      {
-        label: "Admin valuation note",
-        passed: Boolean(item.valuationNote),
-        detail: "Admin valuation notes help explain why the JV may be attractive or risky.",
-        weight: 8,
-      },
-    ];
-  }
-
-  return [
-    {
-      label: "Listing verified",
-      passed: item.status === "Verified",
-      detail: "Admin has marked the listing as verified.",
-      weight: 15,
-    },
-    {
-      label: "Owner / agent verified",
-      passed: Boolean(item.ownerVerified),
-      detail: "Owner or agent identity has been reviewed by admin.",
-      weight: 20,
-    },
-    {
-      label: "Document evidence",
-      passed: hasDocument,
-      detail: "Title, survey, allocation, deed, C of O, or document preview is provided.",
-      weight: 18,
-    },
-    {
-      label: "Direct contact available",
-      passed: hasOwnerContact,
-      detail: "Phone or WhatsApp contact is available for traceable follow-up.",
-      weight: 12,
-    },
-    {
-      label: "Location and state clear",
-      passed: Boolean(item.location && item.state),
-      detail: "Clear location makes inspection and market checks easier.",
-      weight: 10,
-    },
-    {
-      label: "Property detail complete",
-      passed: hasSizeDetail,
-      detail: "Land size, bedrooms, bathrooms, or other size details are included.",
-      weight: 10,
-    },
-    {
-      label: "Images / gallery available",
-      passed: hasMedia,
-      detail: "Images help buyer screening before inspection.",
-      weight: 8,
-    },
-    {
-      label: "Admin valuation note",
-      passed: Boolean(item.valuationNote),
-      detail: "Admin note explains price, title, negotiation, or risk context.",
-      weight: 7,
-    },
-  ];
+function mapPropertyInquiryRow(row: any): PropertyInquiry {
+  return {
+    id: Number(row.id),
+    listingId: row.listing_id ? Number(row.listing_id) : null,
+    listingTitle: row.listing_title,
+    name: row.name,
+    email: row.email || "",
+    phone: row.phone,
+    message: row.message || "",
+    status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
+    createdAt: row.created_at,
+  };
 }
 
-function getDueDiligenceScore(item: Listing) {
-  const checks = getDueDiligenceChecks(item);
-  const possibleScore = checks.reduce((total, check) => total + check.weight, 0);
-  const passedScore = checks.reduce(
-    (total, check) => total + (check.passed ? check.weight : 0),
-    0
-  );
-
-  return possibleScore > 0 ? Math.round((passedScore / possibleScore) * 100) : 0;
+function mapPropertyViewRow(row: any): PropertyView {
+  return {
+    id: Number(row.id),
+    listingId: Number(row.listing_id),
+    listingTitle: row.listing_title,
+    viewedAt: row.viewed_at,
+  };
 }
 
-function getDueDiligenceLabel(score: number) {
-  if (score >= 85) return "Launch ready";
-  if (score >= 70) return "Strong";
-  if (score >= 50) return "Needs review";
-  return "High risk";
+function mapPropertyImageRow(row: any): PropertyImage {
+  return {
+    id: Number(row.id),
+    listingId: Number(row.listing_id),
+    imageUrl: row.image_url || "",
+    caption: row.caption || "",
+    displayOrder: Number(row.display_order || 0),
+    isMain: Boolean(row.is_main),
+    createdAt: row.created_at || "",
+  };
 }
 
-function getDueDiligenceBadgeClass(score: number) {
-  if (score >= 85) return "bg-emerald-50 text-emerald-700";
-  if (score >= 70) return "bg-blue-50 text-blue-700";
-  if (score >= 50) return "bg-[#fff7df] text-[#9b6b16]";
-  return "bg-red-50 text-red-700";
+function mapContactMessageRow(row: any): ContactMessage {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    email: row.email || "",
+    phone: row.phone || "",
+    subject: row.subject || "General enquiry",
+    message: row.message || "",
+    status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
+    createdAt: row.created_at,
+  };
 }
 
-type DocumentReadinessItem = {
-  label: string;
-  passed: boolean;
-  detail: string;
-};
-
-function getDocumentReadinessItems(item: Listing): DocumentReadinessItem[] {
-  const hasDocument = Boolean(item.documentTitle || item.documentName);
-  const hasOwner = Boolean(item.ownerName);
-  const hasContact = Boolean(item.ownerPhone || item.whatsapp);
-  const hasMedia = Boolean(item.imageUrl || (item.galleryUrls && item.galleryUrls.length > 0));
-  const hasVerificationNote = Boolean(item.ownerVerificationNote);
-  const hasValuationNote = Boolean(item.valuationNote);
-
-  if (isJVListing(item)) {
-    return [
-      {
-        label: "JV title evidence",
-        passed: hasDocument,
-        detail: "Provide title evidence, survey plan, allocation letter, deed, C of O, or other legal basis.",
-      },
-      {
-        label: "Landowner / mandate holder",
-        passed: hasOwner,
-        detail: "Provide the landowner, mandate holder, developer, or authorized representative name.",
-      },
-      {
-        label: "Direct contact",
-        passed: hasContact,
-        detail: "Provide a traceable phone or WhatsApp contact for JV negotiation and inspection planning.",
-      },
-      {
-        label: "Owner / agent verification",
-        passed: Boolean(item.ownerVerified),
-        detail: "Admin should confirm the owner, agent, developer, or mandate holder before serious negotiation.",
-      },
-      {
-        label: "JV valuation note",
-        passed: hasValuationNote,
-        detail: "Add admin note explaining land value, sharing formula, development potential, and key risk.",
-      },
-      {
-        label: "Site media",
-        passed: hasMedia,
-        detail: "Add photos or gallery images for location review before inspection.",
-      },
-    ];
-  }
-
-  return [
-    {
-      label: "Title / document evidence",
-      passed: hasDocument,
-      detail: "Add title, survey, deed, allocation, C of O, or document preview for buyer confidence.",
-    },
-    {
-      label: "Owner / agent name",
-      passed: hasOwner,
-      detail: "Add the owner, agent, developer, or authorized company representative name.",
-    },
-    {
-      label: "Direct contact",
-      passed: hasContact,
-      detail: "Add phone or WhatsApp contact for buyer enquiry and inspection follow-up.",
-    },
-    {
-      label: "Owner verification",
-      passed: Boolean(item.ownerVerified),
-      detail: "Verify the owner or agent profile from Admin before pushing the listing strongly.",
-    },
-    {
-      label: "Admin verification note",
-      passed: hasVerificationNote,
-      detail: "Add a short verification note explaining what was checked.",
-    },
-    {
-      label: "Valuation note",
-      passed: hasValuationNote,
-      detail: "Add admin price/valuation note for negotiation context.",
-    },
-    {
-      label: "Images / gallery",
-      passed: hasMedia,
-      detail: "Add a main image or gallery to improve buyer confidence.",
-    },
-  ];
+function mapInspectionBookingRow(row: any): InspectionBooking {
+  return {
+    id: Number(row.id),
+    listingId: row.listing_id ? Number(row.listing_id) : null,
+    listingTitle: row.listing_title,
+    name: row.name,
+    email: row.email || "",
+    phone: row.phone,
+    preferredDate: row.preferred_date || "",
+    preferredTime: row.preferred_time || "",
+    message: row.message || "",
+    status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
+    createdAt: row.created_at,
+  };
 }
 
-function getDocumentReadinessScore(item: Listing) {
-  const items = getDocumentReadinessItems(item);
-  const passed = items.filter((entry) => entry.passed).length;
-
-  return items.length > 0 ? Math.round((passed / items.length) * 100) : 0;
+function mapPropertyOfferRow(row: any): PropertyOffer {
+  return {
+    id: Number(row.id),
+    listingId: row.listing_id ? Number(row.listing_id) : null,
+    listingTitle: row.listing_title,
+    buyerName: row.buyer_name,
+    buyerEmail: row.buyer_email || "",
+    buyerPhone: row.buyer_phone,
+    offerAmount: row.offer_amount || "",
+    paymentPlan: row.payment_plan || "",
+    message: row.message || "",
+    status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
+    createdAt: row.created_at,
+  };
 }
 
-function getMissingDocumentItems(item: Listing) {
-  return getDocumentReadinessItems(item).filter((entry) => !entry.passed);
+function mapJVApplicationRow(row: any): JVApplication {
+  return {
+    id: Number(row.id),
+    listingId: row.listing_id ? Number(row.listing_id) : null,
+    listingTitle: row.listing_title,
+    applicantName: row.applicant_name,
+    applicantEmail: row.applicant_email || "",
+    applicantPhone: row.applicant_phone,
+    applicantRole: row.applicant_role || "Investor",
+    companyName: row.company_name || "",
+    budgetCapacity: row.budget_capacity || "",
+    experienceSummary: row.experience_summary || "",
+    proposalMessage: row.proposal_message || "",
+    companyProfileUrl: row.company_profile_url || "",
+    cacCertificateUrl: row.cac_certificate_url || "",
+    portfolioUrl: row.portfolio_url || "",
+    financialProofUrl: row.financial_proof_url || "",
+    proposalDocumentUrl: row.proposal_document_url || "",
+    otherDocumentUrl: row.other_document_url || "",
+    status: row.status || "New",
+    assignedToEmail: row.assigned_to_email || "",
+    staffNotes: row.staff_notes || "",
+    priority: row.priority || "Normal",
+    followUpDate: row.follow_up_date || "",
+    lastContactedAt: row.last_contacted_at || "",
+    experienceRating: Number(row.experience_rating || 0),
+    financialCapacityRating: Number(row.financial_capacity_rating || 0),
+    trackRecordRating: Number(row.track_record_rating || 0),
+    documentReviewStatus: row.document_review_status || "Not Reviewed",
+    riskLevel: row.risk_level || "Normal",
+    evaluationNotes: row.evaluation_notes || "",
+    evaluatedByEmail: row.evaluated_by_email || "",
+    evaluatedAt: row.evaluated_at || "",
+    createdAt: row.created_at,
+  };
 }
 
-function getDocumentReadinessLabel(score: number) {
-  if (score >= 90) return "Complete";
-  if (score >= 70) return "Strong";
-  if (score >= 45) return "Incomplete";
-  return "Critical";
+function mapStaffNotificationRow(row: any): StaffNotification {
+  return {
+    id: Number(row.id),
+    title: row.title,
+    message: row.message,
+    type: row.type || "General",
+    isRead: Boolean(row.is_read),
+    createdAt: row.created_at,
+  };
 }
 
-function getDocumentReadinessBadgeClass(score: number) {
-  if (score >= 90) return "bg-emerald-50 text-emerald-700";
-  if (score >= 70) return "bg-blue-50 text-blue-700";
-  if (score >= 45) return "bg-[#fff7df] text-[#9b6b16]";
-  return "bg-red-50 text-red-700";
+function mapAdminActivityLogRow(row: any): AdminActivityLog {
+  return {
+    id: Number(row.id),
+    adminEmail: row.admin_email || "Unknown staff",
+    action: row.action || "Activity",
+    targetType: row.target_type || "General",
+    targetId: row.target_id || "",
+    details: row.details || "",
+    createdAt: row.created_at,
+  };
 }
 
-function SiteStyles() {
-  return (
-    <style>{`
-      html {
-        scroll-behavior: smooth;
-      }
+function mapStaffMemberRow(row: any): StaffMember {
+  return {
+    email: row.email || "",
+    fullName: row.full_name || "",
+    role: (row.role || "Admin") as StaffRole,
+    isActive: Boolean(row.is_active),
+    createdAt: row.created_at || "",
+  };
+}
 
-      body {
-        overflow-x: hidden;
-        background: #f6f7fb;
-      }
+function listingToRow(listing: Omit<Listing, "id">) {
+  const isJV = isJointVentureListing(listing);
 
-      * {
-        box-sizing: border-box;
-      }
+  return {
+    title: listing.title,
+    location: listing.location,
+    state_name: listing.stateName || null,
+    city_area: listing.cityArea || null,
+    full_address: listing.fullAddress || null,
+    nearby_landmark: listing.nearbyLandmark || null,
+    google_map_link: listing.googleMapLink || null,
+    show_exact_address: Boolean(listing.showExactAddress),
+    video_url: listing.videoUrl || null,
+    virtual_tour_url: listing.virtualTourUrl || null,
+    drone_video_url: listing.droneVideoUrl || null,
+    show_video_publicly: listing.showVideoPublicly !== false,
+    price: listing.price,
+    value: listing.value,
+    agency_fee: listing.agencyFee || null,
+    legal_fee: listing.legalFee || null,
+    service_charge: listing.serviceCharge || null,
+    caution_fee: listing.cautionFee || null,
+    survey_fee: listing.surveyFee || null,
+    development_fee: listing.developmentFee || null,
+    total_estimated_cost: listing.totalEstimatedCost || calculateTotalEstimatedCost(listing),
+    payment_plan_available: Boolean(listing.paymentPlanAvailable),
+    installment_details: listing.installmentDetails || null,
+    bedrooms: isJV ? null : listing.bedrooms || null,
+    bathrooms: isJV ? null : listing.bathrooms || null,
+    toilets: isJV ? null : listing.toilets || null,
+    parking_spaces: isJV ? null : listing.parkingSpaces || null,
+    land_size: listing.landSize || null,
+    property_size: isJV ? null : listing.propertySize || null,
+    furnishing_status: isJV ? "Not Specified" : listing.furnishingStatus || "Not Specified",
+    property_condition: isJV ? "Not Specified" : listing.propertyCondition || "Not Specified",
+    amenities: isJV ? null : listing.amenities || null,
+    jv_structure: isJV ? listing.jvStructure || null : null,
+    jv_land_contribution: isJV ? listing.jvLandContribution || null : null,
+    jv_developer_requirement: isJV ? listing.jvDeveloperRequirement || null : null,
+    jv_investor_requirement: isJV ? listing.jvInvestorRequirement || null : null,
+    jv_sharing_formula: isJV ? listing.jvSharingFormula || null : null,
+    jv_project_stage: isJV ? listing.jvProjectStage || null : null,
+    jv_expected_units: isJV ? listing.jvExpectedUnits || null : null,
+    jv_estimated_project_cost: isJV ? listing.jvEstimatedProjectCost || null : null,
+    jv_completion_timeline: isJV ? listing.jvCompletionTimeline || null : null,
+    jv_terms: isJV ? listing.jvTerms || null : null,
+    jv_feasibility_study_url: isJV ? listing.jvFeasibilityStudyUrl || null : null,
+    jv_architectural_concept_url: isJV ? listing.jvArchitecturalConceptUrl || null : null,
+    jv_estate_layout_url: isJV ? listing.jvEstateLayoutUrl || null : null,
+    jv_boq_url: isJV ? listing.jvBoqUrl || null : null,
+    jv_proposal_document_url: isJV ? listing.jvProposalDocumentUrl || null : null,
+    jv_land_title_status: isJV ? listing.jvLandTitleStatus || "Not Reviewed" : null,
+    jv_development_approval_status: isJV ? listing.jvDevelopmentApprovalStatus || "Not Reviewed" : null,
+    jv_deal_status: isJV ? listing.jvDealStatus || "New JV" : null,
+    jv_next_action: isJV ? listing.jvNextAction || null : null,
+    jv_next_action_date: isJV ? listing.jvNextActionDate || null : null,
+    jv_internal_notes: isJV ? listing.jvInternalNotes || null : null,
+    neighborhood_overview: listing.neighborhoodOverview || null,
+    road_access: listing.roadAccess || null,
+    power_supply: listing.powerSupply || null,
+    water_supply: listing.waterSupply || null,
+    security_features: listing.securityFeatures || null,
+    nearby_schools: listing.nearbySchools || null,
+    nearby_hospitals: listing.nearbyHospitals || null,
+    nearby_malls: listing.nearbyMalls || null,
+    nearby_transport: listing.nearbyTransport || null,
+    distance_to_major_road: listing.distanceToMajorRoad || null,
+    estate_features: listing.estateFeatures || null,
+    type: listing.type,
+    category: listing.category,
+    yield_text: listing.yieldText,
+    description: listing.description,
+    status: listing.status,
+    availability_status: listing.availabilityStatus || "Available",
+    availability_note: listing.availabilityNote || null,
+    available_from: listing.availableFrom || null,
+    owner_name: listing.ownerName || null,
+    owner_phone: listing.ownerPhone || null,
+    contact_role: listing.contactRole || "Owner",
+    company_name: listing.companyName || null,
+    contact_email: listing.contactEmail || null,
+    contact_whatsapp: listing.contactWhatsapp || null,
+    contact_address: listing.contactAddress || null,
+    public_contact_visibility: listing.publicContactVisibility || "Hide Phone",
+    mandate_status: listing.mandateStatus || "Not Confirmed",
+    identity_type: listing.identityType || null,
+    identity_number: listing.identityNumber || null,
+    company_registration_number: listing.companyRegistrationNumber || null,
+    mandate_document_status: listing.mandateDocumentStatus || "Not Provided",
+    contact_profile_verified: Boolean(listing.contactProfileVerified),
+    contact_verification_notes: listing.contactVerificationNotes || null,
+    identity_document_url: listing.identityDocumentUrl || null,
+    cac_document_url: listing.cacDocumentUrl || null,
+    mandate_document_url: listing.mandateDocumentUrl || null,
+    document_title: listing.documentTitle || null,
+    document_status: listing.documentStatus || null,
+    document_details: listing.documentDetails || null,
+    document_file_url: listing.documentFileUrl || null,
+    title_verified: Boolean(listing.titleVerified),
+    owner_verified: Boolean(listing.ownerVerified),
+    site_inspected: Boolean(listing.siteInspected),
+    price_checked: Boolean(listing.priceChecked),
+    legal_review_status: listing.legalReviewStatus || "Not Reviewed",
+    verification_notes: listing.verificationNotes || null,
+    image_url: listing.imageUrl || null,
+    featured: Boolean(listing.featured),
+    featured_rank: Number(listing.featuredRank || 0),
+  };
+}
 
-      .inamaad-card {
-        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-      }
-
-      .inamaad-card:hover {
-        box-shadow: 0 28px 70px rgba(15, 23, 42, 0.14);
-      }
-
-      .property-card {
-        min-height: auto;
-      }
-
-      .property-card-summary {
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
-        overflow: hidden;
-      }
-
-      .mobile-bottom-nav {
-        display: none;
-      }
-
-      @media (max-width: 768px) {
-        input,
-        select,
-        textarea {
-          font-size: 16px !important;
-        }
-
-        .hero-title {
-          font-size: clamp(2.35rem, 11vw, 3.65rem) !important;
-          line-height: 0.98 !important;
-          letter-spacing: -0.055em !important;
-        }
-
-        .property-card {
-          border-radius: 1.1rem !important;
-        }
-
-        .property-card-body {
-          padding: 0.8rem !important;
-        }
-
-        .property-card h3 {
-          font-size: 1rem !important;
-          line-height: 1.15 !important;
-        }
-
-        .property-card p {
-          font-size: 0.78rem !important;
-        }
-
-        .property-card-summary {
-          -webkit-line-clamp: 2;
-          line-height: 1.45 !important;
-        }
-
-        .property-card-stat {
-          padding: 0.58rem !important;
-          border-radius: 0.8rem !important;
-        }
-
-        .mobile-bottom-nav {
-          position: fixed;
-          left: 0.7rem;
-          right: 0.7rem;
-          bottom: calc(0.7rem + env(safe-area-inset-bottom));
-          z-index: 80;
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 0.45rem;
-          border: 1px solid rgba(15, 23, 42, 0.1);
-          border-radius: 1.35rem;
-          background: rgba(255, 255, 255, 0.96);
-          padding: 0.5rem;
-          box-shadow: 0 22px 55px rgba(13, 28, 56, 0.24);
-          backdrop-filter: blur(18px);
-        }
-
-        .mobile-bottom-nav button {
-          min-height: 48px;
-          border-radius: 1rem;
-          background: #f8fafc;
-          color: #0d1c38;
-          font-size: 0.68rem;
-          font-weight: 900;
-          text-align: center;
-          padding: 0.45rem;
-        }
-
-        .mobile-bottom-nav .primary {
-          background: #0d1c38;
-          color: white;
-        }
-
-        .mobile-bottom-nav .gold {
-          background: #f0bf3c;
-          color: #0d1c38;
-        }
-      }
-    `}</style>
+function isListingVerificationComplete(listing: Listing | Omit<Listing, "id">) {
+  return Boolean(
+    listing.titleVerified &&
+      listing.ownerVerified &&
+      listing.siteInspected &&
+      listing.priceChecked &&
+      listing.legalReviewStatus === "Verified"
   );
 }
 
-function setOrCreateMetaTag(name: string, content: string, property = false) {
-  const attributeName = property ? "property" : "name";
-  let meta = document.head.querySelector<HTMLMetaElement>(
-    `meta[${attributeName}="${name}"]`
+function verificationSummary(listing: Listing | Omit<Listing, "id">) {
+  const completed = [
+    listing.titleVerified,
+    listing.ownerVerified,
+    listing.siteInspected,
+    listing.priceChecked,
+    listing.legalReviewStatus === "Verified",
+  ].filter(Boolean).length;
+
+  return `${completed}/5 checks complete`;
+}
+
+class InamaadErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; errorMessage: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, errorMessage: "" };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return {
+      hasError: true,
+      errorMessage: error?.message || "The app stopped unexpectedly.",
+    };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error("INAMAAD safe crash guard:", error);
+  }
+
+  resetApp = () => {
+    this.setState({ hasError: false, errorMessage: "" });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-[#0d1c38] px-4 py-10 text-white">
+          <div className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-white p-6 text-[#0d1c38] shadow-2xl">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#d39b19]">
+              INAMAAD protection
+            </p>
+            <h1 className="mt-3 text-2xl font-black">
+              The page was protected from a blank screen.
+            </h1>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              A temporary display error was caught before it could crash the whole website.
+            </p>
+            {this.state.errorMessage ? (
+              <p className="mt-3 rounded-2xl bg-red-50 p-3 text-xs font-semibold text-red-700">
+                {this.state.errorMessage}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              onClick={this.resetApp}
+              className="mt-5 rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#13284f]"
+            >
+              Reload safe view
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function InamaadMainApp() {
+  const [listings, setListings] = useState<Listing[]>(seedListings);
+  const [investorRequests, setInvestorRequests] = useState<InvestorRequest[]>(
+    []
   );
-
-  if (!meta) {
-    meta = document.createElement("meta");
-    meta.setAttribute(attributeName, name);
-    document.head.appendChild(meta);
-  }
-
-  meta.setAttribute("content", content);
-}
-
-function setOrCreateLinkTag(rel: string, href: string) {
-  let link = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
-
-  if (!link) {
-    link = document.createElement("link");
-    link.setAttribute("rel", rel);
-    document.head.appendChild(link);
-  }
-
-  link.setAttribute("href", href);
-}
-
-function installInamaadSeoMetadata() {
-  const siteTitle = "INAMAAD Real Estate | Verified Properties and JV Deals in Nigeria";
-  const siteDescription =
-    "Explore verified properties, joint venture opportunities, buyer concierge support, inspections, investor leads, and admin-ready real estate tools across Nigeria.";
-  const siteUrl = window.location.origin + window.location.pathname;
-
-  document.title = siteTitle;
-
-  setOrCreateMetaTag("description", siteDescription);
-  setOrCreateMetaTag("theme-color", "#0d1c38");
-  setOrCreateMetaTag("apple-mobile-web-app-capable", "yes");
-  setOrCreateMetaTag("apple-mobile-web-app-title", "INAMAAD");
-  setOrCreateMetaTag("application-name", "INAMAAD Real Estate");
-
-  setOrCreateMetaTag("og:title", siteTitle, true);
-  setOrCreateMetaTag("og:description", siteDescription, true);
-  setOrCreateMetaTag("og:type", "website", true);
-  setOrCreateMetaTag("og:url", siteUrl, true);
-  setOrCreateMetaTag("og:site_name", "INAMAAD Real Estate", true);
-
-  setOrCreateMetaTag("twitter:card", "summary_large_image");
-  setOrCreateMetaTag("twitter:title", siteTitle);
-  setOrCreateMetaTag("twitter:description", siteDescription);
-
-  setOrCreateLinkTag("canonical", siteUrl);
-
-  const schemaId = "inamaad-real-estate-schema";
-  let schema = document.getElementById(schemaId) as HTMLScriptElement | null;
-
-  if (!schema) {
-    schema = document.createElement("script");
-    schema.id = schemaId;
-    schema.type = "application/ld+json";
-    document.head.appendChild(schema);
-  }
-
-  schema.textContent = JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "RealEstateAgent",
-    name: "INAMAAD Real Estate",
-    url: siteUrl,
-    areaServed: "Nigeria",
-    description: siteDescription,
-    serviceType: [
-      "Verified property marketplace",
-      "Joint venture real estate deals",
-      "Property inspection booking",
-      "Investor lead management",
-      "Buyer concierge support",
-    ],
-  });
-}
-
-
-function InamaadApp() {
-  const [listings, setListings] = useState<Listing[]>(() => {
-    try {
-      const savedListings = localStorage.getItem("inamaad_listings");
-      return savedListings ? JSON.parse(savedListings) : INITIAL_LISTINGS;
-    } catch {
-      return INITIAL_LISTINGS;
-    }
-  });
-
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
-    try {
-      const savedUser = localStorage.getItem("inamaad_auth_user");
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const [leads, setLeads] = useState<Lead[]>(() => {
-    try {
-      const savedLeads = localStorage.getItem("inamaad_leads");
-      return savedLeads ? JSON.parse(savedLeads) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [inspections, setInspections] = useState<Inspection[]>(() => {
-    try {
-      const savedInspections = localStorage.getItem("inamaad_inspections");
-      return savedInspections ? JSON.parse(savedInspections) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
-    try {
-      const savedLogs = localStorage.getItem("inamaad_activity_logs");
-      return savedLogs ? JSON.parse(savedLogs) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [adminTasks, setAdminTasks] = useState<AdminTask[]>(() => {
-    try {
-      const savedTasks = localStorage.getItem("inamaad_admin_tasks");
-      return savedTasks ? JSON.parse(savedTasks) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [keyword, setKeyword] = useState("");
-  const [selectedState, setSelectedState] = useState("");
-  const [type, setType] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [sortMode, setSortMode] = useState("newest");
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [propertyInquiries, setPropertyInquiries] = useState<PropertyInquiry[]>(
+    []
+  );
+  const [propertyViews, setPropertyViews] = useState<PropertyView[]>([]);
+  const [propertyImages, setPropertyImages] = useState<PropertyImage[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+  const [inspectionBookings, setInspectionBookings] = useState<InspectionBooking[]>([]);
+  const [propertyOffers, setPropertyOffers] = useState<PropertyOffer[]>([]);
+  const [jvApplications, setJvApplications] = useState<JVApplication[]>([]);
+  const [staffNotifications, setStaffNotifications] = useState<StaffNotification[]>([]);
+  const [adminActivityLogs, setAdminActivityLogs] = useState<AdminActivityLog[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [modal, setModal] = useState<ModalType>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
-  const [savedListingIds, setSavedListingIds] = useState<number[]>(() => {
-    try {
-      const savedIds = localStorage.getItem("inamaad_saved_listing_ids");
-      return savedIds ? JSON.parse(savedIds) : [];
-    } catch {
-      return [];
-    }
+  const [editingListing, setEditingListing] = useState<Listing | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [propertyType, setPropertyType] = useState("All");
+  const [listingPurpose, setListingPurpose] = useState("All Purposes");
+  const [availabilityFilter, setAvailabilityFilter] = useState("All Availability");
+  const [locationFilter, setLocationFilter] = useState("All Locations");
+  const [minValueFilter, setMinValueFilter] = useState("");
+  const [maxValueFilter, setMaxValueFilter] = useState("");
+  const [sortMode, setSortMode] = useState("Newest");
+  const [calculatorForm, setCalculatorForm] = useState({
+    purchasePrice: "150000000",
+    annualRent: "12000000",
+    annualGrowth: "12",
+    holdingYears: "5",
   });
-  const [listingViews, setListingViews] = useState<Record<number, number>>(() => {
-    try {
-      const savedViews = localStorage.getItem("inamaad_listing_views");
-      return savedViews ? JSON.parse(savedViews) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
+  const autoRefreshTimerRef = useRef<number | null>(null);
+  const [sharedListingOpened, setSharedListingOpened] = useState(false);
   const [recentListingIds, setRecentListingIds] = useState<number[]>(() => {
     try {
-      const savedRecent = localStorage.getItem("inamaad_recent_listing_ids");
-      return savedRecent ? JSON.parse(savedRecent) : [];
+      const savedIds = JSON.parse(localStorage.getItem("inamaad_recent_listing_ids") || "[]");
+      return Array.isArray(savedIds)
+        ? savedIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)).slice(0, 6)
+        : [];
     } catch {
       return [];
     }
   });
 
-  const [compareListingIds, setCompareListingIds] = useState<number[]>(() => {
-    try {
-      const savedCompare = localStorage.getItem("inamaad_compare_listing_ids");
-      return savedCompare ? JSON.parse(savedCompare) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [adminListingSearch, setAdminListingSearch] = useState("");
-  const [adminListingStatusFilter, setAdminListingStatusFilter] = useState("all");
-  const [expandedListingId, setExpandedListingId] = useState<number | null>(null);
-  const [modal, setModal] = useState<ModalType>(null);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
+  const [user, setUser] = useState<User | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
-  const [adminTaskForm, setAdminTaskForm] = useState({
-    title: "",
-    assignee: "Admin",
-    dueDate: "",
-    priority: "Medium" as AdminTask["priority"],
-    note: "",
-  });
-  const [commissionRate, setCommissionRate] = useState(() => {
-    try {
-      return localStorage.getItem("inamaad_commission_rate") || "3";
-    } catch {
-      return "3";
-    }
-  });
-  const [expectedConversionRate, setExpectedConversionRate] = useState(() => {
-    try {
-      return localStorage.getItem("inamaad_expected_conversion_rate") || "12";
-    } catch {
-      return "12";
-    }
-  });
-  const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState(() => {
-    try {
-      return localStorage.getItem("inamaad_privacy_notice_accepted") === "yes";
-    } catch {
-      return false;
-    }
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [staffForm, setStaffForm] = useState({
+    email: "",
+    fullName: "",
+    role: "Agent" as StaffRole,
   });
 
-  const [loginForm, setLoginForm] = useState({
+  const [signInForm, setSignInForm] = useState({
     email: "",
     password: "",
   });
@@ -1040,7830 +1653,10646 @@ function InamaadApp() {
     name: "",
     email: "",
     password: "",
-    role: "Investor",
   });
 
-  const [forgotEmail, setForgotEmail] = useState("");
+  const [postForm, setPostForm] = useState({
+    title: "",
+    location: "",
+    stateName: "FCT Abuja",
+    cityArea: "",
+    fullAddress: "",
+    nearbyLandmark: "",
+    googleMapLink: "",
+    showExactAddress: false,
+    videoUrl: "",
+    virtualTourUrl: "",
+    droneVideoUrl: "",
+    showVideoPublicly: true,
+    price: "",
+    agencyFee: "",
+    legalFee: "",
+    serviceCharge: "",
+    cautionFee: "",
+    surveyFee: "",
+    developmentFee: "",
+    totalEstimatedCost: "",
+    paymentPlanAvailable: false,
+    installmentDetails: "",
+    bedrooms: "",
+    bathrooms: "",
+    toilets: "",
+    parkingSpaces: "",
+    landSize: "",
+    propertySize: "",
+    furnishingStatus: "Not Specified",
+    propertyCondition: "Not Specified",
+    amenities: "",
+    jvStructure: "Landowner + Developer JV",
+    jvLandContribution: "",
+    jvDeveloperRequirement: "",
+    jvInvestorRequirement: "",
+    jvSharingFormula: "",
+    jvProjectStage: "Land Available",
+    jvExpectedUnits: "",
+    jvEstimatedProjectCost: "",
+    jvCompletionTimeline: "",
+    jvTerms: "",
+    jvFeasibilityStudyUrl: "",
+    jvArchitecturalConceptUrl: "",
+    jvEstateLayoutUrl: "",
+    jvBoqUrl: "",
+    jvProposalDocumentUrl: "",
+    jvLandTitleStatus: "Not Reviewed",
+    jvDevelopmentApprovalStatus: "Not Reviewed",
+    jvDealStatus: "New JV" as JVDealStatus,
+    jvNextAction: "",
+    jvNextActionDate: "",
+    jvInternalNotes: "",
+    neighborhoodOverview: "",
+    roadAccess: "",
+    powerSupply: "",
+    waterSupply: "",
+    securityFeatures: "",
+    nearbySchools: "",
+    nearbyHospitals: "",
+    nearbyMalls: "",
+    nearbyTransport: "",
+    distanceToMajorRoad: "",
+    estateFeatures: "",
+    type: "Residential",
+    category: "For Sale",
+    availabilityStatus: "Available" as AvailabilityStatus,
+    availabilityNote: "",
+    availableFrom: "",
+    yieldText: "",
+    description: "",
+    documentTitle: "C of O / Certificate of Occupancy",
+    documentStatus: "Available",
+    documentDetails: "",
+    documentFileUrl: "",
+    ownerName: "",
+    ownerPhone: "",
+    contactRole: "Owner",
+    companyName: "",
+    contactEmail: "",
+    contactWhatsapp: "",
+    contactAddress: "",
+    publicContactVisibility: "Hide Phone",
+    mandateStatus: "Not Confirmed",
+    identityType: "Not Provided",
+    identityNumber: "",
+    companyRegistrationNumber: "",
+    mandateDocumentStatus: "Not Provided",
+    contactProfileVerified: false,
+    contactVerificationNotes: "",
+    identityDocumentUrl: "",
+    cacDocumentUrl: "",
+    mandateDocumentUrl: "",
+  });
 
-  const [leadForm, setLeadForm] = useState({
-    listingId: 0,
-    listingTitle: "",
+  const [postMode, setPostMode] = useState<"property" | "jv">("property");
+  const [postFormRenderKey, setPostFormRenderKey] = useState(0);
+  const postFormIsJointVenture = postMode === "jv";
+
+  const [postImageFile, setPostImageFile] = useState<File | null>(null);
+  const [postGalleryFiles, setPostGalleryFiles] = useState<File[]>([]);
+  const [postDocumentFile, setPostDocumentFile] = useState<File | null>(null);
+
+  const [editForm, setEditForm] = useState({
+    title: "",
+    location: "",
+    stateName: "FCT Abuja",
+    cityArea: "",
+    fullAddress: "",
+    nearbyLandmark: "",
+    googleMapLink: "",
+    showExactAddress: false,
+    videoUrl: "",
+    virtualTourUrl: "",
+    droneVideoUrl: "",
+    showVideoPublicly: true,
+    price: "",
+    agencyFee: "",
+    legalFee: "",
+    serviceCharge: "",
+    cautionFee: "",
+    surveyFee: "",
+    developmentFee: "",
+    totalEstimatedCost: "",
+    paymentPlanAvailable: false,
+    installmentDetails: "",
+    bedrooms: "",
+    bathrooms: "",
+    toilets: "",
+    parkingSpaces: "",
+    landSize: "",
+    propertySize: "",
+    furnishingStatus: "Not Specified",
+    propertyCondition: "Not Specified",
+    amenities: "",
+    jvStructure: "Landowner + Developer JV",
+    jvLandContribution: "",
+    jvDeveloperRequirement: "",
+    jvInvestorRequirement: "",
+    jvSharingFormula: "",
+    jvProjectStage: "Land Available",
+    jvExpectedUnits: "",
+    jvEstimatedProjectCost: "",
+    jvCompletionTimeline: "",
+    jvTerms: "",
+    jvFeasibilityStudyUrl: "",
+    jvArchitecturalConceptUrl: "",
+    jvEstateLayoutUrl: "",
+    jvBoqUrl: "",
+    jvProposalDocumentUrl: "",
+    jvLandTitleStatus: "Not Reviewed",
+    jvDevelopmentApprovalStatus: "Not Reviewed",
+    jvDealStatus: "New JV" as JVDealStatus,
+    jvNextAction: "",
+    jvNextActionDate: "",
+    jvInternalNotes: "",
+    neighborhoodOverview: "",
+    roadAccess: "",
+    powerSupply: "",
+    waterSupply: "",
+    securityFeatures: "",
+    nearbySchools: "",
+    nearbyHospitals: "",
+    nearbyMalls: "",
+    nearbyTransport: "",
+    distanceToMajorRoad: "",
+    estateFeatures: "",
+    type: "Residential",
+    category: "For Sale",
+    availabilityStatus: "Available" as AvailabilityStatus,
+    availabilityNote: "",
+    availableFrom: "",
+    yieldText: "",
+    description: "",
+    documentTitle: "C of O / Certificate of Occupancy",
+    documentStatus: "Available",
+    documentDetails: "",
+    documentFileUrl: "",
+    titleVerified: false,
+    ownerVerified: false,
+    siteInspected: false,
+    priceChecked: false,
+    legalReviewStatus: "Not Reviewed",
+    verificationNotes: "",
+    status: "Verified" as ListingStatus,
+    ownerName: "",
+    ownerPhone: "",
+    contactRole: "Owner",
+    companyName: "",
+    contactEmail: "",
+    contactWhatsapp: "",
+    contactAddress: "",
+    publicContactVisibility: "Hide Phone",
+    mandateStatus: "Not Confirmed",
+    identityType: "Not Provided",
+    identityNumber: "",
+    companyRegistrationNumber: "",
+    mandateDocumentStatus: "Not Provided",
+    contactProfileVerified: false,
+    contactVerificationNotes: "",
+    identityDocumentUrl: "",
+    cacDocumentUrl: "",
+    mandateDocumentUrl: "",
+    imageUrl: "",
+    featured: false,
+    featuredRank: "0",
+  });
+
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editGalleryFiles, setEditGalleryFiles] = useState<File[]>([]);
+  const [editDocumentFile, setEditDocumentFile] = useState<File | null>(null);
+  const [editIdentityDocumentFile, setEditIdentityDocumentFile] = useState<File | null>(null);
+  const [editCacDocumentFile, setEditCacDocumentFile] = useState<File | null>(null);
+  const [editMandateDocumentFile, setEditMandateDocumentFile] = useState<File | null>(null);
+  const [editJvFeasibilityStudyFile, setEditJvFeasibilityStudyFile] = useState<File | null>(null);
+  const [editJvArchitecturalConceptFile, setEditJvArchitecturalConceptFile] = useState<File | null>(null);
+  const [editJvEstateLayoutFile, setEditJvEstateLayoutFile] = useState<File | null>(null);
+  const [editJvBoqFile, setEditJvBoqFile] = useState<File | null>(null);
+  const [editJvProposalDocumentFile, setEditJvProposalDocumentFile] = useState<File | null>(null);
+
+  const [investorForm, setInvestorForm] = useState({
     name: "",
     email: "",
     phone: "",
     budget: "",
+    interest: "Residential",
+    message: "",
+  });
+
+  const [inquiryForm, setInquiryForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: "",
+  });
+
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subject: "",
     message: "",
   });
 
   const [inspectionForm, setInspectionForm] = useState({
-    listingId: 0,
-    listingTitle: "",
     name: "",
     email: "",
     phone: "",
     preferredDate: "",
     preferredTime: "",
-    note: "",
-  });
-
-  const [conciergeForm, setConciergeForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    budget: "",
-    location: "",
-    propertyType: "",
-    timeline: "",
     message: "",
   });
 
-  const [newListing, setNewListing] = useState({
-    title: "",
-    location: "",
-    state: "",
-    price: "",
-    typeValue: "residential",
-    roi: "",
-    summary: "",
-    bedrooms: "",
-    bathrooms: "",
-    landSize: "",
-    documentTitle: "",
-    ownerName: "",
-    ownerRole: "Owner",
-    ownerPhone: "",
-    whatsapp: "",
-    ownerVerificationNote: "",
-    imageUrl: "",
-    galleryUrls: [] as string[],
-    documentName: "",
-    documentDataUrl: "",
-    documentMimeType: "",
+  const [offerForm, setOfferForm] = useState({
+    buyerName: "",
+    buyerEmail: "",
+    buyerPhone: "",
+    offerAmount: "",
+    paymentPlan: "Full payment",
+    message: "",
   });
 
-  const [editingListingId, setEditingListingId] = useState<number | null>(null);
-  const [editListingForm, setEditListingForm] = useState({
-    title: "",
-    location: "",
-    state: "",
-    price: "",
-    typeValue: "residential",
-    roi: "",
-    status: "Pending review",
-    summary: "",
-    bedrooms: "",
-    bathrooms: "",
-    landSize: "",
-    documentTitle: "",
-    ownerName: "",
-    ownerRole: "Owner",
-    ownerPhone: "",
-    whatsapp: "",
-    ownerVerified: false,
-    ownerVerificationNote: "",
-    valuationNote: "",
+  const [jvApplicationForm, setJvApplicationForm] = useState({
+    applicantName: "",
+    applicantEmail: "",
+    applicantPhone: "",
+    applicantRole: "Developer",
+    companyName: "",
+    budgetCapacity: "",
+    experienceSummary: "",
+    proposalMessage: "",
   });
 
-  useEffect(() => {
-    installInamaadSeoMetadata();
-  }, []);
+  const [jvCompanyProfileFile, setJvCompanyProfileFile] = useState<File | null>(null);
+  const [jvCacCertificateFile, setJvCacCertificateFile] = useState<File | null>(null);
+  const [jvPortfolioFile, setJvPortfolioFile] = useState<File | null>(null);
+  const [jvFinancialProofFile, setJvFinancialProofFile] = useState<File | null>(null);
+  const [jvProposalDocumentFile, setJvProposalDocumentFile] = useState<File | null>(null);
+  const [jvOtherDocumentFile, setJvOtherDocumentFile] = useState<File | null>(null);
 
-  useEffect(() => {
-    localStorage.setItem("inamaad_listings", JSON.stringify(listings));
-  }, [listings]);
+  const usesDatabase = Boolean(supabase);
 
-  useEffect(() => {
-    localStorage.setItem("inamaad_saved_listing_ids", JSON.stringify(savedListingIds));
-  }, [savedListingIds]);
+  const pendingListings = listings.filter(
+    (listing) => listing.status === "Pending Review"
+  );
 
-  useEffect(() => {
-    localStorage.setItem("inamaad_listing_views", JSON.stringify(listingViews));
-  }, [listingViews]);
+  const verifiedListings = listings.filter(
+    (listing) => listing.status === "Verified"
+  );
+
+  const totalPropertyValue = listings.reduce(
+    (total, listing) => total + Number(listing.value || 0),
+    0
+  );
+
+  const verifiedPropertyValue = verifiedListings.reduce(
+    (total, listing) => total + Number(listing.value || 0),
+    0
+  );
+
+  const totalLeads = investorRequests.length + propertyInquiries.length + propertyOffers.length + jvApplications.length + contactMessages.length + inspectionBookings.length;
+  const conversionReadyLeads = propertyInquiries.length + propertyOffers.length + jvApplications.length + contactMessages.length + inspectionBookings.length;
+  const unreadNotifications = staffNotifications.filter((notification) => !notification.isRead).length;
+  const currentStaffMember = staffMembers.find((member) => member.email === user?.email);
+  const currentStaffRole: StaffRole = usesDatabase
+    ? currentStaffMember?.role || "Viewer"
+    : "Super Admin";
+  const hasAnyStaffRole = (allowedRoles: StaffRole[]) =>
+    !usesDatabase || allowedRoles.includes(currentStaffRole);
+
+  const isSuperAdmin = hasAnyStaffRole(["Super Admin"]);
+  const canManageStaff = hasAnyStaffRole(["Super Admin"]);
+  const canEditListings = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
+  const canApproveListings = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
+  const canDeleteListings = hasAnyStaffRole(["Super Admin", "Admin"]);
+  const canManageLeads = hasAnyStaffRole(["Super Admin", "Admin", "Manager", "Agent"]);
+  const canDeleteLeads = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
+  const canOpenDocuments = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
+  const canExportReports = hasAnyStaffRole(["Super Admin", "Admin", "Manager"]);
+  const assignableStaffMembers = staffMembers.filter(
+    (member) => member.isActive && member.role !== "Viewer"
+  );
+  const activeStaffCount = staffMembers.filter((member) => member.isActive).length;
+  const todayKey = new Date().toISOString().slice(0, 10);
+
+  const leadFollowUpItems = useMemo(() => {
+    const items = [
+      ...propertyInquiries.map((inquiry) => ({
+        id: inquiry.id,
+        kind: "property_inquiries" as LeadKind,
+        source: "Property inquiry",
+        title: inquiry.listingTitle,
+        name: inquiry.name,
+        phone: inquiry.phone,
+        email: inquiry.email,
+        status: inquiry.status || "New",
+        priority: inquiry.priority || "Normal",
+        followUpDate: inquiry.followUpDate || "",
+        lastContactedAt: inquiry.lastContactedAt || "",
+        assignedToEmail: inquiry.assignedToEmail || "",
+        createdAt: inquiry.createdAt,
+      })),
+      ...propertyOffers.map((offer) => ({
+        id: offer.id,
+        kind: "property_offers" as LeadKind,
+        source: "Property offer",
+        title: offer.listingTitle,
+        name: offer.buyerName,
+        phone: offer.buyerPhone,
+        email: offer.buyerEmail,
+        status: offer.status || "New",
+        priority: offer.priority || "Normal",
+        followUpDate: offer.followUpDate || "",
+        lastContactedAt: offer.lastContactedAt || "",
+        assignedToEmail: offer.assignedToEmail || "",
+        createdAt: offer.createdAt,
+      })),
+      ...jvApplications.map((application) => ({
+        id: application.id,
+        kind: "jv_applications" as LeadKind,
+        source: "JV application",
+        title: application.listingTitle,
+        name: application.applicantName,
+        phone: application.applicantPhone,
+        email: application.applicantEmail,
+        status: application.status || "New",
+        priority: application.priority || "Normal",
+        followUpDate: application.followUpDate || "",
+        lastContactedAt: application.lastContactedAt || "",
+        assignedToEmail: application.assignedToEmail || "",
+        createdAt: application.createdAt,
+      })),
+      ...inspectionBookings.map((booking) => ({
+        id: booking.id,
+        kind: "inspection_bookings" as LeadKind,
+        source: "Inspection booking",
+        title: booking.listingTitle,
+        name: booking.name,
+        phone: booking.phone,
+        email: booking.email,
+        status: booking.status || "New",
+        priority: booking.priority || "Normal",
+        followUpDate: booking.followUpDate || "",
+        lastContactedAt: booking.lastContactedAt || "",
+        assignedToEmail: booking.assignedToEmail || "",
+        createdAt: booking.createdAt,
+      })),
+      ...contactMessages.map((message) => ({
+        id: message.id,
+        kind: "contact_messages" as LeadKind,
+        source: "Contact message",
+        title: message.subject || "General enquiry",
+        name: message.name,
+        phone: message.phone,
+        email: message.email,
+        status: message.status || "New",
+        priority: message.priority || "Normal",
+        followUpDate: message.followUpDate || "",
+        lastContactedAt: message.lastContactedAt || "",
+        assignedToEmail: message.assignedToEmail || "",
+        createdAt: message.createdAt,
+      })),
+      ...investorRequests.map((request) => ({
+        id: request.id,
+        kind: "investor_requests" as LeadKind,
+        source: "Investor request",
+        title: request.interest,
+        name: request.name,
+        phone: request.phone,
+        email: request.email,
+        status: request.status || "New",
+        priority: request.priority || "Normal",
+        followUpDate: request.followUpDate || "",
+        lastContactedAt: request.lastContactedAt || "",
+        assignedToEmail: request.assignedToEmail || "",
+        createdAt: request.createdAt,
+      })),
+    ];
+
+    return items
+      .filter((item) => item.status !== "Closed" && item.status !== "Completed" && item.status !== "Cancelled")
+      .sort((first, second) => {
+        const priorityOrder: Record<LeadPriority, number> = {
+          Urgent: 4,
+          High: 3,
+          Normal: 2,
+          Low: 1,
+        };
+
+        const firstDate = first.followUpDate || "9999-12-31";
+        const secondDate = second.followUpDate || "9999-12-31";
+
+        if (firstDate !== secondDate) return firstDate.localeCompare(secondDate);
+
+        return priorityOrder[second.priority] - priorityOrder[first.priority];
+      });
+  }, [propertyInquiries, propertyOffers, jvApplications, inspectionBookings, contactMessages, investorRequests]);
+
+  const overdueFollowUps = leadFollowUpItems.filter(
+    (item) => item.followUpDate && item.followUpDate < todayKey
+  );
+  const todayFollowUps = leadFollowUpItems.filter(
+    (item) => item.followUpDate === todayKey
+  );
+  const urgentFollowUps = leadFollowUpItems.filter(
+    (item) => item.priority === "Urgent" || item.priority === "High"
+  );
+  const unassignedLeads = leadFollowUpItems.filter(
+    (item) => !item.assignedToEmail
+  );
+  const nextFollowUps = leadFollowUpItems.filter(
+    (item) => item.followUpDate && item.followUpDate >= todayKey
+  );
+
+  const [topLocation, topLocationCount] = getTopCount(
+    listings.map((listing) => listing.location.split(",")[0]?.trim() || listing.location)
+  );
+  const [topType, topTypeCount] = getTopCount(
+    listings.map((listing) => listing.type)
+  );
+
+  const totalPropertyViews = propertyViews.length;
+  const [mostViewedProperty, mostViewedPropertyCount] = getTopCount(
+    propertyViews.map((view) => view.listingTitle)
+  );
+  const viewCountByListingId = useMemo(() => {
+    return propertyViews.reduce<Record<number, number>>((counts, view) => {
+      counts[view.listingId] = (counts[view.listingId] || 0) + 1;
+      return counts;
+    }, {});
+  }, [propertyViews]);
+  const topViewedListings = useMemo(() => {
+    return [...listings]
+      .map((listing) => ({
+        ...listing,
+        views: viewCountByListingId[listing.id] || 0,
+      }))
+      .sort((first, second) => second.views - first.views)
+      .slice(0, 5);
+  }, [listings, viewCountByListingId]);
+
+  const propertyImagesByListingId = useMemo(() => {
+    return propertyImages.reduce<Record<number, PropertyImage[]>>((groups, image) => {
+      groups[image.listingId] = groups[image.listingId] || [];
+      groups[image.listingId].push(image);
+      groups[image.listingId].sort((first, second) => Number(first.displayOrder || 0) - Number(second.displayOrder || 0));
+      return groups;
+    }, {});
+  }, [propertyImages]);
+
+  function getListingGalleryImages(listing: Listing | null | undefined) {
+    if (!listing) return [] as string[];
+
+    const galleryUrls = (propertyImagesByListingId[listing.id] || [])
+      .map((image) => image.imageUrl)
+      .filter(Boolean);
+
+    return Array.from(new Set([listing.imageUrl, ...galleryUrls].filter(Boolean) as string[]));
+  }
+
+  const calculatorPurchasePrice = Number(calculatorForm.purchasePrice || 0);
+  const calculatorAnnualRent = Number(calculatorForm.annualRent || 0);
+  const calculatorGrowthRate = Number(calculatorForm.annualGrowth || 0) / 100;
+  const calculatorYears = Math.max(Number(calculatorForm.holdingYears || 0), 0);
+  const calculatorFutureValue = calculatorPurchasePrice > 0
+    ? Math.round(calculatorPurchasePrice * Math.pow(1 + calculatorGrowthRate, calculatorYears))
+    : 0;
+  const calculatorTotalRent = Math.round(calculatorAnnualRent * calculatorYears);
+  const calculatorEstimatedGain = Math.max(calculatorFutureValue - calculatorPurchasePrice, 0);
+  const calculatorTotalReturn = calculatorEstimatedGain + calculatorTotalRent;
+  const calculatorRoi = calculatorPurchasePrice > 0
+    ? Math.round((calculatorTotalReturn / calculatorPurchasePrice) * 100)
+    : 0;
+
+  const filteredListings = useMemo(() => {
+    const minValue = Number(minValueFilter || 0);
+    const maxValue = Number(maxValueFilter || 0);
+
+    return listings
+      .filter((listing) => {
+        if (listing.status !== "Verified") return false;
+
+        const searchText =
+          `${listing.title} ${listing.location} ${listing.type} ${listing.category} ${listing.availabilityStatus || ""} ${listing.documentTitle || ""} ${listing.documentStatus || ""}`.toLowerCase();
+
+        const matchesSearch = searchText.includes(query.toLowerCase());
+
+        const matchesType =
+          propertyType === "All" || listing.type === propertyType;
+
+        const matchesPurpose =
+          listingPurpose === "All Purposes" || listing.category === listingPurpose;
+
+        const matchesAvailability =
+          availabilityFilter === "All Availability" ||
+          (listing.availabilityStatus || "Available") === availabilityFilter;
+
+        const matchesLocation =
+          locationFilter === "All Locations" ||
+          listing.location.toLowerCase().includes(locationFilter.toLowerCase());
+
+        const matchesMinValue = !minValueFilter || Number(listing.value || 0) >= minValue;
+        const matchesMaxValue = !maxValueFilter || Number(listing.value || 0) <= maxValue;
+
+        return (
+          matchesSearch &&
+          matchesType &&
+          matchesPurpose &&
+          matchesAvailability &&
+          matchesLocation &&
+          matchesMinValue &&
+          matchesMaxValue
+        );
+      })
+      .sort((a, b) => {
+        if (Boolean(a.featured) !== Boolean(b.featured)) {
+          return Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+        }
+
+        if (Boolean(a.featured) && Boolean(b.featured)) {
+          const rankDifference = Number(b.featuredRank || 0) - Number(a.featuredRank || 0);
+          if (rankDifference !== 0) return rankDifference;
+        }
+
+        if (sortMode === "Price High to Low") {
+          return Number(b.value || 0) - Number(a.value || 0);
+        }
+
+        if (sortMode === "Price Low to High") {
+          return Number(a.value || 0) - Number(b.value || 0);
+        }
+
+        if (sortMode === "Title A-Z") {
+          return a.title.localeCompare(b.title);
+        }
+
+        return (
+          new Date(b.createdAt || "").getTime() -
+          new Date(a.createdAt || "").getTime()
+        );
+      });
+  }, [
+    listings,
+    query,
+    propertyType,
+    listingPurpose,
+    availabilityFilter,
+    locationFilter,
+    minValueFilter,
+    maxValueFilter,
+    sortMode,
+  ]);
+
+  const recentlyViewedListings = useMemo(
+    () =>
+      recentListingIds
+        .map((id) => listings.find((listing) => Number(listing.id) === Number(id)))
+        .filter((listing): listing is Listing => Boolean(listing)),
+    [recentListingIds, listings]
+  );
 
   useEffect(() => {
     localStorage.setItem("inamaad_recent_listing_ids", JSON.stringify(recentListingIds));
   }, [recentListingIds]);
 
   useEffect(() => {
-    localStorage.setItem("inamaad_compare_listing_ids", JSON.stringify(compareListingIds));
-  }, [compareListingIds]);
-
-  useEffect(() => {
-    localStorage.setItem("inamaad_leads", JSON.stringify(leads));
-  }, [leads]);
-
-  useEffect(() => {
-    localStorage.setItem("inamaad_inspections", JSON.stringify(inspections));
-  }, [inspections]);
-
-  useEffect(() => {
-    localStorage.setItem("inamaad_activity_logs", JSON.stringify(activityLogs));
-  }, [activityLogs]);
-
-  useEffect(() => {
-    localStorage.setItem("inamaad_admin_tasks", JSON.stringify(adminTasks));
-  }, [adminTasks]);
-
-  useEffect(() => {
-    localStorage.setItem("inamaad_commission_rate", commissionRate);
-  }, [commissionRate]);
-
-  useEffect(() => {
-    localStorage.setItem("inamaad_expected_conversion_rate", expectedConversionRate);
-  }, [expectedConversionRate]);
-
-  useEffect(() => {
-    if (authUser) {
-      localStorage.setItem("inamaad_auth_user", JSON.stringify(authUser));
-    } else {
-      localStorage.removeItem("inamaad_auth_user");
+    if (!supabase) {
+      loadLocalData();
+      return;
     }
-  }, [authUser]);
 
-  const propertyListings = useMemo(
-    () => listings.filter((item) => !isJVListing(item)),
-    [listings]
-  );
+    loadDatabaseListings();
+    loadDatabasePropertyImages();
 
-  const jvListings = useMemo(() => {
-    const postedJV = listings.filter((item) => isJVListing(item));
-    const staticIds = new Set(postedJV.map((item) => item.id));
-    return [...postedJV, ...STATIC_JV_DEALS.filter((item) => !staticIds.has(item.id))];
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      if (data.user) {
+        checkAdminAccess();
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+        if (!session?.user) {
+          setAdminUnlocked(false);
+          setInvestorRequests([]);
+          setPropertyInquiries([]);
+          setPropertyViews([]);
+          setPropertyImages([]);
+          setContactMessages([]);
+          setInspectionBookings([]);
+          setStaffNotifications([]);
+          setAdminActivityLogs([]);
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase || !user) return;
+    checkAdminAccess();
+  }, [user]);
+
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_listings", JSON.stringify(listings));
   }, [listings]);
 
-  const savedListings = useMemo(
-    () => listings.filter((item) => savedListingIds.includes(item.id)),
-    [listings, savedListingIds]
-  );
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem(
+      "inamaad_investor_requests",
+      JSON.stringify(investorRequests)
+    );
+  }, [investorRequests]);
 
-  const recentlyViewedListings = useMemo(
-    () =>
-      recentListingIds
-        .map((id) => listings.find((item) => item.id === id))
-        .filter((item): item is Listing => Boolean(item)),
-    [listings, recentListingIds]
-  );
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem(
+      "inamaad_property_inquiries",
+      JSON.stringify(propertyInquiries)
+    );
+  }, [propertyInquiries]);
 
-  const compareListings = useMemo(
-    () =>
-      compareListingIds
-        .map((id) => listings.find((item) => item.id === id))
-        .filter((item): item is Listing => Boolean(item)),
-    [compareListingIds, listings]
-  );
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_property_views", JSON.stringify(propertyViews));
+  }, [propertyViews]);
 
-  const featuredListings = useMemo(
-    () => listings.filter((item) => item.featured),
-    [listings]
-  );
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_property_images", JSON.stringify(propertyImages));
+  }, [propertyImages]);
 
-  const adminFilteredListings = useMemo(() => {
-    const searchTerm = adminListingSearch.trim().toLowerCase();
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_contact_messages", JSON.stringify(contactMessages));
+  }, [contactMessages]);
 
-    return listings.filter((item) => {
-      const searchMatch =
-        searchTerm === "" ||
-        item.title.toLowerCase().includes(searchTerm) ||
-        item.location.toLowerCase().includes(searchTerm) ||
-        item.state.toLowerCase().includes(searchTerm) ||
-        item.type.toLowerCase().includes(searchTerm) ||
-        item.status.toLowerCase().includes(searchTerm) ||
-        (item.ownerName || "").toLowerCase().includes(searchTerm);
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_inspection_bookings", JSON.stringify(inspectionBookings));
+  }, [inspectionBookings]);
 
-      const statusMatch =
-        adminListingStatusFilter === "all" ||
-        item.status.toLowerCase() === adminListingStatusFilter.toLowerCase();
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_property_offers", JSON.stringify(propertyOffers));
+  }, [propertyOffers]);
 
-      return searchMatch && statusMatch;
-    });
-  }, [adminListingSearch, adminListingStatusFilter, listings]);
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_jv_applications", JSON.stringify(jvApplications));
+  }, [jvApplications]);
 
-  const featuredProperty = featuredListings[0] || propertyListings[0] || listings[0] || null;
+  useEffect(() => {
+    if (supabase) return;
+    localStorage.setItem("inamaad_staff_notifications", JSON.stringify(staffNotifications));
+  }, [staffNotifications]);
 
-  const totalListingViews = Object.values(listingViews).reduce(
-    (totalViews, currentViews) => totalViews + Number(currentViews || 0),
-    0
-  );
 
-  const topViewedListings = useMemo(
-    () =>
-      [...listings]
-        .map((item) => ({
-          ...item,
-          viewCount: Number(listingViews[item.id] || 0),
-        }))
-        .sort((a, b) => b.viewCount - a.viewCount)
-        .slice(0, 5),
-    [listingViews, listings]
-  );
+  useEffect(() => {
+    if (!supabase) return;
 
-  const averageListingViews =
-    listings.length > 0 ? Math.round(totalListingViews / listings.length) : 0;
+    const handleAnyWebsiteClick = (event: Event) => {
+      const target = event.target as HTMLElement | null;
 
-  const pendingListingsCount = listings.filter(
-    (item) => item.status !== "Verified"
-  ).length;
-  const unverifiedOwnersCount = listings.filter((item) => !item.ownerVerified).length;
-  const newLeadsCount = leads.filter((lead) => lead.status === "New").length;
-  const newInspectionsCount = inspections.filter(
-    (inspection) => inspection.status === "New"
-  ).length;
-  const todayDate = new Date().toISOString().slice(0, 10);
-  const openAdminTasksCount = adminTasks.filter((task) => task.status !== "Done").length;
-  const urgentAdminTasksCount = adminTasks.filter(
-    (task) => task.status !== "Done" && task.priority === "Urgent"
-  ).length;
-  const dueAdminTasksCount = adminTasks.filter(
-    (task) => task.status !== "Done" && Boolean(task.dueDate) && task.dueDate <= todayDate
-  ).length;
-  const leadPipelineCounts = LEAD_PIPELINE_STAGES.map((stage) => ({
-    stage,
-    count: leads.filter((lead) => getLeadStage(lead) === stage).length,
-  }));
-  const hotLeadsCount = leads.filter((lead) =>
-    ["High", "Hot"].includes(getLeadPriority(lead))
-  ).length;
-  const dueLeadFollowUpsCount = leads.filter((lead) => {
-    const stage = getLeadStage(lead);
-    return stage !== "Closed" && Boolean(lead.followUpDate) && String(lead.followUpDate) <= todayDate;
-  }).length;
-  const valuationInsights = useMemo(
-    () =>
-      propertyListings.map((item) => ({
-        item,
-        priceIntel: getPriceIntelligence(item, listings),
-      })),
-    [propertyListings, listings]
-  );
-
-  const opportunityListingsCount = valuationInsights.filter(
-    (entry) => entry.priceIntel.label === "Opportunity"
-  ).length;
-  const highPriceListingsCount = valuationInsights.filter(
-    (entry) => entry.priceIntel.label === "High" || entry.priceIntel.label === "Premium"
-  ).length;
-  const lowConfidenceValuationsCount = valuationInsights.filter(
-    (entry) => entry.priceIntel.confidence === "Low"
-  ).length;
-
-  const dueDiligenceInsights = useMemo(
-    () =>
-      listings.map((item) => ({
-        item,
-        score: getDueDiligenceScore(item),
-        checks: getDueDiligenceChecks(item),
-      })),
-    [listings]
-  );
-
-  const averageDueDiligenceScore =
-    dueDiligenceInsights.length > 0
-      ? Math.round(
-          dueDiligenceInsights.reduce((total, entry) => total + entry.score, 0) /
-            dueDiligenceInsights.length
+      // Do not let the automatic refresh fight with critical UI actions.
+      // The old capture-phase refresh fired on pointerdown/click before the
+      // property details modal could settle, so property/JV clicks felt like
+      // they did nothing. Protected actions still open instantly; normal
+      // background clicks continue to refresh the marketplace data.
+      if (
+        target?.closest(
+          '[data-inamaad-open-listing="true"], [data-inamaad-no-refresh="true"]'
         )
-      : 0;
+      ) {
+        return;
+      }
 
-  const highRiskDueDiligenceCount = dueDiligenceInsights.filter(
-    (entry) => entry.score < 50
-  ).length;
+      scheduleAutoRefresh(650);
+    };
 
-  const reviewDueDiligenceCount = dueDiligenceInsights.filter(
-    (entry) => entry.score >= 50 && entry.score < 70
-  ).length;
+    const clickEvents: Array<keyof WindowEventMap> = [
+      "pointerdown",
+      "mousedown",
+      "touchstart",
+      "click",
+    ];
 
-  const verifiedListingsCount = listings.filter((item) => item.status === "Verified").length;
-  const ownerVerifiedListingsCount = listings.filter((item) => item.ownerVerified).length;
-  const listingsWithDocumentsCount = listings.filter(
-    (item) => Boolean(item.documentTitle || item.documentName)
-  ).length;
-  const listingsWithContactsCount = listings.filter(
-    (item) => Boolean(item.ownerPhone || item.whatsapp)
-  ).length;
-
-  const listingVerificationRate =
-    listings.length > 0 ? Math.round((verifiedListingsCount / listings.length) * 100) : 0;
-  const ownerVerificationRate =
-    listings.length > 0 ? Math.round((ownerVerifiedListingsCount / listings.length) * 100) : 0;
-  const documentCoverageRate =
-    listings.length > 0 ? Math.round((listingsWithDocumentsCount / listings.length) * 100) : 0;
-  const contactCoverageRate =
-    listings.length > 0 ? Math.round((listingsWithContactsCount / listings.length) * 100) : 0;
-
-  const crmReadinessScore = Math.min(
-    100,
-    Math.round(
-      Math.min(leads.length, 10) * 5 +
-        Math.min(inspections.length, 10) * 3 +
-        Math.min(adminTasks.length, 10) * 2
-    )
-  );
-
-  const marketplaceLaunchReadinessScore = Math.min(
-    100,
-    Math.round(
-      averageDueDiligenceScore * 0.35 +
-        listingVerificationRate * 0.2 +
-        ownerVerificationRate * 0.18 +
-        documentCoverageRate * 0.12 +
-        contactCoverageRate * 0.1 +
-        crmReadinessScore * 0.05
-    )
-  );
-
-  const launchReadinessLabel =
-    marketplaceLaunchReadinessScore >= 85
-      ? "Launch ready"
-      : marketplaceLaunchReadinessScore >= 70
-        ? "Almost ready"
-        : marketplaceLaunchReadinessScore >= 50
-          ? "Needs work"
-          : "Not ready";
-
-  const adminActionQueueCount =
-    pendingListingsCount +
-    unverifiedOwnersCount +
-    newLeadsCount +
-    newInspectionsCount +
-    openAdminTasksCount +
-    dueLeadFollowUpsCount;
-
-  const launchReadinessChecks = [
-    {
-      label: "Verified listings",
-      passed: listingVerificationRate >= 70,
-      value: `${listingVerificationRate}%`,
-      detail: "Most listings should be admin verified before a serious public launch.",
-    },
-    {
-      label: "Owner / agent verification",
-      passed: ownerVerificationRate >= 70,
-      value: `${ownerVerificationRate}%`,
-      detail: "Owner or agent verification reduces fake-agent and trust risk.",
-    },
-    {
-      label: "Document coverage",
-      passed: documentCoverageRate >= 60,
-      value: `${documentCoverageRate}%`,
-      detail: "Listings should include title, survey, allocation, deed, C of O, or document context.",
-    },
-    {
-      label: "Contact readiness",
-      passed: contactCoverageRate >= 75,
-      value: `${contactCoverageRate}%`,
-      detail: "Phone or WhatsApp contact should be available for follow-up and inspection.",
-    },
-    {
-      label: "Due diligence quality",
-      passed: averageDueDiligenceScore >= 70,
-      value: `${averageDueDiligenceScore}%`,
-      detail: "Average due diligence score should be strong across all listings.",
-    },
-    {
-      label: "High-risk listings",
-      passed: highRiskDueDiligenceCount === 0,
-      value: `${highRiskDueDiligenceCount}`,
-      detail: "High-risk listings should be fixed, hidden, or reviewed before launch.",
-    },
-    {
-      label: "CRM and operations",
-      passed: leads.length > 0 || adminTasks.length > 0 || inspections.length > 0,
-      value: `${leads.length} leads · ${adminTasks.length} tasks · ${inspections.length} inspections`,
-      detail: "A professional marketplace needs CRM, tasks, and inspection workflow ready.",
-    },
-    {
-      label: "Open admin queue",
-      passed: adminActionQueueCount <= 5,
-      value: `${adminActionQueueCount}`,
-      detail: "Keep pending listings, owner checks, leads, inspections, and tasks under control.",
-    },
-  ];
-
-  const failedLaunchReadinessChecks = launchReadinessChecks.filter((check) => !check.passed);
-  const nextLaunchReadinessAction =
-    failedLaunchReadinessChecks[0]?.label || "Maintain backups, monitor leads, and continue quality review.";
-
-  const documentReadinessInsights = useMemo(
-    () =>
-      listings.map((item) => ({
-        item,
-        score: getDocumentReadinessScore(item),
-        missingItems: getMissingDocumentItems(item),
-      })),
-    [listings]
-  );
-
-  const documentCompleteListingsCount = documentReadinessInsights.filter(
-    (entry) => entry.score >= 90
-  ).length;
-  const documentIncompleteListingsCount = documentReadinessInsights.filter(
-    (entry) => entry.score < 70
-  ).length;
-  const documentCriticalListingsCount = documentReadinessInsights.filter(
-    (entry) => entry.score < 45
-  ).length;
-
-  const averageDocumentReadinessScore =
-    documentReadinessInsights.length > 0
-      ? Math.round(
-          documentReadinessInsights.reduce((total, entry) => total + entry.score, 0) /
-            documentReadinessInsights.length
-        )
-      : 0;
-
-  const marketingCampaignInsights = useMemo(
-    () =>
-      listings
-        .map((item) => {
-          const dueScore = getDueDiligenceScore(item);
-          const documentScore = getDocumentReadinessScore(item);
-          const priceIntel = getPriceIntelligence(item, listings);
-          const mediaScore = item.imageUrl || (item.galleryUrls && item.galleryUrls.length > 0) ? 15 : 0;
-          const verificationScore = item.ownerVerified ? 20 : 0;
-          const featuredScore = item.featured ? 10 : 0;
-          const marketingScore = Math.min(
-            100,
-            Math.round(dueScore * 0.35 + documentScore * 0.3 + mediaScore + verificationScore + featuredScore)
-          );
-
-          return {
-            item,
-            dueScore,
-            documentScore,
-            priceIntel,
-            marketingScore,
-          };
-        })
-        .sort((a, b) => b.marketingScore - a.marketingScore),
-    [listings]
-  );
-
-  const campaignReadyListingsCount = marketingCampaignInsights.filter(
-    (entry) => entry.marketingScore >= 80
-  ).length;
-  const marketingNeedsWorkCount = marketingCampaignInsights.filter(
-    (entry) => entry.marketingScore < 60
-  ).length;
-  const featuredMarketingListingsCount = marketingCampaignInsights.filter(
-    (entry) => Boolean(entry.item.featured)
-  ).length;
-
-  const inspectionScheduleInsights = useMemo(
-    () =>
-      [...inspections]
-        .sort((a, b) =>
-          `${a.preferredDate || "9999-12-31"} ${a.preferredTime || "23:59"}`.localeCompare(
-            `${b.preferredDate || "9999-12-31"} ${b.preferredTime || "23:59"}`
-          )
-        )
-        .map((inspection) => ({
-          inspection,
-          isToday: Boolean(inspection.preferredDate) && inspection.preferredDate === todayDate,
-          isOverdue:
-            Boolean(inspection.preferredDate) &&
-            inspection.preferredDate < todayDate &&
-            !["Completed", "Cancelled"].includes(inspection.status),
-          isUpcoming:
-            Boolean(inspection.preferredDate) &&
-            inspection.preferredDate >= todayDate &&
-            !["Completed", "Cancelled"].includes(inspection.status),
-        })),
-    [inspections, todayDate]
-  );
-
-  const todayInspectionCount = inspectionScheduleInsights.filter(
-    (entry) => entry.isToday && !["Completed", "Cancelled"].includes(entry.inspection.status)
-  ).length;
-  const overdueInspectionCount = inspectionScheduleInsights.filter((entry) => entry.isOverdue).length;
-  const upcomingInspectionCount = inspectionScheduleInsights.filter((entry) => entry.isUpcoming).length;
-  const confirmedInspectionCount = inspections.filter(
-    (inspection) => inspection.status === "Confirmed"
-  ).length;
-
-  const commissionRateValue =
-    Math.max(0, Number(String(commissionRate).replace(/[^0-9.]/g, "")) || 0) / 100;
-  const expectedConversionRateValue =
-    Math.max(0, Number(String(expectedConversionRate).replace(/[^0-9.]/g, "")) || 0) /
-    100;
-
-  const totalInventoryValue = listings.reduce(
-    (total, item) => total + parseNairaValue(item.price),
-    0
-  );
-  const verifiedInventoryValue = listings
-    .filter((item) => item.status === "Verified")
-    .reduce((total, item) => total + parseNairaValue(item.price), 0);
-  const launchReadyInventoryValue = dueDiligenceInsights
-    .filter((entry) => entry.score >= 85)
-    .reduce((total, entry) => total + parseNairaValue(entry.item.price), 0);
-  const campaignReadyInventoryValue = marketingCampaignInsights
-    .filter((entry) => entry.marketingScore >= 80)
-    .reduce((total, entry) => total + parseNairaValue(entry.item.price), 0);
-  const leadPipelineBudgetValue = leads.reduce(
-    (total, lead) => total + parseBudgetRangeValue(lead.budget),
-    0
-  );
-  const expectedConvertedPipelineValue =
-    leadPipelineBudgetValue * expectedConversionRateValue;
-  const projectedCommissionFromListings =
-    campaignReadyInventoryValue * commissionRateValue;
-  const projectedCommissionFromLeads =
-    expectedConvertedPipelineValue * commissionRateValue;
-  const totalProjectedRevenue =
-    projectedCommissionFromListings + projectedCommissionFromLeads;
-
-  const topRevenueListings = marketingCampaignInsights
-    .map((entry) => {
-      const listingValue = parseNairaValue(entry.item.price);
-
-      return {
-        ...entry,
-        listingValue,
-        estimatedCommission: listingValue * commissionRateValue,
-      };
-    })
-    .filter((entry) => entry.listingValue > 0)
-    .sort((a, b) => b.estimatedCommission - a.estimatedCommission);
-
-  const filteredProperties = useMemo(() => {
-    const searchTerm = keyword.trim().toLowerCase();
-    const stateTerm = selectedState.trim().toLowerCase();
-
-    const nextProperties = propertyListings.filter((item) => {
-      const keywordMatch =
-        searchTerm === "" ||
-        item.title.toLowerCase().includes(searchTerm) ||
-        item.location.toLowerCase().includes(searchTerm) ||
-        item.state.toLowerCase().includes(searchTerm) ||
-        item.price.toLowerCase().includes(searchTerm) ||
-        item.type.toLowerCase().includes(searchTerm) ||
-        item.summary.toLowerCase().includes(searchTerm);
-
-      const stateMatch =
-        stateTerm === "" || item.state.toLowerCase().includes(stateTerm);
-
-      const typeMatch = type === "" || item.typeValue === type;
-
-      const statusMatch =
-        statusFilter === "all" || item.status.toLowerCase() === statusFilter.toLowerCase();
-
-      return keywordMatch && stateMatch && typeMatch && statusMatch;
+    clickEvents.forEach((eventName) => {
+      window.addEventListener(eventName, handleAnyWebsiteClick, true);
+      document.addEventListener(eventName, handleAnyWebsiteClick, true);
     });
 
-    return [...nextProperties].sort((a, b) => {
-      if (Boolean(a.featured) !== Boolean(b.featured)) {
-        return Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+    return () => {
+      clickEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, handleAnyWebsiteClick, true);
+        document.removeEventListener(eventName, handleAnyWebsiteClick, true);
+      });
+
+      if (autoRefreshTimerRef.current) {
+        window.clearTimeout(autoRefreshTimerRef.current);
       }
+    };
+  }, [user, adminUnlocked]);
 
-      if (sortMode === "price_high") {
-        return parseNairaValue(b.price) - parseNairaValue(a.price);
+  useEffect(() => {
+    if (!supabase) return;
+
+    const autoRefreshChannel = supabase
+      .channel("inamaad-live-refresh")
+      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "property_images" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "investor_requests" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "property_inquiries" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "property_offers" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "jv_applications" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "contact_messages" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "inspection_bookings" }, () => scheduleAutoRefresh(350))
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff_notifications" }, () => scheduleAutoRefresh(350))
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(autoRefreshChannel);
+    };
+  }, [user, adminUnlocked]);
+
+  useEffect(() => {
+    function openAdminShortcut(event: KeyboardEvent) {
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
+        setAdminPassword("");
+        setModal("admin");
       }
+    }
 
-      if (sortMode === "price_low") {
-        return parseNairaValue(a.price) - parseNairaValue(b.price);
-      }
+    window.addEventListener("keydown", openAdminShortcut);
+    return () => window.removeEventListener("keydown", openAdminShortcut);
+  }, []);
 
-      if (sortMode === "roi_high") {
-        return parseRoiValue(b.roi) - parseRoiValue(a.roi);
-      }
+  useEffect(() => {
+    if (sharedListingOpened || !listings.length) return;
 
-      if (sortMode === "title_az") {
-        return a.title.localeCompare(b.title);
-      }
+    const propertyId = Number(new URLSearchParams(window.location.search).get("property"));
+    if (!propertyId) return;
 
-      return b.id - a.id;
-    });
-  }, [keyword, propertyListings, selectedState, sortMode, statusFilter, type]);
+    const listing = listings.find(
+      (currentListing) =>
+        currentListing.id === propertyId && currentListing.status === "Verified"
+    );
 
-  function showMessage(message: string) {
+    if (!listing) return;
+
+    setSharedListingOpened(true);
+    openListing(listing);
+  }, [listings, sharedListingOpened]);
+
+  function scheduleAutoRefresh(delay = 350) {
+    if (!supabase) return;
+
+    // Throttle, do not debounce. The previous version kept resetting the timer,
+    // so fast clicking could prevent refresh from happening. This version makes
+    // sure the first click schedules a refresh and later clicks do not cancel it.
+    if (autoRefreshTimerRef.current) return;
+
+    autoRefreshTimerRef.current = window.setTimeout(() => {
+      autoRefreshTimerRef.current = null;
+      void refreshAllData();
+    }, delay);
+  }
+
+  function showSuccess(message: string) {
     setSuccessMessage(message);
-    window.setTimeout(() => setSuccessMessage(""), 4000);
-  }
+    setTimeout(() => setSuccessMessage(""), 4500);
 
-  function acceptPrivacyNotice() {
-    try {
-      localStorage.setItem("inamaad_privacy_notice_accepted", "yes");
-    } catch {
-      // Ignore storage errors and still hide the notice for this session.
-    }
-
-    setPrivacyNoticeAccepted(true);
-    showMessage("Privacy and local data notice accepted.");
-  }
-
-  function addActivityLog(
-    action: string,
-    detail: string,
-    category: ActivityLog["category"] = "System"
-  ) {
-    const logItem: ActivityLog = {
-      id: Date.now() + Math.random(),
-      action,
-      detail,
-      category,
-      createdAt: new Date().toISOString(),
-    };
-
-    setActivityLogs((currentLogs) => [logItem, ...currentLogs].slice(0, 250));
-  }
-
-  function formatActivityDate(value: string) {
-    try {
-      return new Date(value).toLocaleString();
-    } catch {
-      return value;
+    if (supabase) {
+      scheduleAutoRefresh(1100);
     }
   }
 
-  function clearActivityLogs() {
-    const confirmed = window.confirm(
-      "Clear the admin activity log from this browser?"
-    );
-
-    if (!confirmed) return;
-
-    setActivityLogs([]);
-    showMessage("Activity log cleared.");
-  }
-
-  function copyAdminCommunicationTemplate(title: string, text: string) {
+  function loadLocalData() {
     try {
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(text);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
+      const storedListings = localStorage.getItem("inamaad_listings");
+      const storedRequests = localStorage.getItem("inamaad_investor_requests");
+      const storedInquiries = localStorage.getItem("inamaad_property_inquiries");
+      const storedViews = localStorage.getItem("inamaad_property_views");
+      const storedPropertyImages = localStorage.getItem("inamaad_property_images");
+      const storedContactMessages = localStorage.getItem("inamaad_contact_messages");
+      const storedInspectionBookings = localStorage.getItem("inamaad_inspection_bookings");
+      const storedPropertyOffers = localStorage.getItem("inamaad_property_offers");
+      const storedJvApplications = localStorage.getItem("inamaad_jv_applications");
+      const storedStaffNotifications = localStorage.getItem("inamaad_staff_notifications");
+
+      if (storedListings) {
+        setListings(JSON.parse(storedListings) as Listing[]);
       }
 
-      addActivityLog(
-        "Communication template copied",
-        `${title} template copied for follow-up.`,
-        "Admin"
-      );
-      showMessage(`${title} template copied.`);
-    } catch {
-      showMessage("Unable to copy template. Please copy manually.");
-    }
-  }
-
-  function buildExecutiveMarketplaceReport() {
-    const reportLines = [
-      "INAMAAD REAL ESTATE - EXECUTIVE MARKETPLACE REPORT",
-      `Generated: ${new Date().toLocaleString()}`,
-      "",
-      "1. LAUNCH READINESS",
-      `Launch readiness score: ${marketplaceLaunchReadinessScore}%`,
-      `Launch status: ${launchReadinessLabel}`,
-      `Next recommended move: ${nextLaunchReadinessAction}`,
-      "",
-      "2. MARKETPLACE INVENTORY",
-      `Total listings: ${listings.length}`,
-      `Properties: ${propertyListings.length}`,
-      `JV deals: ${jvListings.length}`,
-      `Verified listings: ${verifiedListingsCount}`,
-      `Owner / agent verified listings: ${ownerVerifiedListingsCount}`,
-      `Listings with documents: ${listingsWithDocumentsCount}`,
-      `Listings with contacts: ${listingsWithContactsCount}`,
-      "",
-      "3. QUALITY AND DUE DILIGENCE",
-      `Average due diligence score: ${averageDueDiligenceScore}%`,
-      `High-risk listings: ${highRiskDueDiligenceCount}`,
-      `Needs-review listings: ${reviewDueDiligenceCount}`,
-      `Opportunity price listings: ${opportunityListingsCount}`,
-      `Premium / high price listings: ${highPriceListingsCount}`,
-      "",
-      "4. CRM AND OPERATIONS",
-      `Total leads: ${leads.length}`,
-      `Hot / high priority leads: ${hotLeadsCount}`,
-      `Due lead follow-ups: ${dueLeadFollowUpsCount}`,
-      `Inspection requests: ${inspections.length}`,
-      `Open admin tasks: ${openAdminTasksCount}`,
-      `Urgent admin tasks: ${urgentAdminTasksCount}`,
-      `Due admin tasks: ${dueAdminTasksCount}`,
-      `Open admin action queue: ${adminActionQueueCount}`,
-      "",
-      "5. RECOMMENDED MANAGEMENT ACTION",
-      failedLaunchReadinessChecks.length > 0
-        ? `Fix first: ${failedLaunchReadinessChecks[0].label} - ${failedLaunchReadinessChecks[0].detail}`
-        : "Marketplace is in good condition. Continue monitoring leads, inspections, backup exports, and listing quality.",
-      "",
-      "This report is based on the current browser-saved INAMAAD marketplace data.",
-    ];
-
-    return reportLines.join("\\n");
-  }
-
-  function copyExecutiveMarketplaceReport() {
-    const report = buildExecutiveMarketplaceReport();
-
-    try {
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(report);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = report;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
+      if (storedRequests) {
+        setInvestorRequests(JSON.parse(storedRequests) as InvestorRequest[]);
       }
 
-      addActivityLog(
-        "Executive report copied",
-        "Admin copied the executive marketplace report.",
-        "Admin"
-      );
-      showMessage("Executive marketplace report copied.");
-    } catch {
-      showMessage("Unable to copy report. Please export it instead.");
-    }
-  }
-
-  function exportExecutiveMarketplaceReportTxt() {
-    downloadTextFile(
-      `inamaad-executive-marketplace-report-${new Date().toISOString().slice(0, 10)}.txt`,
-      buildExecutiveMarketplaceReport(),
-      "text/plain;charset=utf-8"
-    );
-
-    addActivityLog(
-      "Executive report exported",
-      "Admin exported the executive marketplace report as TXT.",
-      "Admin"
-    );
-    showMessage("Executive marketplace report exported.");
-  }
-
-  function buildDocumentRequestMessage(item: Listing) {
-    const missingItems = getMissingDocumentItems(item);
-    const missingText =
-      missingItems.length > 0
-        ? missingItems.map((entry, index) => `${index + 1}. ${entry.label}: ${entry.detail}`).join("\\n")
-        : "No major missing document item detected. Please confirm all records are still current.";
-
-    return [
-      `Hello, this is INAMAAD Real Estate regarding: ${item.title}.`,
-      "",
-      "To complete verification and improve buyer confidence, please provide/update the following:",
-      missingText,
-      "",
-      "Kindly send the documents/details as clear images, PDFs, or written confirmation where applicable.",
-      "Thank you.",
-    ].join("\\n");
-  }
-
-  function copyDocumentRequestMessage(item: Listing) {
-    const message = buildDocumentRequestMessage(item);
-
-    try {
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(message);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = message;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
+      if (storedInquiries) {
+        setPropertyInquiries(JSON.parse(storedInquiries) as PropertyInquiry[]);
       }
 
-      addActivityLog(
-        "Document request copied",
-        `Document request copied for ${item.title}.`,
-        "Admin"
-      );
-      showMessage("Document request message copied.");
-    } catch {
-      showMessage("Unable to copy document request.");
-    }
-  }
-
-  function createDocumentFollowUpTask(item: Listing) {
-    const missingItems = getMissingDocumentItems(item);
-
-    const taskTitle =
-      missingItems.length > 0
-        ? `Request missing documents for ${item.title}`
-        : `Confirm documents for ${item.title}`;
-
-    const createdTask: AdminTask = {
-      id: Date.now(),
-      title: taskTitle,
-      assignee: "Admin",
-      dueDate: "",
-      priority: missingItems.length >= 3 ? "High" : "Medium",
-      status: "Open",
-      note:
-        missingItems.length > 0
-          ? missingItems.map((entry) => entry.label).join(", ")
-          : "Document readiness looks good. Confirm records are still current.",
-      createdAt: new Date().toISOString(),
-    };
-
-    setAdminTasks((currentTasks) => [createdTask, ...currentTasks]);
-
-    addActivityLog(
-      "Document follow-up task created",
-      `${taskTitle}.`,
-      "Admin"
-    );
-    showMessage("Document follow-up task created.");
-  }
-
-  function exportDocumentReadinessCsv() {
-    const rows = [
-      [
-        "Reference",
-        "Title",
-        "Type",
-        "State",
-        "Document Readiness Score",
-        "Document Readiness Label",
-        "Missing Items",
-        "Owner / Agent",
-        "Owner Verified",
-        "Document",
-        "Contact",
-      ],
-      ...listings.map((item) => [
-        getListingReference(item.id),
-        item.title,
-        item.type,
-        item.state,
-        `${getDocumentReadinessScore(item)}%`,
-        getDocumentReadinessLabel(getDocumentReadinessScore(item)),
-        getMissingDocumentItems(item).map((entry) => entry.label).join("; "),
-        item.ownerName || "",
-        item.ownerVerified ? "Yes" : "No",
-        item.documentTitle || item.documentName || "",
-        item.ownerPhone || item.whatsapp || "",
-      ]),
-    ];
-
-    downloadTextFile(
-      `inamaad-document-readiness-${new Date().toISOString().slice(0, 10)}.csv`,
-      createCsv(rows),
-      "text/csv;charset=utf-8"
-    );
-
-    addActivityLog(
-      "Document readiness exported",
-      "Admin exported document readiness report as CSV.",
-      "Admin"
-    );
-    showMessage("Document readiness CSV exported.");
-  }
-
-  function buildListingMarketingCopy(item: Listing) {
-    const priceIntel = getPriceIntelligence(item, listings);
-    const dueScore = getDueDiligenceScore(item);
-    const documentScore = getDocumentReadinessScore(item);
-    const listingType = isJVListing(item) ? "JV opportunity" : "property listing";
-
-    return [
-      `INAMAAD Real Estate ${listingType.toUpperCase()}`,
-      "",
-      `${item.title}`,
-      `${item.location}, ${item.state}`,
-      `Price / Investment: ${item.price}`,
-      `Type: ${item.type} ${item.typeValue ? `· ${item.typeValue}` : ""}`,
-      item.roi ? `ROI / Return: ${item.roi}` : "",
-      "",
-      item.summary,
-      "",
-      `Trust signals: ${item.status} listing · Owner/agent ${item.ownerVerified ? "verified" : "pending verification"} · Due diligence ${dueScore}% · Document readiness ${documentScore}%`,
-      `Price guidance: ${priceIntel.label} · ${priceIntel.confidence} confidence`,
-      "",
-      "Interested buyers/investors can contact INAMAAD for verification, inspection, and next steps before payment or commitment.",
-    ]
-      .filter(Boolean)
-      .join("\\n");
-  }
-
-  function copyListingMarketingCopy(item: Listing) {
-    const copyText = buildListingMarketingCopy(item);
-
-    try {
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(copyText);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = copyText;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
+      if (storedViews) {
+        setPropertyViews(JSON.parse(storedViews) as PropertyView[]);
       }
 
-      addActivityLog(
-        "Marketing copy copied",
-        `Marketing copy copied for ${item.title}.`,
-        "Admin"
-      );
-      showMessage("Marketing copy copied.");
-    } catch {
-      showMessage("Unable to copy marketing copy.");
-    }
-  }
-
-  function createMarketingTask(item: Listing) {
-    const marketingScore = marketingCampaignInsights.find(
-      (entry) => entry.item.id === item.id
-    )?.marketingScore;
-
-    const createdTask: AdminTask = {
-      id: Date.now(),
-      title: `Promote listing: ${item.title}`,
-      assignee: "Marketing",
-      dueDate: "",
-      priority: Number(marketingScore || 0) >= 80 ? "High" : "Medium",
-      status: "Open",
-      note: `Prepare WhatsApp/social media campaign. Marketing readiness: ${marketingScore || getDueDiligenceScore(item)}%.`,
-      createdAt: new Date().toISOString(),
-    };
-
-    setAdminTasks((currentTasks) => [createdTask, ...currentTasks]);
-
-    addActivityLog(
-      "Marketing task created",
-      `Marketing task created for ${item.title}.`,
-      "Admin"
-    );
-    showMessage("Marketing task created.");
-  }
-
-  function exportMarketingCampaignCsv() {
-    const rows = [
-      [
-        "Reference",
-        "Title",
-        "Type",
-        "State",
-        "Price",
-        "Marketing Score",
-        "Featured",
-        "Owner Verified",
-        "Due Diligence",
-        "Document Readiness",
-        "Price Guidance",
-        "Recommended Campaign Action",
-      ],
-      ...marketingCampaignInsights.map((entry) => [
-        getListingReference(entry.item.id),
-        entry.item.title,
-        entry.item.type,
-        entry.item.state,
-        entry.item.price,
-        `${entry.marketingScore}%`,
-        entry.item.featured ? "Yes" : "No",
-        entry.item.ownerVerified ? "Yes" : "No",
-        `${entry.dueScore}%`,
-        `${entry.documentScore}%`,
-        entry.priceIntel.label,
-        entry.marketingScore >= 80
-          ? "Promote strongly"
-          : entry.marketingScore >= 60
-            ? "Promote after small fixes"
-            : "Fix verification/documents/media first",
-      ]),
-    ];
-
-    downloadTextFile(
-      `inamaad-marketing-campaign-${new Date().toISOString().slice(0, 10)}.csv`,
-      createCsv(rows),
-      "text/csv;charset=utf-8"
-    );
-
-    addActivityLog(
-      "Marketing campaign exported",
-      "Admin exported marketing campaign report as CSV.",
-      "Admin"
-    );
-    showMessage("Marketing campaign CSV exported.");
-  }
-
-  function buildRevenueForecastReport() {
-    return [
-      "INAMAAD REAL ESTATE - REVENUE FORECAST REPORT",
-      `Generated: ${new Date().toLocaleString()}`,
-      "",
-      "1. SETTINGS",
-      `Commission rate: ${commissionRate || "0"}%`,
-      `Expected lead conversion: ${expectedConversionRate || "0"}%`,
-      "",
-      "2. INVENTORY VALUE",
-      `Total inventory value: ${formatNairaCompact(totalInventoryValue)}`,
-      `Verified inventory value: ${formatNairaCompact(verifiedInventoryValue)}`,
-      `Launch-ready inventory value: ${formatNairaCompact(launchReadyInventoryValue)}`,
-      `Campaign-ready inventory value: ${formatNairaCompact(campaignReadyInventoryValue)}`,
-      "",
-      "3. PIPELINE AND PROJECTED REVENUE",
-      `Lead budget pipeline: ${formatNairaCompact(leadPipelineBudgetValue)}`,
-      `Expected converted lead value: ${formatNairaCompact(expectedConvertedPipelineValue)}`,
-      `Projected commission from campaign-ready listings: ${formatNairaCompact(projectedCommissionFromListings)}`,
-      `Projected commission from lead pipeline: ${formatNairaCompact(projectedCommissionFromLeads)}`,
-      `Total projected revenue: ${formatNairaCompact(totalProjectedRevenue)}`,
-      "",
-      "4. TOP REVENUE OPPORTUNITIES",
-      ...topRevenueListings.slice(0, 5).map(
-        (entry, index) =>
-          `${index + 1}. ${entry.item.title} - ${formatNairaCompact(entry.listingValue)} value - ${formatNairaCompact(entry.estimatedCommission)} estimated commission`
-      ),
-      "",
-      "This forecast is based on current browser-saved INAMAAD marketplace data and does not guarantee actual revenue.",
-    ].join("\\n");
-  }
-
-  function copyRevenueForecastReport() {
-    const report = buildRevenueForecastReport();
-
-    try {
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(report);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = report;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
+      if (storedPropertyImages) {
+        setPropertyImages(JSON.parse(storedPropertyImages) as PropertyImage[]);
       }
 
-      addActivityLog(
-        "Revenue forecast copied",
-        "Admin copied the revenue forecast report.",
-        "Admin"
-      );
-      showMessage("Revenue forecast report copied.");
+      if (storedContactMessages) {
+        setContactMessages(JSON.parse(storedContactMessages) as ContactMessage[]);
+      }
+
+      if (storedInspectionBookings) {
+        setInspectionBookings(JSON.parse(storedInspectionBookings) as InspectionBooking[]);
+      }
+
+      if (storedPropertyOffers) {
+        setPropertyOffers(JSON.parse(storedPropertyOffers) as PropertyOffer[]);
+      }
+
+      if (storedJvApplications) {
+        setJvApplications(JSON.parse(storedJvApplications) as JVApplication[]);
+      }
+
+      if (storedStaffNotifications) {
+        setStaffNotifications(JSON.parse(storedStaffNotifications) as StaffNotification[]);
+      }
     } catch {
-      showMessage("Unable to copy revenue forecast.");
+      localStorage.removeItem("inamaad_listings");
+      localStorage.removeItem("inamaad_investor_requests");
+      localStorage.removeItem("inamaad_property_inquiries");
+      localStorage.removeItem("inamaad_property_views");
+      localStorage.removeItem("inamaad_property_images");
+      localStorage.removeItem("inamaad_contact_messages");
+      localStorage.removeItem("inamaad_inspection_bookings");
+      localStorage.removeItem("inamaad_property_offers");
+      localStorage.removeItem("inamaad_jv_applications");
+      localStorage.removeItem("inamaad_staff_notifications");
     }
   }
 
-  function exportRevenueForecastCsv() {
-    const rows = [
-      ["Metric", "Value"],
-      ["Commission rate", `${commissionRate || "0"}%`],
-      ["Expected lead conversion", `${expectedConversionRate || "0"}%`],
-      ["Total inventory value", formatNairaCompact(totalInventoryValue)],
-      ["Verified inventory value", formatNairaCompact(verifiedInventoryValue)],
-      ["Launch-ready inventory value", formatNairaCompact(launchReadyInventoryValue)],
-      ["Campaign-ready inventory value", formatNairaCompact(campaignReadyInventoryValue)],
-      ["Lead budget pipeline", formatNairaCompact(leadPipelineBudgetValue)],
-      ["Expected converted lead value", formatNairaCompact(expectedConvertedPipelineValue)],
-      ["Projected listing commission", formatNairaCompact(projectedCommissionFromListings)],
-      ["Projected lead commission", formatNairaCompact(projectedCommissionFromLeads)],
-      ["Total projected revenue", formatNairaCompact(totalProjectedRevenue)],
-      [],
-      ["Top Revenue Listings", "Listing Value", "Estimated Commission", "Marketing Readiness"],
-      ...topRevenueListings.slice(0, 10).map((entry) => [
-        entry.item.title,
-        formatNairaCompact(entry.listingValue),
-        formatNairaCompact(entry.estimatedCommission),
-        `${entry.marketingScore}%`,
-      ]),
-    ];
+  async function loadDatabaseListings() {
+    if (!supabase) return;
 
-    downloadTextFile(
-      `inamaad-revenue-forecast-${new Date().toISOString().slice(0, 10)}.csv`,
-      createCsv(rows),
-      "text/csv;charset=utf-8"
-    );
+    setIsLoading(true);
 
-    addActivityLog(
-      "Revenue forecast exported",
-      "Admin exported the revenue forecast report as CSV.",
-      "Admin"
-    );
-    showMessage("Revenue forecast CSV exported.");
-  }
+    const { data, error } = await supabase
+      .from("listings")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-  function createRevenueFollowUpTask() {
-    const topOpportunity = topRevenueListings[0];
+    setIsLoading(false);
 
-    if (!topOpportunity) {
-      showMessage("No revenue opportunity found yet.");
+    if (error) {
+      console.error(error);
+      showSuccess("Unable to load listings from database.");
       return;
     }
 
-    const createdTask: AdminTask = {
-      id: Date.now(),
-      title: `Revenue follow-up: ${topOpportunity.item.title}`,
-      assignee: "Sales",
-      dueDate: "",
-      priority: "High",
-      status: "Open",
-      note: `Estimated commission ${formatNairaCompact(topOpportunity.estimatedCommission)} at ${commissionRate || "0"}%. Prepare buyer follow-up, owner confirmation, and inspection path.`,
-      createdAt: new Date().toISOString(),
-    };
-
-    setAdminTasks((currentTasks) => [createdTask, ...currentTasks]);
-
-    addActivityLog(
-      "Revenue follow-up task created",
-      `Revenue task created for ${topOpportunity.item.title}.`,
-      "Admin"
-    );
-    showMessage("Revenue follow-up task created.");
+    setListings((data || []).map(mapListingRow));
   }
 
-  function buildInspectionScheduleMessage(inspection: Inspection) {
-    return [
-      "INAMAAD Real Estate Inspection Confirmation",
-      "",
-      `Client: ${inspection.name}`,
-      inspection.listingTitle ? `Property: ${inspection.listingTitle}` : "",
-      `Preferred date: ${inspection.preferredDate || "To be confirmed"}`,
-      `Preferred time: ${inspection.preferredTime || "To be confirmed"}`,
-      `Status: ${inspection.status}`,
-      "",
-      inspection.note ? `Client note: ${inspection.note}` : "",
-      "",
-      "Please confirm availability, inspection location, meeting point, and any required document/site access before the appointment.",
-    ]
-      .filter(Boolean)
-      .join("\n");
+  async function loadDatabaseInvestorRequests() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("investor_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setInvestorRequests((data || []).map(mapInvestorRow));
   }
 
-  function copyInspectionScheduleMessage(inspection: Inspection) {
-    const message = buildInspectionScheduleMessage(inspection);
+  async function loadDatabasePropertyInquiries() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("property_inquiries")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setPropertyInquiries((data || []).map(mapPropertyInquiryRow));
+  }
+
+  async function loadDatabasePropertyViews() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("property_views")
+      .select("*")
+      .order("viewed_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setPropertyViews((data || []).map(mapPropertyViewRow));
+  }
+
+  async function loadDatabasePropertyImages() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("property_images")
+      .select("*")
+      .order("display_order", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setPropertyImages((data || []).map(mapPropertyImageRow));
+  }
+
+  async function loadDatabaseContactMessages() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("contact_messages")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setContactMessages((data || []).map(mapContactMessageRow));
+  }
+
+  async function loadDatabaseInspectionBookings() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("inspection_bookings")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setInspectionBookings((data || []).map(mapInspectionBookingRow));
+  }
+
+  async function loadDatabasePropertyOffers() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("property_offers")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setPropertyOffers((data || []).map(mapPropertyOfferRow));
+  }
+
+  async function loadDatabaseJvApplications() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("jv_applications")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setJvApplications((data || []).map(mapJVApplicationRow));
+  }
+
+  async function loadDatabaseStaffNotifications() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("staff_notifications")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setStaffNotifications((data || []).map(mapStaffNotificationRow));
+  }
+
+  async function loadDatabaseAdminActivityLogs() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("admin_activity_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setAdminActivityLogs((data || []).map(mapAdminActivityLogRow));
+  }
+
+  async function loadDatabaseStaffMembers() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("admin_users")
+      .select("email, full_name, role, is_active, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setStaffMembers((data || []).map(mapStaffMemberRow));
+  }
+
+
+  async function refreshAllData() {
+    if (!supabase) return;
+
+    setIsRefreshingData(true);
 
     try {
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(message);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = message;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
+      await Promise.all([
+        loadDatabaseListings(),
+        loadDatabasePropertyImages(),
+        loadDatabasePropertyViews(),
+      ]);
+
+      if (user || adminUnlocked) {
+        await Promise.all([
+          loadDatabaseInvestorRequests(),
+          loadDatabasePropertyInquiries(),
+          loadDatabaseContactMessages(),
+          loadDatabaseInspectionBookings(),
+          loadDatabasePropertyOffers(),
+          loadDatabaseJvApplications(),
+          loadDatabaseStaffNotifications(),
+          loadDatabaseAdminActivityLogs(),
+          loadDatabaseStaffMembers(),
+        ]);
       }
-
-      addActivityLog(
-        "Inspection message copied",
-        `Inspection schedule message copied for ${inspection.name}.`,
-        "Inspection"
-      );
-      showMessage("Inspection schedule message copied.");
-    } catch {
-      showMessage("Unable to copy inspection message.");
+    } finally {
+      setIsRefreshingData(false);
     }
   }
 
-  function createInspectionScheduleTask(inspection: Inspection) {
-    const createdTask: AdminTask = {
-      id: Date.now(),
-      title: `Prepare inspection: ${inspection.listingTitle || inspection.name}`,
-      assignee: "Inspection team",
-      dueDate: inspection.preferredDate || "",
-      priority: inspection.status === "New" ? "High" : "Medium",
-      status: "Open",
-      note: `Client: ${inspection.name}. Phone: ${inspection.phone}. Time: ${inspection.preferredTime || "To confirm"}. ${inspection.note || ""}`,
-      createdAt: new Date().toISOString(),
-    };
+  async function checkAdminAccess() {
+    if (!supabase) return;
 
-    setAdminTasks((currentTasks) => [createdTask, ...currentTasks]);
+    const { data, error } = await supabase.rpc("is_admin");
 
-    addActivityLog(
-      "Inspection task created",
-      `Inspection task created for ${inspection.name}.`,
-      "Inspection"
-    );
-    showMessage("Inspection preparation task created.");
-  }
-
-  function exportInspectionScheduleCsv() {
-    const rows = [
-      [
-        "Client",
-        "Email",
-        "Phone",
-        "Property",
-        "Preferred Date",
-        "Preferred Time",
-        "Status",
-        "Timing",
-        "Note",
-        "Created At",
-      ],
-      ...inspectionScheduleInsights.map((entry) => [
-        entry.inspection.name,
-        entry.inspection.email,
-        entry.inspection.phone,
-        entry.inspection.listingTitle || "",
-        entry.inspection.preferredDate,
-        entry.inspection.preferredTime,
-        entry.inspection.status,
-        entry.isOverdue ? "Overdue" : entry.isToday ? "Today" : entry.isUpcoming ? "Upcoming" : "Past / closed",
-        entry.inspection.note,
-        entry.inspection.createdAt,
-      ]),
-    ];
-
-    downloadTextFile(
-      `inamaad-inspection-schedule-${new Date().toISOString().slice(0, 10)}.csv`,
-      createCsv(rows),
-      "text/csv;charset=utf-8"
-    );
-
-    addActivityLog(
-      "Inspection schedule exported",
-      "Admin exported the inspection schedule as CSV.",
-      "Inspection"
-    );
-    showMessage("Inspection schedule CSV exported.");
-  }
-
-  function addAdminTask(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!adminTaskForm.title.trim()) {
-      showMessage("Enter a task title first.");
+    if (error) {
+      console.error(error);
+      setAdminUnlocked(false);
       return;
     }
 
-    const createdTask: AdminTask = {
-      id: Date.now(),
-      title: adminTaskForm.title.trim(),
-      assignee: adminTaskForm.assignee.trim() || "Admin",
-      dueDate: adminTaskForm.dueDate,
-      priority: adminTaskForm.priority,
-      status: "Open",
-      note: adminTaskForm.note.trim(),
-      createdAt: new Date().toISOString(),
-    };
+    setAdminUnlocked(Boolean(data));
 
-    setAdminTasks((currentTasks) => [createdTask, ...currentTasks]);
-
-    addActivityLog(
-      "Admin task created",
-      `${createdTask.title} assigned to ${createdTask.assignee}.`,
-      "Admin"
-    );
-
-    setAdminTaskForm({
-      title: "",
-      assignee: "Admin",
-      dueDate: "",
-      priority: "Medium",
-      note: "",
-    });
-
-    showMessage("Admin task created.");
-  }
-
-  function updateAdminTaskStatus(id: number, status: AdminTask["status"]) {
-    const task = adminTasks.find((item) => item.id === id);
-
-    setAdminTasks((currentTasks) =>
-      currentTasks.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status,
-              completedAt: status === "Done" ? new Date().toISOString() : undefined,
-            }
-          : item
-      )
-    );
-
-    addActivityLog(
-      "Admin task updated",
-      `${task?.title || "Task"} marked as ${status}.`,
-      "Admin"
-    );
-
-    showMessage(`Task marked as ${status}.`);
-  }
-
-  function deleteAdminTask(id: number) {
-    const task = adminTasks.find((item) => item.id === id);
-
-    setAdminTasks((currentTasks) => currentTasks.filter((item) => item.id !== id));
-
-    addActivityLog(
-      "Admin task deleted",
-      `${task?.title || "Task"} was removed from the operations planner.`,
-      "Admin"
-    );
-
-    showMessage("Admin task deleted.");
-  }
-
-  function exportAdminTasksCsv() {
-    const rows = [
-      ["Title", "Assignee", "Due Date", "Priority", "Status", "Note", "Created At", "Completed At"],
-      ...adminTasks.map((task) => [
-        task.title,
-        task.assignee,
-        task.dueDate,
-        task.priority,
-        task.status,
-        task.note,
-        formatActivityDate(task.createdAt),
-        task.completedAt ? formatActivityDate(task.completedAt) : "",
-      ]),
-    ];
-
-    downloadTextFile(
-      `inamaad-admin-tasks-${new Date().toISOString().slice(0, 10)}.csv`,
-      createCsv(rows),
-      "text/csv;charset=utf-8"
-    );
-
-    addActivityLog(
-      "Admin tasks exported",
-      "Admin exported the operations planner tasks as CSV.",
-      "Admin"
-    );
-    showMessage("Admin tasks CSV exported.");
-  }
-
-  function scrollToSection(id: string) {
-    document.getElementById(id)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-    setMobileOpen(false);
-  }
-
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (type === "joint_venture") {
-      scrollToSection("jv");
-      return;
-    }
-
-    scrollToSection("properties");
-  }
-
-  function resetFilters() {
-    setKeyword("");
-    setSelectedState("");
-    setType("");
-    setStatusFilter("all");
-    setSortMode("newest");
-  }
-
-  function handleCategoryClick(categoryType: string) {
-    if (categoryType === "joint_venture") {
-      setType("joint_venture");
-      scrollToSection("jv");
-      return;
-    }
-
-    setType(categoryType);
-    window.setTimeout(() => scrollToSection("properties"), 50);
-  }
-
-  function recordListingView(item: Listing) {
-    setListingViews((currentViews) => ({
-      ...currentViews,
-      [item.id]: Number(currentViews[item.id] || 0) + 1,
-    }));
-
-    setRecentListingIds((currentIds) => [
-      item.id,
-      ...currentIds.filter((currentId) => currentId !== item.id),
-    ].slice(0, 6));
-  }
-
-  function openProperty(item: Listing) {
-    recordListingView(item);
-    setSelectedListing(item);
-    setExpandedListingId(item.id);
-  }
-
-  function toggleInlineDetails(item: Listing) {
-    const shouldOpen = expandedListingId !== item.id;
-
-    if (shouldOpen) {
-      recordListingView(item);
-    }
-
-    setExpandedListingId(shouldOpen ? item.id : null);
-  }
-
-  function toggleSavedListing(item: Listing) {
-    setSavedListingIds((currentIds) => {
-      if (currentIds.includes(item.id)) {
-        showMessage("Property removed from saved list.");
-        return currentIds.filter((savedId) => savedId !== item.id);
-      }
-
-      showMessage("Property saved successfully.");
-      return [item.id, ...currentIds];
-    });
-  }
-
-  function toggleCompareListing(item: Listing) {
-    setCompareListingIds((currentIds) => {
-      if (currentIds.includes(item.id)) {
-        showMessage("Property removed from compare list.");
-        return currentIds.filter((savedId) => savedId !== item.id);
-      }
-
-      if (currentIds.length >= 3) {
-        showMessage("Compare list is full. Remove one property before adding another.");
-        return currentIds;
-      }
-
-      showMessage("Property added to compare list.");
-      return [...currentIds, item.id];
-    });
-  }
-
-  function clearCompareList() {
-    setCompareListingIds([]);
-    showMessage("Compare list cleared.");
-  }
-
-  function buildPropertySummary(item: Listing) {
-    return [
-      "INAMAAD Real Estate Property Summary",
-      `Reference: ${getListingReference(item.id)}`,
-      `Title: ${item.title}`,
-      `Type: ${item.type}`,
-      `Location: ${item.location}`,
-      `State: ${item.state}`,
-      `Price / Value: ${item.price}`,
-      `Projected ROI: ${item.roi}`,
-      `Status: ${item.status}`,
-      `Owner / Agent: ${item.ownerName || "INAMAAD contact"}`,
-      `Owner role: ${item.ownerRole || "Owner / Agent"}`,
-      `Owner verified: ${item.ownerVerified ? "Yes" : "Pending review"}`,
-      `Bedrooms: ${item.bedrooms || "Not stated"}`,
-      `Bathrooms: ${item.bathrooms || "Not stated"}`,
-      `Land size: ${item.landSize || "Not stated"}`,
-      `Document: ${item.documentTitle || "Under review"}`,
-      "",
-      item.summary,
-    ].join("\n");
-  }
-
-  async function copyPropertySummary(item: Listing) {
-    try {
-      await navigator.clipboard.writeText(buildPropertySummary(item));
-      showMessage("Property summary copied.");
-    } catch {
-      showMessage("Unable to copy summary on this browser.");
+    if (data) {
+      await loadDatabaseListings();
+      await loadDatabaseInvestorRequests();
+      await loadDatabasePropertyInquiries();
+      await loadDatabasePropertyViews();
+      await loadDatabasePropertyImages();
+      await loadDatabaseContactMessages();
+      await loadDatabaseInspectionBookings();
+      await loadDatabasePropertyOffers();
+      await loadDatabaseJvApplications();
+      await loadDatabaseStaffNotifications();
+      await loadDatabaseAdminActivityLogs();
+      await loadDatabaseStaffMembers();
     }
   }
 
-  function printPropertySummary(item: Listing) {
-    const printWindow = window.open("", "_blank", "width=900,height=700");
+  async function uploadPropertyImage(file: File) {
+    if (!supabase) return "";
 
-    if (!printWindow) {
-      showMessage("Popup blocked. Allow popups to print property summary.");
-      return;
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const safeFileName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("property-images")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
     }
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>${item.title}</title>
-          <style>
-            body { font-family: Arial, sans-serif; color: #0d1c38; padding: 32px; line-height: 1.6; }
-            h1 { margin-bottom: 4px; }
-            .badge { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fff7df; color: #9b6b16; font-weight: 800; font-size: 12px; }
-            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 20px 0; }
-            .box { border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; }
-            .label { color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
-            .value { font-weight: 900; margin-top: 4px; }
-            @media print { button { display: none; } }
-          </style>
-        </head>
-        <body>
-          <span class="badge">INAMAAD Property Summary</span>
-          <h1>${item.title}</h1>
-          <p>${item.summary}</p>
-          <div class="grid">
-            <div class="box"><div class="label">Reference</div><div class="value">${getListingReference(item.id)}</div></div>
-            <div class="box"><div class="label">Location</div><div class="value">${item.location}</div></div>
-            <div class="box"><div class="label">Price</div><div class="value">${item.price}</div></div>
-            <div class="box"><div class="label">ROI</div><div class="value">${item.roi}</div></div>
-            <div class="box"><div class="label">Owner / Agent</div><div class="value">${item.ownerName || "INAMAAD contact"}</div></div>
-            <div class="box"><div class="label">Verification</div><div class="value">${item.ownerVerified ? "Verified" : "Pending review"}</div></div>
-          </div>
-          <button onclick="window.print()">Print</button>
-        </body>
-      </html>
-    `);
+    const { data } = supabase.storage
+      .from("property-images")
+      .getPublicUrl(safeFileName);
 
-    printWindow.document.close();
-    printWindow.focus();
+    return data.publicUrl;
   }
 
-  function handlePostListing(e: React.FormEvent) {
-    e.preventDefault();
-
-    const createdListing: Listing = {
-      id: Date.now(),
-      title: newListing.title.trim(),
-      location: newListing.location.trim(),
-      state: newListing.state.trim(),
-      price: newListing.price.trim(),
-      type: getTypeLabel(newListing.typeValue),
-      typeValue: newListing.typeValue,
-      roi: newListing.roi.trim() || "Pending",
-      status: "Pending review",
-      summary: newListing.summary.trim(),
-      bedrooms: newListing.bedrooms.trim(),
-      bathrooms: newListing.bathrooms.trim(),
-      landSize: newListing.landSize.trim(),
-      documentTitle: newListing.documentTitle.trim(),
-      ownerName: newListing.ownerName.trim(),
-      ownerRole: newListing.ownerRole,
-      ownerPhone: newListing.ownerPhone.trim(),
-      whatsapp: newListing.whatsapp.trim(),
-      ownerVerified: false,
-      ownerVerificationNote: newListing.ownerVerificationNote.trim(),
-      imageUrl: newListing.imageUrl,
-      galleryUrls: newListing.galleryUrls,
-      documentName: newListing.documentName,
-      documentDataUrl: newListing.documentDataUrl,
-      documentMimeType: newListing.documentMimeType,
-    };
-
-    setListings([createdListing, ...listings]);
-    addActivityLog(
-      "Listing posted",
-      `${createdListing.title} was submitted as Pending review.`,
-      "Listing"
-    );
-
-    setNewListing({
-      title: "",
-      location: "",
-      state: "",
-      price: "",
-      typeValue: "residential",
-      roi: "",
-      summary: "",
-      bedrooms: "",
-      bathrooms: "",
-      landSize: "",
-      documentTitle: "",
-      ownerName: "",
-      ownerRole: "Owner",
-      ownerPhone: "",
-      whatsapp: "",
-      ownerVerificationNote: "",
-      imageUrl: "",
-      galleryUrls: [] as string[],
-      documentName: "",
-      documentDataUrl: "",
-      documentMimeType: "",
-    });
-
-    setModal(null);
-    showMessage("Your opportunity has been added as Pending review.");
-
-    window.setTimeout(
-      () => scrollToSection(createdListing.typeValue === "joint_venture" ? "jv" : "properties"),
-      100
-    );
-  }
-
-  function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-
-    setAuthUser({
-      name: loginForm.email.split("@")[0] || "INAMAAD User",
-      email: loginForm.email,
-    });
-
-    setLoginForm({ email: "", password: "" });
-    setModal(null);
-    showMessage("You are signed in successfully.");
-  }
-
-  function handleRegister(e: React.FormEvent) {
-    e.preventDefault();
-
-    setAuthUser({
-      name: registerForm.name || "INAMAAD User",
-      email: registerForm.email,
-    });
-
-    setRegisterForm({
-      name: "",
-      email: "",
-      password: "",
-      role: "Investor",
-    });
-
-    setModal(null);
-    showMessage("Account created successfully. You are now logged in.");
-  }
-
-  function handleForgotPassword(e: React.FormEvent) {
-    e.preventDefault();
-    setModal(null);
-    showMessage(
-      `Password reset request received for ${forgotEmail}. Connect Supabase SMTP to send real reset emails.`
-    );
-    setForgotEmail("");
-  }
-
-
-  function handleNewListingImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      showMessage("Please upload a valid image file.");
-      return;
-    }
-
-    if (file.size > 2.5 * 1024 * 1024) {
-      showMessage("Image is too large. Use an image below 2.5MB.");
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      setNewListing((current) => ({
-        ...current,
-        imageUrl: typeof reader.result === "string" ? reader.result : "",
-      }));
-      showMessage("Property image preview added.");
-    };
-
-    reader.onerror = () => {
-      showMessage("Image upload failed. Try another image.");
-    };
-
-    reader.readAsDataURL(file);
-  }
-
-
-  function handleNewListingGalleryUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
-
+  async function uploadPropertyGalleryImages(listingId: number, files: File[], startOrder = 1) {
     if (!files.length) return;
 
-    const remainingSlots = Math.max(0, 4 - newListing.galleryUrls.length);
-    const selectedFiles = files.slice(0, remainingSlots);
+    if (supabase) {
+      const rows = [];
 
-    if (!selectedFiles.length) {
-      showMessage("Gallery limit reached. You can add up to 4 extra photos.");
-      return;
-    }
-
-    const validFiles = selectedFiles.filter((file) => {
-      if (!file.type.startsWith("image/")) {
-        showMessage("Only image files are allowed in the gallery.");
-        return false;
+      for (let index = 0; index < files.length; index += 1) {
+        const imageUrl = await uploadPropertyImage(files[index]);
+        rows.push({
+          listing_id: listingId,
+          image_url: imageUrl,
+          caption: files[index].name,
+          display_order: startOrder + index,
+          is_main: false,
+        });
       }
 
-      if (file.size > 1.5 * 1024 * 1024) {
-        showMessage("One gallery image is too large. Use images below 1.5MB.");
-        return false;
+      const { error } = await supabase.from("property_images").insert(rows);
+
+      if (error) {
+        throw error;
       }
 
-      return true;
-    });
+      await loadDatabasePropertyImages();
+      return;
+    }
 
-    if (!validFiles.length) return;
+    const localRows = await Promise.all(
+      files.map(async (file, index) => ({
+        id: Date.now() + index,
+        listingId,
+        imageUrl: await imageFileToBase64(file),
+        caption: file.name,
+        displayOrder: startOrder + index,
+        isMain: false,
+        createdAt: new Date().toISOString(),
+      }))
+    );
 
-    Promise.all(
-      validFiles.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
+    setPropertyImages((current) => [...current, ...localRows]);
+  }
 
-            reader.onload = () => {
-              if (typeof reader.result === "string") {
-                resolve(reader.result);
-              } else {
-                reject(new Error("Invalid image result"));
-              }
-            };
+  async function uploadPropertyDocument(file: File) {
+    if (!supabase) return "";
 
-            reader.onerror = () => reject(new Error("Gallery upload failed"));
-            reader.readAsDataURL(file);
-          })
-      )
-    )
-      .then((imageUrls) => {
-        setNewListing((current) => ({
-          ...current,
-          galleryUrls: [...current.galleryUrls, ...imageUrls].slice(0, 4),
-        }));
-        showMessage("Gallery photos added.");
-      })
-      .catch(() => {
-        showMessage("Gallery upload failed. Try again with smaller images.");
+    const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const safeFileName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("property-documents")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
       });
+
+    if (error) {
+      throw error;
+    }
+
+    return safeFileName;
   }
 
-  function removeGalleryImage(index: number) {
-    setNewListing((current) => ({
-      ...current,
-      galleryUrls: current.galleryUrls.filter((_, imageIndex) => imageIndex !== index),
-    }));
-  }
-
-  function handleDocumentUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-
-    if (!file) return;
-
-    const allowedTypes = [
-      "application/pdf",
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      showMessage("Upload a PDF, JPG, PNG, or WEBP document only.");
+  async function openSecurePropertyDocument(documentFileUrl?: string) {
+    if (!canOpenDocuments) {
+      showSuccess("Your role cannot open secure title documents.");
       return;
     }
 
-    if (file.size > 1.2 * 1024 * 1024) {
-      showMessage("Document is too large. Use a file below 1.2MB for now.");
+    if (!documentFileUrl) {
+      showSuccess("No title document file has been uploaded for this listing.");
       return;
     }
 
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      setNewListing((current) => ({
-        ...current,
-        documentName: file.name,
-        documentDataUrl: typeof reader.result === "string" ? reader.result : "",
-        documentMimeType: file.type,
-      }));
-      showMessage("Document preview added.");
-    };
-
-    reader.onerror = () => {
-      showMessage("Document upload failed. Try another file.");
-    };
-
-    reader.readAsDataURL(file);
-  }
-
-  function removeDocumentPreview() {
-    setNewListing((current) => ({
-      ...current,
-      documentName: "",
-      documentDataUrl: "",
-      documentMimeType: "",
-    }));
-  }
-
-  function signOut() {
-    setAuthUser(null);
-    showMessage("You are signed out.");
-  }
-
-  function unlockAdmin(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (adminPassword === ADMIN_PASSWORD) {
-      setAdminUnlocked(true);
-      setAdminPassword("");
-    } else {
-      showMessage("Wrong admin password.");
+    if (!supabase || !user) {
+      showSuccess("Only signed-in staff can open uploaded title documents.");
+      return;
     }
-  }
 
-  function approveListing(id: number) {
-    const listing = listings.find((item) => item.id === id);
+    const documentPath = extractPropertyDocumentPath(documentFileUrl);
 
-    setListings(
-      listings.map((item) =>
-        item.id === id ? { ...item, status: "Verified" } : item
-      )
+    if (!documentPath) {
+      showSuccess("Unable to find the secure document path.");
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from("property-documents")
+      .createSignedUrl(documentPath, 300);
+
+    if (error || !data?.signedUrl) {
+      console.error(error);
+      showSuccess("Unable to open document. Make sure you are signed in as admin.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      "Opened secure title document",
+      "Listing Document",
+      documentPath,
+      "Staff generated a temporary signed URL for an uploaded title document."
     );
 
-    addActivityLog(
-      "Listing approved",
-      `${listing?.title || "Listing"} was approved by admin.`,
-      "Listing"
-    );
-    showMessage("Listing approved successfully.");
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
-  function deleteListing(id: number) {
-    const listing = listings.find((item) => item.id === id);
+  async function uploadVerificationDocument(file: File, folder: string) {
+    if (!supabase) return "";
 
-    setListings(listings.filter((item) => item.id !== id));
-    addActivityLog(
-      "Listing deleted",
-      `${listing?.title || "Listing"} was deleted by admin.`,
-      "Listing"
-    );
-    showMessage("Listing deleted successfully.");
+    if (!canOpenDocuments) {
+      showSuccess("Your role cannot upload owner/agent verification documents.");
+      return "";
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const safeFileName = `${folder}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("verification-documents")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return safeFileName;
   }
 
-  function startEditingListing(item: Listing) {
-    setEditingListingId(item.id);
-    setEditListingForm({
-      title: item.title,
-      location: item.location,
-      state: item.state,
-      price: item.price,
-      typeValue: item.typeValue,
-      roi: item.roi,
-      status: item.status,
-      summary: item.summary,
-      bedrooms: item.bedrooms || "",
-      bathrooms: item.bathrooms || "",
-      landSize: item.landSize || "",
-      documentTitle: item.documentTitle || "",
-      ownerName: item.ownerName || "",
-      ownerRole: item.ownerRole || "Owner",
-      ownerPhone: item.ownerPhone || "",
-      whatsapp: item.whatsapp || "",
-      ownerVerified: Boolean(item.ownerVerified),
-      ownerVerificationNote: item.ownerVerificationNote || "",
-      valuationNote: item.valuationNote || "",
+  async function openSecureVerificationDocument(documentFileUrl?: string, label = "verification document") {
+    if (!canOpenDocuments) {
+      showSuccess("Your role cannot open owner/agent verification documents.");
+      return;
+    }
+
+    if (!documentFileUrl) {
+      showSuccess(`No ${label} has been uploaded for this listing.`);
+      return;
+    }
+
+    if (!supabase || !user) {
+      showSuccess("Only signed-in senior staff can open verification documents.");
+      return;
+    }
+
+    const documentPath = extractStorageObjectPath(documentFileUrl, "verification-documents");
+
+    if (!documentPath) {
+      showSuccess("Unable to find the secure verification document path.");
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from("verification-documents")
+      .createSignedUrl(documentPath, 300);
+
+    if (error || !data?.signedUrl) {
+      console.error(error);
+      showSuccess("Unable to open verification document. Make sure you are signed in as senior staff.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      `Opened secure ${label}`,
+      "Verification Document",
+      documentPath,
+      `Staff generated a temporary signed URL for ${label}.`
+    );
+
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function uploadJvDocument(file: File, folder: string) {
+    if (!supabase) return "";
+
+    if (!canOpenDocuments) {
+      showSuccess("Your role cannot upload JV due-diligence documents.");
+      return "";
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const safeFileName = `${folder}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("jv-documents")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return safeFileName;
+  }
+
+  async function openSecureJvDocument(documentFileUrl?: string, label = "JV document") {
+    if (!canOpenDocuments) {
+      showSuccess("Your role cannot open JV due-diligence documents.");
+      return;
+    }
+
+    if (!documentFileUrl) {
+      showSuccess(`No ${label} has been uploaded for this JV deal.`);
+      return;
+    }
+
+    if (!supabase || !user) {
+      showSuccess("Only signed-in senior staff can open JV due-diligence documents.");
+      return;
+    }
+
+    const documentPath = extractStorageObjectPath(documentFileUrl, "jv-documents");
+
+    if (!documentPath) {
+      showSuccess("Unable to find the secure JV document path.");
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from("jv-documents")
+      .createSignedUrl(documentPath, 300);
+
+    if (error || !data?.signedUrl) {
+      console.error(error);
+      showSuccess("Unable to open JV document. Make sure you are signed in as senior staff.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      `Opened secure ${label}`,
+      "JV Document",
+      documentPath,
+      `Staff generated a temporary signed URL for ${label}.`
+    );
+
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function uploadJvApplicationDocument(file: File, folder: string) {
+    if (!supabase) return "";
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const safeFileName = `${folder}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("jv-application-documents")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return safeFileName;
+  }
+
+  async function openSecureJvApplicationDocument(documentFileUrl?: string, label = "JV application document") {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot open JV applicant documents.");
+      return;
+    }
+
+    if (!documentFileUrl) {
+      showSuccess(`No ${label} has been uploaded for this JV applicant.`);
+      return;
+    }
+
+    if (!supabase || !user) {
+      showSuccess("Only signed-in staff can open JV applicant documents.");
+      return;
+    }
+
+    const documentPath = extractStorageObjectPath(documentFileUrl, "jv-application-documents");
+
+    if (!documentPath) {
+      showSuccess("Unable to find the secure JV applicant document path.");
+      return;
+    }
+
+    const { data, error } = await supabase.storage
+      .from("jv-application-documents")
+      .createSignedUrl(documentPath, 300);
+
+    if (error || !data?.signedUrl) {
+      console.error(error);
+      showSuccess("Unable to open JV applicant document. Make sure you are signed in as staff.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      `Opened secure ${label}`,
+      "JV Applicant Document",
+      documentPath,
+      `Staff generated a temporary signed URL for ${label}.`
+    );
+
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  function imageFileToBase64(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
     });
   }
 
-  function cancelEditingListing() {
-    setEditingListingId(null);
-    setEditListingForm({
-      title: "",
-      location: "",
-      state: "",
-      price: "",
-      typeValue: "residential",
-      roi: "",
-      status: "Pending review",
-      summary: "",
-      bedrooms: "",
-      bathrooms: "",
-      landSize: "",
-      documentTitle: "",
-      ownerName: "",
-      ownerRole: "Owner",
-      ownerPhone: "",
-      whatsapp: "",
-      ownerVerified: false,
-      ownerVerificationNote: "",
-    });
-  }
+  async function openListing(listing: Listing) {
+    const latestListing =
+      listings.find((currentListing) => Number(currentListing.id) === Number(listing.id)) ||
+      listing;
 
-  function handleEditListingSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!editingListingId) return;
-
-    const listingBeingEdited = listings.find((item) => item.id === editingListingId);
-
-    setListings((currentListings) =>
-      currentListings.map((item) =>
-        item.id === editingListingId
-          ? {
-              ...item,
-              title: editListingForm.title.trim(),
-              location: editListingForm.location.trim(),
-              state: editListingForm.state.trim(),
-              price: editListingForm.price.trim(),
-              type: getTypeLabel(editListingForm.typeValue),
-              typeValue: editListingForm.typeValue,
-              roi: editListingForm.roi.trim() || "Pending",
-              status: editListingForm.status,
-              summary: editListingForm.summary.trim(),
-              bedrooms: editListingForm.bedrooms.trim(),
-              bathrooms: editListingForm.bathrooms.trim(),
-              landSize: editListingForm.landSize.trim(),
-              documentTitle: editListingForm.documentTitle.trim(),
-              ownerName: editListingForm.ownerName.trim(),
-              ownerRole: editListingForm.ownerRole,
-              ownerPhone: editListingForm.ownerPhone.trim(),
-              whatsapp: editListingForm.whatsapp.trim(),
-              ownerVerified: editListingForm.ownerVerified,
-              ownerVerificationNote: editListingForm.ownerVerificationNote.trim(),
-              valuationNote: editListingForm.valuationNote.trim(),
-            }
-          : item
-      )
-    );
-
-    addActivityLog(
-      "Listing edited",
-      `${editListingForm.title.trim() || listingBeingEdited?.title || "Listing"} was updated by admin.`,
-      "Listing"
-    );
-    cancelEditingListing();
-    showMessage("Listing updated successfully.");
-  }
-
-  function duplicateListing(item: Listing) {
-    const duplicatedListing: Listing = {
-      ...item,
-      id: Date.now(),
-      title: `${item.title} Copy`,
-      status: "Pending review",
-    };
-
-    setListings((currentListings) => [duplicatedListing, ...currentListings]);
-    addActivityLog(
-      "Listing duplicated",
-      `${item.title} was duplicated as ${duplicatedListing.title}.`,
-      "Listing"
-    );
-    showMessage("Listing duplicated as Pending review.");
-  }
-
-  function verifyListingOwner(id: number) {
-    setListings((currentListings) =>
-      currentListings.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              ownerVerified: true,
-              ownerVerificationNote:
-                item.ownerVerificationNote || "Owner / agent checked by INAMAAD admin.",
-            }
-          : item
-      )
-    );
-
-    const listing = listings.find((item) => item.id === id);
-    addActivityLog(
-      "Owner verified",
-      `${listing?.ownerName || listing?.title || "Owner / agent"} was verified by admin.`,
-      "Listing"
-    );
-    showMessage("Owner / agent verified.");
-  }
-
-  function unverifyListingOwner(id: number) {
-    setListings((currentListings) =>
-      currentListings.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              ownerVerified: false,
-              ownerVerificationNote:
-                item.ownerVerificationNote || "Verification pending admin review.",
-            }
-          : item
-      )
-    );
-
-    const listing = listings.find((item) => item.id === id);
-    addActivityLog(
-      "Owner unverified",
-      `${listing?.ownerName || listing?.title || "Owner / agent"} verification was removed.`,
-      "Listing"
-    );
-    showMessage("Owner / agent verification removed.");
-  }
-
-
-  function toggleFeaturedListing(id: number) {
-    setListings((currentListings) =>
-      currentListings.map((item) =>
-        item.id === id ? { ...item, featured: !item.featured } : item
-      )
-    );
-
-    const listing = listings.find((item) => item.id === id);
-    addActivityLog(
-      "Featured listing updated",
-      `${listing?.title || "Listing"} featured status was changed.`,
-      "Listing"
-    );
-    showMessage("Featured listing status updated.");
-  }
-
-  function shareMarketplace() {
-    const shareText =
-      "Explore verified properties and JV deals on INAMAAD Real Estate.";
-    const shareUrl = window.location.origin + window.location.pathname;
-
-    if (navigator.share) {
-      navigator.share({
-        title: "INAMAAD Real Estate",
-        text: shareText,
-        url: shareUrl,
-      });
-      return;
+    if (autoRefreshTimerRef.current) {
+      window.clearTimeout(autoRefreshTimerRef.current);
+      autoRefreshTimerRef.current = null;
     }
 
-    navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-    showMessage("Marketplace link copied.");
-  }
-
-  function shareListing(item: Listing) {
-    const shareText = `INAMAAD Real Estate: ${item.title} - ${item.price} in ${item.location}`;
-    const shareUrl = `${window.location.origin}${window.location.pathname}#property-${item.id}`;
-
-    if (navigator.share) {
-      navigator.share({
-        title: item.title,
-        text: shareText,
-        url: shareUrl,
-      });
-      return;
-    }
-
-    navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-    showMessage("Property link copied.");
-  }
-
-
-  function openLeadForm(item?: Listing) {
-    setLeadForm({
-      listingId: item?.id || 0,
-      listingTitle: item?.title || "",
-      name: authUser?.name || "",
-      email: authUser?.email || "",
+    setSelectedListing(latestListing);
+    setRecentListingIds((currentIds) => [
+      latestListing.id,
+      ...currentIds.filter((id) => Number(id) !== Number(latestListing.id)),
+    ].slice(0, 6));
+    setInquiryForm({ name: "", email: "", phone: "", message: "" });
+    setInspectionForm({
+      name: "",
+      email: "",
       phone: "",
-      budget: "",
-      message: item
-        ? `I am interested in ${item.title} (${getListingReference(item.id)}) in ${item.location}.`
-        : "",
+      preferredDate: "",
+      preferredTime: "",
+      message: "",
     });
+    setModal("details");
 
+    const newView: Omit<PropertyView, "id"> = {
+      listingId: latestListing.id,
+      listingTitle: latestListing.title,
+      viewedAt: new Date().toISOString(),
+    };
+
+    try {
+      if (supabase) {
+        const { error } = await supabase.from("property_views").insert({
+          listing_id: latestListing.id,
+          listing_title: latestListing.title,
+        });
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        if (adminUnlocked) {
+          await Promise.all([loadDatabasePropertyViews(), loadDatabasePropertyImages()]);
+        }
+      } else {
+        setPropertyViews((current) => [{ ...newView, id: Date.now() }, ...current]);
+      }
+    } catch (error) {
+      // Viewing analytics must never stop property/JV details from opening.
+      console.error(error);
+    }
+  }
+
+  async function copyListingShareLink(listing: Listing) {
+    const shareUrl = buildListingShareUrl(listing.id);
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showSuccess("Property link copied. You can now share it with clients.");
+    } catch {
+      showSuccess(shareUrl);
+    }
+  }
+
+  async function shareListing(listing: Listing) {
+    const shareUrl = buildListingShareUrl(listing.id);
+    const shareText = buildListingShareText(listing);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: listing.title,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        // User cancelled native sharing, so fall back to copying.
+      }
+    }
+
+    await copyListingShareLink(listing);
+  }
+
+  function shareListingToWhatsApp(listing: Listing) {
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(buildListingShareText(listing))}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
+  function openEditListing(listing: Listing) {
+    if (!canEditListings) {
+      showSuccess("Your role cannot edit property listings.");
+      return;
+    }
+
+    setEditingListing(listing);
     setSelectedListing(null);
-    setModal("investor");
+    setEditImageFile(null);
+    setEditGalleryFiles([]);
+    setEditDocumentFile(null);
+    setEditIdentityDocumentFile(null);
+    setEditCacDocumentFile(null);
+    setEditMandateDocumentFile(null);
+    setEditJvFeasibilityStudyFile(null);
+    setEditJvArchitecturalConceptFile(null);
+    setEditJvEstateLayoutFile(null);
+    setEditJvBoqFile(null);
+    setEditJvProposalDocumentFile(null);
+    setEditForm({
+      title: listing.title,
+      location: listing.location,
+      stateName: listing.stateName || listing.location || "FCT Abuja",
+      cityArea: listing.cityArea || "",
+      fullAddress: listing.fullAddress || "",
+      nearbyLandmark: listing.nearbyLandmark || "",
+      googleMapLink: listing.googleMapLink || "",
+      showExactAddress: Boolean(listing.showExactAddress),
+      videoUrl: listing.videoUrl || "",
+      virtualTourUrl: listing.virtualTourUrl || "",
+      droneVideoUrl: listing.droneVideoUrl || "",
+      showVideoPublicly: listing.showVideoPublicly !== false,
+      price: listing.price,
+      agencyFee: listing.agencyFee || "",
+      legalFee: listing.legalFee || "",
+      serviceCharge: listing.serviceCharge || "",
+      cautionFee: listing.cautionFee || "",
+      surveyFee: listing.surveyFee || "",
+      developmentFee: listing.developmentFee || "",
+      totalEstimatedCost: listing.totalEstimatedCost || calculateTotalEstimatedCost(listing),
+      paymentPlanAvailable: Boolean(listing.paymentPlanAvailable),
+      installmentDetails: listing.installmentDetails || "",
+      bedrooms: listing.bedrooms ? String(listing.bedrooms) : "",
+      bathrooms: listing.bathrooms ? String(listing.bathrooms) : "",
+      toilets: listing.toilets ? String(listing.toilets) : "",
+      parkingSpaces: listing.parkingSpaces ? String(listing.parkingSpaces) : "",
+      landSize: listing.landSize || "",
+      propertySize: listing.propertySize || "",
+      furnishingStatus: listing.furnishingStatus || "Not Specified",
+      propertyCondition: listing.propertyCondition || "Not Specified",
+      amenities: listing.amenities || "",
+      jvStructure: listing.jvStructure || "Landowner + Developer JV",
+      jvLandContribution: listing.jvLandContribution || "",
+      jvDeveloperRequirement: listing.jvDeveloperRequirement || "",
+      jvInvestorRequirement: listing.jvInvestorRequirement || "",
+      jvSharingFormula: listing.jvSharingFormula || "",
+      jvProjectStage: listing.jvProjectStage || "Land Available",
+      jvExpectedUnits: listing.jvExpectedUnits || "",
+      jvEstimatedProjectCost: listing.jvEstimatedProjectCost || "",
+      jvCompletionTimeline: listing.jvCompletionTimeline || "",
+      jvTerms: listing.jvTerms || "",
+      jvFeasibilityStudyUrl: listing.jvFeasibilityStudyUrl || "",
+      jvArchitecturalConceptUrl: listing.jvArchitecturalConceptUrl || "",
+      jvEstateLayoutUrl: listing.jvEstateLayoutUrl || "",
+      jvBoqUrl: listing.jvBoqUrl || "",
+      jvProposalDocumentUrl: listing.jvProposalDocumentUrl || "",
+      jvLandTitleStatus: listing.jvLandTitleStatus || "Not Reviewed",
+      jvDevelopmentApprovalStatus: listing.jvDevelopmentApprovalStatus || "Not Reviewed",
+      jvDealStatus: listing.jvDealStatus || "New JV",
+      jvNextAction: listing.jvNextAction || "",
+      jvNextActionDate: listing.jvNextActionDate || "",
+      jvInternalNotes: listing.jvInternalNotes || "",
+      neighborhoodOverview: listing.neighborhoodOverview || "",
+      roadAccess: listing.roadAccess || "",
+      powerSupply: listing.powerSupply || "",
+      waterSupply: listing.waterSupply || "",
+      securityFeatures: listing.securityFeatures || "",
+      nearbySchools: listing.nearbySchools || "",
+      nearbyHospitals: listing.nearbyHospitals || "",
+      nearbyMalls: listing.nearbyMalls || "",
+      nearbyTransport: listing.nearbyTransport || "",
+      distanceToMajorRoad: listing.distanceToMajorRoad || "",
+      estateFeatures: listing.estateFeatures || "",
+      type: listing.type,
+      category: listing.category,
+      availabilityStatus: listing.availabilityStatus || "Available",
+      availabilityNote: listing.availabilityNote || "",
+      availableFrom: listing.availableFrom || "",
+      yieldText: listing.yieldText,
+      description: listing.description,
+      documentTitle: listing.documentTitle || "C of O / Certificate of Occupancy",
+      documentStatus: listing.documentStatus || "Available",
+      documentDetails: listing.documentDetails || "",
+      documentFileUrl: listing.documentFileUrl || "",
+      titleVerified: Boolean(listing.titleVerified),
+      ownerVerified: Boolean(listing.ownerVerified),
+      siteInspected: Boolean(listing.siteInspected),
+      priceChecked: Boolean(listing.priceChecked),
+      legalReviewStatus: listing.legalReviewStatus || "Not Reviewed",
+      verificationNotes: listing.verificationNotes || "",
+      status: listing.status,
+      ownerName: listing.ownerName || "",
+      ownerPhone: listing.ownerPhone || "",
+      contactRole: listing.contactRole || "Owner",
+      companyName: listing.companyName || "",
+      contactEmail: listing.contactEmail || "",
+      contactWhatsapp: listing.contactWhatsapp || "",
+      contactAddress: listing.contactAddress || "",
+      publicContactVisibility: listing.publicContactVisibility || "Hide Phone",
+      mandateStatus: listing.mandateStatus || "Not Confirmed",
+      identityType: listing.identityType || "Not Provided",
+      identityNumber: listing.identityNumber || "",
+      companyRegistrationNumber: listing.companyRegistrationNumber || "",
+      mandateDocumentStatus: listing.mandateDocumentStatus || "Not Provided",
+      contactProfileVerified: Boolean(listing.contactProfileVerified),
+      contactVerificationNotes: listing.contactVerificationNotes || "",
+      identityDocumentUrl: listing.identityDocumentUrl || "",
+      cacDocumentUrl: listing.cacDocumentUrl || "",
+      mandateDocumentUrl: listing.mandateDocumentUrl || "",
+      imageUrl: listing.imageUrl || "",
+      featured: Boolean(listing.featured),
+      featuredRank: String(listing.featuredRank || 0),
+    });
+    setModal("edit");
   }
 
-  function handleLeadSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function switchPostSubmissionMode(mode: "property" | "jv") {
+    setPostMode(mode);
+    setPostFormRenderKey((current) => current + 1);
+    setPostImageFile(null);
+    setPostGalleryFiles([]);
+    setPostDocumentFile(null);
 
-    const createdLead: Lead = {
-      id: Date.now(),
-      listingId: leadForm.listingId || undefined,
-      listingTitle: leadForm.listingTitle || undefined,
-      name: leadForm.name.trim(),
-      email: leadForm.email.trim(),
-      phone: leadForm.phone.trim(),
-      budget: leadForm.budget.trim(),
-      message: leadForm.message.trim(),
-      createdAt: new Date().toISOString(),
+    setPostForm((current) => {
+      if (mode === "jv") {
+        return {
+          ...current,
+          title: current.title || "JV Development Opportunity",
+          type: "Joint Venture",
+          category: "JV Partnership",
+          price: current.price,
+          bedrooms: "",
+          bathrooms: "",
+          toilets: "",
+          parkingSpaces: "",
+          propertySize: "",
+          furnishingStatus: "Not Specified",
+          propertyCondition: "Not Specified",
+          amenities: "",
+          jvStructure: current.jvStructure || "Landowner + Developer JV",
+          jvProjectStage: current.jvProjectStage || "Land Available",
+          jvDealStatus: current.jvDealStatus || "New JV",
+          yieldText: current.yieldText || "Structured JV partnership opportunity",
+        };
+      }
+
+      return {
+        ...current,
+        title: current.title === "JV Development Opportunity" ? "" : current.title,
+        type: isJointVentureListing(current) ? "Residential" : current.type || "Residential",
+        category:
+          current.category === "JV Partnership" || current.category.toLowerCase().includes("jv")
+            ? "For Sale"
+            : current.category || "For Sale",
+        jvStructure: "Landowner + Developer JV",
+        jvLandContribution: "",
+        jvDeveloperRequirement: "",
+        jvInvestorRequirement: "",
+        jvSharingFormula: "",
+        jvProjectStage: "Land Available",
+        jvExpectedUnits: "",
+        jvEstimatedProjectCost: "",
+        jvCompletionTimeline: "",
+        jvTerms: "",
+        jvDealStatus: "New JV",
+        jvNextAction: "",
+        jvNextActionDate: "",
+        jvInternalNotes: "",
+      };
+    });
+
+    scheduleAutoRefresh(0);
+  }
+
+  function openPostModal(mode: "property" | "jv") {
+    switchPostSubmissionMode(mode);
+    setModal("post");
+    window.setTimeout(() => scheduleAutoRefresh(0), 0);
+  }
+
+  async function submitListing(event: React.FormEvent) {
+    event.preventDefault();
+
+    setIsLoading(true);
+
+    try {
+      const imageUrl = postImageFile
+        ? supabase
+          ? await uploadPropertyImage(postImageFile)
+          : await imageFileToBase64(postImageFile)
+        : "";
+
+      const documentFileUrl = postDocumentFile
+        ? supabase
+          ? await uploadPropertyDocument(postDocumentFile)
+          : await imageFileToBase64(postDocumentFile)
+        : "";
+
+      const postIsJV = postMode === "jv";
+
+      const newListing: Omit<Listing, "id"> = {
+        title: postForm.title,
+        location: buildListingLocationValue(postForm),
+        stateName: postForm.stateName,
+        cityArea: postForm.cityArea,
+        fullAddress: postForm.fullAddress,
+        nearbyLandmark: postForm.nearbyLandmark,
+        googleMapLink: postForm.googleMapLink,
+        showExactAddress: postForm.showExactAddress,
+        videoUrl: postForm.videoUrl,
+        virtualTourUrl: postForm.virtualTourUrl,
+        droneVideoUrl: postForm.droneVideoUrl,
+        showVideoPublicly: postForm.showVideoPublicly,
+        price: postForm.price,
+        value: currencyToValue(postForm.price),
+        agencyFee: postForm.agencyFee,
+        legalFee: postForm.legalFee,
+        serviceCharge: postForm.serviceCharge,
+        cautionFee: postForm.cautionFee,
+        surveyFee: postForm.surveyFee,
+        developmentFee: postForm.developmentFee,
+        totalEstimatedCost: calculateTotalEstimatedCost(postForm),
+        paymentPlanAvailable: postForm.paymentPlanAvailable,
+        installmentDetails: postForm.installmentDetails,
+        bedrooms: postIsJV ? undefined : postForm.bedrooms ? Number(postForm.bedrooms) : undefined,
+        bathrooms: postIsJV ? undefined : postForm.bathrooms ? Number(postForm.bathrooms) : undefined,
+        toilets: postIsJV ? undefined : postForm.toilets ? Number(postForm.toilets) : undefined,
+        parkingSpaces: postIsJV ? undefined : postForm.parkingSpaces ? Number(postForm.parkingSpaces) : undefined,
+        landSize: postForm.landSize,
+        propertySize: postIsJV ? "" : postForm.propertySize,
+        furnishingStatus: postIsJV ? "Not Specified" : postForm.furnishingStatus,
+        propertyCondition: postIsJV ? "Not Specified" : postForm.propertyCondition,
+        amenities: postIsJV ? "" : postForm.amenities,
+        jvStructure: postIsJV ? postForm.jvStructure : "",
+        jvLandContribution: postIsJV ? postForm.jvLandContribution : "",
+        jvDeveloperRequirement: postIsJV ? postForm.jvDeveloperRequirement : "",
+        jvInvestorRequirement: postIsJV ? postForm.jvInvestorRequirement : "",
+        jvSharingFormula: postIsJV ? postForm.jvSharingFormula : "",
+        jvProjectStage: postIsJV ? postForm.jvProjectStage : "",
+        jvExpectedUnits: postIsJV ? postForm.jvExpectedUnits : "",
+        jvEstimatedProjectCost: postIsJV ? postForm.jvEstimatedProjectCost : "",
+        jvCompletionTimeline: postIsJV ? postForm.jvCompletionTimeline : "",
+        jvTerms: postIsJV ? postForm.jvTerms : "",
+        jvFeasibilityStudyUrl: postIsJV ? postForm.jvFeasibilityStudyUrl : "",
+        jvArchitecturalConceptUrl: postIsJV ? postForm.jvArchitecturalConceptUrl : "",
+        jvEstateLayoutUrl: postIsJV ? postForm.jvEstateLayoutUrl : "",
+        jvBoqUrl: postIsJV ? postForm.jvBoqUrl : "",
+        jvProposalDocumentUrl: postIsJV ? postForm.jvProposalDocumentUrl : "",
+        jvLandTitleStatus: postIsJV ? postForm.jvLandTitleStatus as Listing["jvLandTitleStatus"] : undefined,
+        jvDevelopmentApprovalStatus: postIsJV ? postForm.jvDevelopmentApprovalStatus as Listing["jvDevelopmentApprovalStatus"] : undefined,
+        jvDealStatus: postIsJV ? "New JV" : undefined,
+        jvNextAction: postIsJV ? "Review JV structure and due diligence documents" : "",
+        jvNextActionDate: "",
+        jvInternalNotes: "",
+        neighborhoodOverview: postForm.neighborhoodOverview,
+        roadAccess: postForm.roadAccess,
+        powerSupply: postForm.powerSupply,
+        waterSupply: postForm.waterSupply,
+        securityFeatures: postForm.securityFeatures,
+        nearbySchools: postForm.nearbySchools,
+        nearbyHospitals: postForm.nearbyHospitals,
+        nearbyMalls: postForm.nearbyMalls,
+        nearbyTransport: postForm.nearbyTransport,
+        distanceToMajorRoad: postForm.distanceToMajorRoad,
+        estateFeatures: postForm.estateFeatures,
+        type: postForm.type,
+        category: postForm.category,
+        availabilityStatus: postForm.availabilityStatus,
+        availabilityNote: postForm.availabilityNote,
+        availableFrom: postForm.availableFrom,
+        yieldText: postForm.yieldText || "Pending investment review",
+        description: postForm.description,
+        documentTitle: postForm.documentTitle,
+        documentStatus: postForm.documentStatus,
+        documentDetails: postForm.documentDetails,
+        documentFileUrl,
+        titleVerified: false,
+        ownerVerified: false,
+        siteInspected: false,
+        priceChecked: false,
+        legalReviewStatus: "Not Reviewed",
+        verificationNotes: "",
+        status: "Pending Review",
+        ownerName: postForm.ownerName,
+        ownerPhone: postForm.ownerPhone,
+        contactRole: postForm.contactRole,
+        companyName: postForm.companyName,
+        contactEmail: postForm.contactEmail,
+        contactWhatsapp: postForm.contactWhatsapp,
+        contactAddress: postForm.contactAddress,
+        publicContactVisibility: postForm.publicContactVisibility,
+        mandateStatus: postForm.mandateStatus,
+        identityType: postForm.identityType,
+        identityNumber: postForm.identityNumber,
+        companyRegistrationNumber: postForm.companyRegistrationNumber,
+        mandateDocumentStatus: postForm.mandateDocumentStatus,
+        contactProfileVerified: false,
+        contactVerificationNotes: postForm.contactVerificationNotes,
+        imageUrl,
+        featured: false,
+        featuredRank: 0,
+        createdAt: new Date().toISOString(),
+      };
+
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("listings")
+          .insert(
+            listingToRow({
+              ...newListing,
+              status: "Pending Review",
+            })
+          )
+          .select("id")
+          .single();
+
+        if (error) {
+          console.error(error);
+          showSuccess("Unable to submit listing. Check database settings.");
+          return;
+        }
+
+        if (data?.id && postGalleryFiles.length) {
+          await uploadPropertyGalleryImages(Number(data.id), postGalleryFiles, 1);
+        }
+
+        await loadDatabaseListings();
+      } else {
+        const localListingId = Date.now();
+        setListings((current) => [
+          { ...newListing, id: localListingId },
+          ...current,
+        ]);
+        if (postGalleryFiles.length) {
+          await uploadPropertyGalleryImages(localListingId, postGalleryFiles, 1);
+        }
+      }
+
+      await createStaffNotification(
+        "New pending property",
+        `${postForm.title} was submitted for admin review in ${buildListingLocationValue(postForm)}.`,
+        "Pending Property"
+      );
+
+      setPostForm({
+        title: "",
+        location: "",
+        stateName: "FCT Abuja",
+        cityArea: "",
+        fullAddress: "",
+        nearbyLandmark: "",
+        googleMapLink: "",
+        showExactAddress: false,
+        videoUrl: "",
+        virtualTourUrl: "",
+        droneVideoUrl: "",
+        showVideoPublicly: true,
+        price: "",
+        agencyFee: "",
+        legalFee: "",
+        serviceCharge: "",
+        cautionFee: "",
+        surveyFee: "",
+        developmentFee: "",
+        totalEstimatedCost: "",
+        paymentPlanAvailable: false,
+        installmentDetails: "",
+        bedrooms: "",
+        bathrooms: "",
+        toilets: "",
+        parkingSpaces: "",
+        landSize: "",
+        propertySize: "",
+        furnishingStatus: "Not Specified",
+        propertyCondition: "Not Specified",
+        amenities: "",
+        jvStructure: "Landowner + Developer JV",
+        jvLandContribution: "",
+        jvDeveloperRequirement: "",
+        jvInvestorRequirement: "",
+        jvSharingFormula: "",
+        jvProjectStage: "Land Available",
+        jvExpectedUnits: "",
+        jvEstimatedProjectCost: "",
+        jvCompletionTimeline: "",
+        jvTerms: "",
+        neighborhoodOverview: "",
+        roadAccess: "",
+        powerSupply: "",
+        waterSupply: "",
+        securityFeatures: "",
+        nearbySchools: "",
+        nearbyHospitals: "",
+        nearbyMalls: "",
+        nearbyTransport: "",
+        distanceToMajorRoad: "",
+        estateFeatures: "",
+        type: "Residential",
+        category: "For Sale",
+        availabilityStatus: "Available" as AvailabilityStatus,
+        availabilityNote: "",
+        availableFrom: "",
+        yieldText: "",
+        description: "",
+        documentTitle: "C of O / Certificate of Occupancy",
+        documentStatus: "Available",
+        documentDetails: "",
+        documentFileUrl: "",
+        ownerName: "",
+        ownerPhone: "",
+        contactRole: "Owner",
+        companyName: "",
+        contactEmail: "",
+        contactWhatsapp: "",
+        contactAddress: "",
+        publicContactVisibility: "Hide Phone",
+        mandateStatus: "Not Confirmed",
+      });
+      setPostMode("property");
+      setPostFormRenderKey((current) => current + 1);
+      setPostImageFile(null);
+      setPostGalleryFiles([]);
+      setPostDocumentFile(null);
+
+      setModal(null);
+      showSuccess("Opportunity submitted successfully. Admin review is pending.");
+    } catch (error) {
+      console.error(error);
+      showSuccess("Upload failed. Please try a smaller image/document file.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function submitEditListing(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!canEditListings) {
+      showSuccess("Your role cannot save listing changes.");
+      return;
+    }
+
+    if (!editingListing) return;
+
+    setIsLoading(true);
+
+    try {
+      const imageUrl = editImageFile
+        ? supabase
+          ? await uploadPropertyImage(editImageFile)
+          : await imageFileToBase64(editImageFile)
+        : editForm.imageUrl;
+
+      const documentFileUrl = editDocumentFile
+        ? supabase
+          ? await uploadPropertyDocument(editDocumentFile)
+          : await imageFileToBase64(editDocumentFile)
+        : editForm.documentFileUrl;
+
+      const identityDocumentUrl = editIdentityDocumentFile
+        ? supabase
+          ? await uploadVerificationDocument(editIdentityDocumentFile, "identity")
+          : await imageFileToBase64(editIdentityDocumentFile)
+        : editForm.identityDocumentUrl;
+
+      const cacDocumentUrl = editCacDocumentFile
+        ? supabase
+          ? await uploadVerificationDocument(editCacDocumentFile, "cac")
+          : await imageFileToBase64(editCacDocumentFile)
+        : editForm.cacDocumentUrl;
+
+      const mandateDocumentUrl = editMandateDocumentFile
+        ? supabase
+          ? await uploadVerificationDocument(editMandateDocumentFile, "mandate")
+          : await imageFileToBase64(editMandateDocumentFile)
+        : editForm.mandateDocumentUrl;
+
+      const jvFeasibilityStudyUrl = editJvFeasibilityStudyFile
+        ? supabase
+          ? await uploadJvDocument(editJvFeasibilityStudyFile, "feasibility-study")
+          : await imageFileToBase64(editJvFeasibilityStudyFile)
+        : editForm.jvFeasibilityStudyUrl;
+
+      const jvArchitecturalConceptUrl = editJvArchitecturalConceptFile
+        ? supabase
+          ? await uploadJvDocument(editJvArchitecturalConceptFile, "architectural-concept")
+          : await imageFileToBase64(editJvArchitecturalConceptFile)
+        : editForm.jvArchitecturalConceptUrl;
+
+      const jvEstateLayoutUrl = editJvEstateLayoutFile
+        ? supabase
+          ? await uploadJvDocument(editJvEstateLayoutFile, "estate-layout")
+          : await imageFileToBase64(editJvEstateLayoutFile)
+        : editForm.jvEstateLayoutUrl;
+
+      const jvBoqUrl = editJvBoqFile
+        ? supabase
+          ? await uploadJvDocument(editJvBoqFile, "boq-costing")
+          : await imageFileToBase64(editJvBoqFile)
+        : editForm.jvBoqUrl;
+
+      const jvProposalDocumentUrl = editJvProposalDocumentFile
+        ? supabase
+          ? await uploadJvDocument(editJvProposalDocumentFile, "proposal")
+          : await imageFileToBase64(editJvProposalDocumentFile)
+        : editForm.jvProposalDocumentUrl;
+
+      const editIsJV = isJointVentureListing(editForm);
+
+      const updatedListing: Listing = {
+        ...editingListing,
+        title: editForm.title,
+        location: buildListingLocationValue(editForm),
+        stateName: editForm.stateName,
+        cityArea: editForm.cityArea,
+        fullAddress: editForm.fullAddress,
+        nearbyLandmark: editForm.nearbyLandmark,
+        googleMapLink: editForm.googleMapLink,
+        showExactAddress: editForm.showExactAddress,
+        videoUrl: editForm.videoUrl,
+        virtualTourUrl: editForm.virtualTourUrl,
+        droneVideoUrl: editForm.droneVideoUrl,
+        showVideoPublicly: editForm.showVideoPublicly,
+        price: editForm.price,
+        value: currencyToValue(editForm.price),
+        agencyFee: editForm.agencyFee,
+        legalFee: editForm.legalFee,
+        serviceCharge: editForm.serviceCharge,
+        cautionFee: editForm.cautionFee,
+        surveyFee: editForm.surveyFee,
+        developmentFee: editForm.developmentFee,
+        totalEstimatedCost: calculateTotalEstimatedCost(editForm),
+        paymentPlanAvailable: editForm.paymentPlanAvailable,
+        installmentDetails: editForm.installmentDetails,
+        bedrooms: editIsJV ? undefined : editForm.bedrooms ? Number(editForm.bedrooms) : undefined,
+        bathrooms: editIsJV ? undefined : editForm.bathrooms ? Number(editForm.bathrooms) : undefined,
+        toilets: editIsJV ? undefined : editForm.toilets ? Number(editForm.toilets) : undefined,
+        parkingSpaces: editIsJV ? undefined : editForm.parkingSpaces ? Number(editForm.parkingSpaces) : undefined,
+        landSize: editForm.landSize,
+        propertySize: editIsJV ? "" : editForm.propertySize,
+        furnishingStatus: editIsJV ? "Not Specified" : editForm.furnishingStatus,
+        propertyCondition: editIsJV ? "Not Specified" : editForm.propertyCondition,
+        amenities: editIsJV ? "" : editForm.amenities,
+        jvStructure: editIsJV ? editForm.jvStructure : "",
+        jvLandContribution: editIsJV ? editForm.jvLandContribution : "",
+        jvDeveloperRequirement: editIsJV ? editForm.jvDeveloperRequirement : "",
+        jvInvestorRequirement: editIsJV ? editForm.jvInvestorRequirement : "",
+        jvSharingFormula: editIsJV ? editForm.jvSharingFormula : "",
+        jvProjectStage: editIsJV ? editForm.jvProjectStage : "",
+        jvExpectedUnits: editIsJV ? editForm.jvExpectedUnits : "",
+        jvEstimatedProjectCost: editIsJV ? editForm.jvEstimatedProjectCost : "",
+        jvCompletionTimeline: editIsJV ? editForm.jvCompletionTimeline : "",
+        jvTerms: editIsJV ? editForm.jvTerms : "",
+        jvFeasibilityStudyUrl: editIsJV ? jvFeasibilityStudyUrl : "",
+        jvArchitecturalConceptUrl: editIsJV ? jvArchitecturalConceptUrl : "",
+        jvEstateLayoutUrl: editIsJV ? jvEstateLayoutUrl : "",
+        jvBoqUrl: editIsJV ? jvBoqUrl : "",
+        jvProposalDocumentUrl: editIsJV ? jvProposalDocumentUrl : "",
+        jvLandTitleStatus: editIsJV ? editForm.jvLandTitleStatus as Listing["jvLandTitleStatus"] : undefined,
+        jvDevelopmentApprovalStatus: editIsJV ? editForm.jvDevelopmentApprovalStatus as Listing["jvDevelopmentApprovalStatus"] : undefined,
+        jvDealStatus: editIsJV ? editForm.jvDealStatus as JVDealStatus : undefined,
+        jvNextAction: editIsJV ? editForm.jvNextAction : "",
+        jvNextActionDate: editIsJV ? editForm.jvNextActionDate : "",
+        jvInternalNotes: editIsJV ? editForm.jvInternalNotes : "",
+        neighborhoodOverview: editForm.neighborhoodOverview,
+        roadAccess: editForm.roadAccess,
+        powerSupply: editForm.powerSupply,
+        waterSupply: editForm.waterSupply,
+        securityFeatures: editForm.securityFeatures,
+        nearbySchools: editForm.nearbySchools,
+        nearbyHospitals: editForm.nearbyHospitals,
+        nearbyMalls: editForm.nearbyMalls,
+        nearbyTransport: editForm.nearbyTransport,
+        distanceToMajorRoad: editForm.distanceToMajorRoad,
+        estateFeatures: editForm.estateFeatures,
+        type: editForm.type,
+        category: editForm.category,
+        availabilityStatus: editForm.availabilityStatus as AvailabilityStatus,
+        availabilityNote: editForm.availabilityNote,
+        availableFrom: editForm.availableFrom,
+        yieldText: editForm.yieldText || "Pending investment review",
+        description: editForm.description,
+        documentTitle: editForm.documentTitle,
+        documentStatus: editForm.documentStatus,
+        documentDetails: editForm.documentDetails,
+        documentFileUrl,
+        titleVerified: Boolean(editForm.titleVerified),
+        ownerVerified: Boolean(editForm.ownerVerified),
+        siteInspected: Boolean(editForm.siteInspected),
+        priceChecked: Boolean(editForm.priceChecked),
+        legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
+        verificationNotes: editForm.verificationNotes,
+        status: editForm.status,
+        ownerName: editForm.ownerName,
+        ownerPhone: editForm.ownerPhone,
+        contactRole: editForm.contactRole,
+        companyName: editForm.companyName,
+        contactEmail: editForm.contactEmail,
+        contactWhatsapp: editForm.contactWhatsapp,
+        contactAddress: editForm.contactAddress,
+        publicContactVisibility: editForm.publicContactVisibility,
+        mandateStatus: editForm.mandateStatus,
+        identityType: editForm.identityType,
+        identityNumber: editForm.identityNumber,
+        companyRegistrationNumber: editForm.companyRegistrationNumber,
+        mandateDocumentStatus: editForm.mandateDocumentStatus,
+        contactProfileVerified: Boolean(editForm.contactProfileVerified),
+        contactVerificationNotes: editForm.contactVerificationNotes,
+        identityDocumentUrl,
+        cacDocumentUrl,
+        mandateDocumentUrl,
+        imageUrl,
+        featured: Boolean(editForm.featured),
+        featuredRank: Number(editForm.featuredRank || 0),
+      };
+
+      if (supabase) {
+        const { error } = await supabase
+          .from("listings")
+          .update(
+            listingToRow({
+              title: updatedListing.title,
+              location: updatedListing.location,
+              stateName: updatedListing.stateName,
+              cityArea: updatedListing.cityArea,
+              fullAddress: updatedListing.fullAddress,
+              nearbyLandmark: updatedListing.nearbyLandmark,
+              googleMapLink: updatedListing.googleMapLink,
+              showExactAddress: updatedListing.showExactAddress,
+              videoUrl: updatedListing.videoUrl,
+              virtualTourUrl: updatedListing.virtualTourUrl,
+              droneVideoUrl: updatedListing.droneVideoUrl,
+              showVideoPublicly: updatedListing.showVideoPublicly,
+              price: updatedListing.price,
+              value: updatedListing.value,
+              agencyFee: updatedListing.agencyFee,
+              legalFee: updatedListing.legalFee,
+              serviceCharge: updatedListing.serviceCharge,
+              cautionFee: updatedListing.cautionFee,
+              surveyFee: updatedListing.surveyFee,
+              developmentFee: updatedListing.developmentFee,
+              totalEstimatedCost: updatedListing.totalEstimatedCost,
+              paymentPlanAvailable: updatedListing.paymentPlanAvailable,
+              installmentDetails: updatedListing.installmentDetails,
+              bedrooms: updatedListing.bedrooms,
+              bathrooms: updatedListing.bathrooms,
+              toilets: updatedListing.toilets,
+              parkingSpaces: updatedListing.parkingSpaces,
+              landSize: updatedListing.landSize,
+              propertySize: updatedListing.propertySize,
+              furnishingStatus: updatedListing.furnishingStatus,
+              propertyCondition: updatedListing.propertyCondition,
+              amenities: updatedListing.amenities,
+              jvStructure: updatedListing.jvStructure,
+              jvLandContribution: updatedListing.jvLandContribution,
+              jvDeveloperRequirement: updatedListing.jvDeveloperRequirement,
+              jvInvestorRequirement: updatedListing.jvInvestorRequirement,
+              jvSharingFormula: updatedListing.jvSharingFormula,
+              jvProjectStage: updatedListing.jvProjectStage,
+              jvExpectedUnits: updatedListing.jvExpectedUnits,
+              jvEstimatedProjectCost: updatedListing.jvEstimatedProjectCost,
+              jvCompletionTimeline: updatedListing.jvCompletionTimeline,
+              jvTerms: updatedListing.jvTerms,
+              jvFeasibilityStudyUrl: updatedListing.jvFeasibilityStudyUrl,
+              jvArchitecturalConceptUrl: updatedListing.jvArchitecturalConceptUrl,
+              jvEstateLayoutUrl: updatedListing.jvEstateLayoutUrl,
+              jvBoqUrl: updatedListing.jvBoqUrl,
+              jvProposalDocumentUrl: updatedListing.jvProposalDocumentUrl,
+              jvLandTitleStatus: updatedListing.jvLandTitleStatus,
+              jvDevelopmentApprovalStatus: updatedListing.jvDevelopmentApprovalStatus,
+              jvDealStatus: updatedListing.jvDealStatus,
+              jvNextAction: updatedListing.jvNextAction,
+              jvNextActionDate: updatedListing.jvNextActionDate,
+              jvInternalNotes: updatedListing.jvInternalNotes,
+              neighborhoodOverview: updatedListing.neighborhoodOverview,
+              roadAccess: updatedListing.roadAccess,
+              powerSupply: updatedListing.powerSupply,
+              waterSupply: updatedListing.waterSupply,
+              securityFeatures: updatedListing.securityFeatures,
+              nearbySchools: updatedListing.nearbySchools,
+              nearbyHospitals: updatedListing.nearbyHospitals,
+              nearbyMalls: updatedListing.nearbyMalls,
+              nearbyTransport: updatedListing.nearbyTransport,
+              distanceToMajorRoad: updatedListing.distanceToMajorRoad,
+              estateFeatures: updatedListing.estateFeatures,
+              type: updatedListing.type,
+              category: updatedListing.category,
+              availabilityStatus: updatedListing.availabilityStatus,
+              availabilityNote: updatedListing.availabilityNote,
+              availableFrom: updatedListing.availableFrom,
+              yieldText: updatedListing.yieldText,
+              description: updatedListing.description,
+              documentTitle: updatedListing.documentTitle,
+              documentStatus: updatedListing.documentStatus,
+              documentDetails: updatedListing.documentDetails,
+              documentFileUrl: updatedListing.documentFileUrl,
+              titleVerified: updatedListing.titleVerified,
+              ownerVerified: updatedListing.ownerVerified,
+              siteInspected: updatedListing.siteInspected,
+              priceChecked: updatedListing.priceChecked,
+              legalReviewStatus: updatedListing.legalReviewStatus,
+              verificationNotes: updatedListing.verificationNotes,
+              status: updatedListing.status,
+              ownerName: updatedListing.ownerName,
+              ownerPhone: updatedListing.ownerPhone,
+              contactRole: updatedListing.contactRole,
+              companyName: updatedListing.companyName,
+              contactEmail: updatedListing.contactEmail,
+              contactWhatsapp: updatedListing.contactWhatsapp,
+              contactAddress: updatedListing.contactAddress,
+              publicContactVisibility: updatedListing.publicContactVisibility,
+              mandateStatus: updatedListing.mandateStatus,
+              identityType: updatedListing.identityType,
+              identityNumber: updatedListing.identityNumber,
+              companyRegistrationNumber: updatedListing.companyRegistrationNumber,
+              mandateDocumentStatus: updatedListing.mandateDocumentStatus,
+              contactProfileVerified: updatedListing.contactProfileVerified,
+              contactVerificationNotes: updatedListing.contactVerificationNotes,
+              identityDocumentUrl: updatedListing.identityDocumentUrl,
+              cacDocumentUrl: updatedListing.cacDocumentUrl,
+              mandateDocumentUrl: updatedListing.mandateDocumentUrl,
+              imageUrl: updatedListing.imageUrl,
+              featured: updatedListing.featured,
+              featuredRank: updatedListing.featuredRank,
+              createdAt: updatedListing.createdAt,
+            })
+          )
+          .eq("id", editingListing.id);
+
+        if (error) {
+          console.error(error);
+          showSuccess("Unable to update listing. Check database policies.");
+          return;
+        }
+
+        if (editGalleryFiles.length) {
+          await uploadPropertyGalleryImages(editingListing.id, editGalleryFiles, (propertyImagesByListingId[editingListing.id]?.length || 0) + 1);
+        }
+
+        await loadDatabaseListings();
+      } else {
+        setListings((current) =>
+          current.map((listing) =>
+            listing.id === editingListing.id ? updatedListing : listing
+          )
+        );
+        if (editGalleryFiles.length) {
+          await uploadPropertyGalleryImages(editingListing.id, editGalleryFiles, (propertyImagesByListingId[editingListing.id]?.length || 0) + 1);
+        }
+      }
+
+      await createAdminActivityLog(
+        "Edited property listing",
+        "Listing",
+        String(editingListing.id),
+        `${updatedListing.title} updated. Status: ${updatedListing.status}. Verification: ${verificationSummary(updatedListing)}.`
+      );
+
+      setEditImageFile(null);
+      setEditGalleryFiles([]);
+      setEditDocumentFile(null);
+      setEditIdentityDocumentFile(null);
+      setEditCacDocumentFile(null);
+      setEditMandateDocumentFile(null);
+      setEditJvFeasibilityStudyFile(null);
+      setEditJvArchitecturalConceptFile(null);
+      setEditJvEstateLayoutFile(null);
+      setEditJvBoqFile(null);
+      setEditJvProposalDocumentFile(null);
+      setEditingListing(null);
+      setModal("admin");
+      showSuccess("Listing updated successfully.");
+    } catch (error) {
+      console.error(error);
+      showSuccess("Upload failed. Please try a smaller image/document file.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function submitInvestorRequest(event: React.FormEvent) {
+    event.preventDefault();
+
+    const newRequest: Omit<InvestorRequest, "id"> = {
+      ...investorForm,
       status: "New",
-      crmStage: "New",
-      priority: "Medium",
-      source: leadForm.listingTitle ? "Property enquiry" : "Investor enquiry",
-      followUpDate: "",
-      notes: "",
+      createdAt: new Date().toISOString(),
     };
 
-    setLeads((currentLeads) => [createdLead, ...currentLeads]);
-    addActivityLog(
-      "Investor lead submitted",
-      `${createdLead.name} submitted an enquiry${createdLead.listingTitle ? ` for ${createdLead.listingTitle}` : ""}.`,
-      "Lead"
+    if (supabase) {
+      const { error } = await supabase.from("investor_requests").insert({
+        name: investorForm.name,
+        email: investorForm.email,
+        phone: investorForm.phone,
+        budget: investorForm.budget,
+        interest: investorForm.interest,
+        message: investorForm.message,
+        status: "New",
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit investor request. Check database.");
+        return;
+      }
+    } else {
+      setInvestorRequests((current) => [
+        { ...newRequest, id: Date.now() },
+        ...current,
+      ]);
+    }
+
+    await createStaffNotification(
+      "New investor request",
+      `${investorForm.name} requested ${investorForm.interest} investment support with budget ${investorForm.budget}.`,
+      "Investor Request"
     );
 
-    setLeadForm({
-      listingId: 0,
-      listingTitle: "",
-      name: authUser?.name || "",
-      email: authUser?.email || "",
+    setInvestorForm({
+      name: "",
+      email: "",
       phone: "",
       budget: "",
+      interest: "Residential",
       message: "",
     });
 
     setModal(null);
-    showMessage("Investor enquiry saved. INAMAAD can follow up from the admin dashboard.");
+    showSuccess("Investor request saved. INAMAAD will contact you shortly.");
   }
 
-  function updateLeadStatus(id: number, status: Lead["status"]) {
-    const lead = leads.find((item) => item.id === id);
+  async function submitPropertyInquiry(event: React.FormEvent) {
+    event.preventDefault();
 
-    setLeads((currentLeads) =>
-      currentLeads.map((lead) =>
-        lead.id === id
-          ? {
-              ...lead,
-              status,
-              crmStage:
-                status === "Closed"
-                  ? "Closed"
-                  : status === "Contacted"
-                    ? "Contacted"
-                    : "New",
-            }
-          : lead
-      )
-    );
-    addActivityLog(
-      "Lead status updated",
-      `${lead?.name || "Lead"} was marked as ${status}.`,
-      "Lead"
-    );
-    showMessage(`Lead marked as ${status}.`);
-  }
+    if (!selectedListing) return;
 
-  function updateLeadCrmStage(id: number, crmStage: LeadStage) {
-    const lead = leads.find((item) => item.id === id);
-    const nextStatus: Lead["status"] =
-      crmStage === "Closed" ? "Closed" : crmStage === "New" ? "New" : "Contacted";
-
-    setLeads((currentLeads) =>
-      currentLeads.map((item) =>
-        item.id === id ? { ...item, crmStage, status: nextStatus } : item
-      )
-    );
-
-    addActivityLog(
-      "CRM stage updated",
-      `${lead?.name || "Lead"} moved to ${crmStage}.`,
-      "Lead"
-    );
-    showMessage(`Lead moved to ${crmStage}.`);
-  }
-
-  function updateLeadPriority(id: number, priority: LeadPriority) {
-    const lead = leads.find((item) => item.id === id);
-
-    setLeads((currentLeads) =>
-      currentLeads.map((item) =>
-        item.id === id ? { ...item, priority } : item
-      )
-    );
-
-    addActivityLog(
-      "Lead priority updated",
-      `${lead?.name || "Lead"} priority changed to ${priority}.`,
-      "Lead"
-    );
-    showMessage(`Lead priority set to ${priority}.`);
-  }
-
-  function updateLeadFollowUpDate(id: number, followUpDate: string) {
-    const lead = leads.find((item) => item.id === id);
-
-    setLeads((currentLeads) =>
-      currentLeads.map((item) =>
-        item.id === id ? { ...item, followUpDate } : item
-      )
-    );
-
-    addActivityLog(
-      "Lead follow-up updated",
-      `${lead?.name || "Lead"} follow-up date set to ${followUpDate || "not set"}.`,
-      "Lead"
-    );
-    showMessage("Lead follow-up date updated.");
-  }
-
-  function updateLeadNotes(id: number, notes: string) {
-    setLeads((currentLeads) =>
-      currentLeads.map((item) =>
-        item.id === id ? { ...item, notes } : item
-      )
-    );
-  }
-
-  function exportLaunchReadinessReportCsv() {
-    const rows = [
-      ["Metric", "Value", "Status", "Recommendation"],
-      [
-        "Marketplace launch readiness score",
-        `${marketplaceLaunchReadinessScore}%`,
-        launchReadinessLabel,
-        `Next action: ${nextLaunchReadinessAction}`,
-      ],
-      ...launchReadinessChecks.map((check) => [
-        check.label,
-        check.value,
-        check.passed ? "Passed" : "Needs work",
-        check.detail,
-      ]),
-      ["Verified listings", verifiedListingsCount, "", ""],
-      ["Owner verified listings", ownerVerifiedListingsCount, "", ""],
-      ["Listings with documents", listingsWithDocumentsCount, "", ""],
-      ["Listings with contacts", listingsWithContactsCount, "", ""],
-      ["High risk due diligence listings", highRiskDueDiligenceCount, "", ""],
-      ["CRM leads", leads.length, "", ""],
-      ["Inspection requests", inspections.length, "", ""],
-      ["Admin tasks", adminTasks.length, "", ""],
-    ];
-
-    downloadTextFile(
-      `inamaad-launch-readiness-${new Date().toISOString().slice(0, 10)}.csv`,
-      createCsv(rows),
-      "text/csv;charset=utf-8"
-    );
-
-    addActivityLog(
-      "Launch readiness exported",
-      `Admin exported launch readiness report at ${marketplaceLaunchReadinessScore}%.`,
-      "Admin"
-    );
-    showMessage("Launch readiness report exported.");
-  }
-
-  function exportCrmPipelineCsv() {
-    const rows = [
-      [
-        "ID",
-        "Lead",
-        "Email",
-        "Phone",
-        "Budget",
-        "Property",
-        "Stage",
-        "Priority",
-        "Source",
-        "Follow Up Date",
-        "Notes",
-        "Message",
-        "Created At",
-      ],
-      ...leads.map((lead) => [
-        lead.id,
-        lead.name,
-        lead.email,
-        lead.phone,
-        lead.budget,
-        lead.listingTitle || "",
-        getLeadStage(lead),
-        getLeadPriority(lead),
-        getLeadSource(lead),
-        lead.followUpDate || "",
-        lead.notes || "",
-        lead.message,
-        lead.createdAt,
-      ]),
-    ];
-
-    downloadTextFile(
-      `inamaad-crm-pipeline-${new Date().toISOString().slice(0, 10)}.csv`,
-      createCsv(rows),
-      "text/csv;charset=utf-8"
-    );
-
-    addActivityLog(
-      "CRM pipeline exported",
-      "Admin exported the CRM pipeline as CSV.",
-      "Lead"
-    );
-    showMessage("CRM pipeline CSV exported.");
-  }
-
-  function deleteLead(id: number) {
-    const lead = leads.find((item) => item.id === id);
-
-    setLeads((currentLeads) => currentLeads.filter((lead) => lead.id !== id));
-    addActivityLog(
-      "Lead deleted",
-      `${lead?.name || "Lead"} was deleted from admin.`,
-      "Lead"
-    );
-    showMessage("Lead deleted.");
-  }
-
-
-  function openInspectionForm(item?: Listing) {
-    setInspectionForm({
-      listingId: item?.id || 0,
-      listingTitle: item?.title || "",
-      name: authUser?.name || "",
-      email: authUser?.email || "",
-      phone: "",
-      preferredDate: "",
-      preferredTime: "",
-      note: item
-        ? `I want to inspect ${item.title} (${getListingReference(item.id)}) in ${item.location}.`
-        : "",
-    });
-
-    setSelectedListing(null);
-    setModal("inspection");
-  }
-
-  function handleInspectionSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    const createdInspection: Inspection = {
-      id: Date.now(),
-      listingId: inspectionForm.listingId || undefined,
-      listingTitle: inspectionForm.listingTitle || undefined,
-      name: inspectionForm.name.trim(),
-      email: inspectionForm.email.trim(),
-      phone: inspectionForm.phone.trim(),
-      preferredDate: inspectionForm.preferredDate,
-      preferredTime: inspectionForm.preferredTime,
-      note: inspectionForm.note.trim(),
-      createdAt: new Date().toISOString(),
+    const newInquiry: Omit<PropertyInquiry, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      name: inquiryForm.name,
+      email: inquiryForm.email,
+      phone: inquiryForm.phone,
+      message: inquiryForm.message,
       status: "New",
+      createdAt: new Date().toISOString(),
     };
 
-    setInspections((currentInspections) => [createdInspection, ...currentInspections]);
-    addActivityLog(
-      "Inspection booked",
-      `${createdInspection.name} requested inspection${createdInspection.listingTitle ? ` for ${createdInspection.listingTitle}` : ""}.`,
-      "Inspection"
+    if (supabase) {
+      const { error } = await supabase.from("property_inquiries").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        name: inquiryForm.name,
+        email: inquiryForm.email || null,
+        phone: inquiryForm.phone,
+        message: inquiryForm.message,
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit inquiry. Check database settings.");
+        return;
+      }
+    } else {
+      setPropertyInquiries((current) => [
+        { ...newInquiry, id: Date.now() },
+        ...current,
+      ]);
+    }
+
+    await createStaffNotification(
+      "New property inquiry",
+      `${inquiryForm.name} requested access for ${selectedListing.title}.`,
+      "Property Inquiry"
+    );
+
+    setInquiryForm({ name: "", email: "", phone: "", message: "" });
+    setModal(null);
+    showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
+  }
+
+  async function submitInspectionBooking(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!selectedListing) return;
+
+    const newBooking: Omit<InspectionBooking, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      name: inspectionForm.name,
+      email: inspectionForm.email,
+      phone: inspectionForm.phone,
+      preferredDate: inspectionForm.preferredDate,
+      preferredTime: inspectionForm.preferredTime,
+      message: inspectionForm.message,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("inspection_bookings").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        name: inspectionForm.name,
+        email: inspectionForm.email || null,
+        phone: inspectionForm.phone,
+        preferred_date: inspectionForm.preferredDate || null,
+        preferred_time: inspectionForm.preferredTime || null,
+        message: inspectionForm.message || null,
+        status: "New",
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to book inspection. Check database settings.");
+        return;
+      }
+    } else {
+      setInspectionBookings((current) => [
+        { ...newBooking, id: Date.now() },
+        ...current,
+      ]);
+    }
+
+    await createStaffNotification(
+      "New inspection booking",
+      `${inspectionForm.name} booked an inspection for ${selectedListing.title}.`,
+      "Inspection Booking"
     );
 
     setInspectionForm({
-      listingId: 0,
-      listingTitle: "",
-      name: authUser?.name || "",
-      email: authUser?.email || "",
+      name: "",
+      email: "",
       phone: "",
       preferredDate: "",
       preferredTime: "",
-      note: "",
+      message: "",
+    });
+    showSuccess("Inspection booking sent. INAMAAD will confirm your appointment.");
+  }
+
+  async function submitPropertyOffer(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!selectedListing) return;
+
+    const formattedOfferAmount = formatPriceInput(offerForm.offerAmount) || offerForm.offerAmount;
+
+    const newOffer: Omit<PropertyOffer, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      buyerName: offerForm.buyerName,
+      buyerEmail: offerForm.buyerEmail,
+      buyerPhone: offerForm.buyerPhone,
+      offerAmount: formattedOfferAmount,
+      paymentPlan: offerForm.paymentPlan,
+      message: offerForm.message,
+      status: "New",
+      priority: "High",
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("property_offers").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        buyer_name: offerForm.buyerName,
+        buyer_email: offerForm.buyerEmail || null,
+        buyer_phone: offerForm.buyerPhone,
+        offer_amount: formattedOfferAmount || null,
+        payment_plan: offerForm.paymentPlan || null,
+        message: offerForm.message || null,
+        status: "New",
+        priority: "High",
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit offer. Check database settings.");
+        return;
+      }
+    } else {
+      setPropertyOffers((current) => [{ ...newOffer, id: Date.now() }, ...current]);
+    }
+
+    await createStaffNotification(
+      "New property offer",
+      `${offerForm.buyerName} made an offer/reservation request for ${selectedListing.title}${formattedOfferAmount ? ` at ${formattedOfferAmount}` : ""}.`,
+      "Property Offer"
+    );
+
+    setOfferForm({
+      buyerName: "",
+      buyerEmail: "",
+      buyerPhone: "",
+      offerAmount: "",
+      paymentPlan: "Full payment",
+      message: "",
     });
 
+    showSuccess("Offer/reservation request sent. INAMAAD will review and contact you shortly.");
+  }
+
+  async function submitJvApplication(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!selectedListing) return;
+
+    let companyProfileUrl = "";
+    let cacCertificateUrl = "";
+    let portfolioUrl = "";
+    let financialProofUrl = "";
+    let proposalDocumentUrl = "";
+    let otherDocumentUrl = "";
+
+    try {
+      if (supabase) {
+        companyProfileUrl = jvCompanyProfileFile
+          ? await uploadJvApplicationDocument(jvCompanyProfileFile, "company-profile")
+          : "";
+        cacCertificateUrl = jvCacCertificateFile
+          ? await uploadJvApplicationDocument(jvCacCertificateFile, "cac-certificate")
+          : "";
+        portfolioUrl = jvPortfolioFile
+          ? await uploadJvApplicationDocument(jvPortfolioFile, "portfolio")
+          : "";
+        financialProofUrl = jvFinancialProofFile
+          ? await uploadJvApplicationDocument(jvFinancialProofFile, "financial-proof")
+          : "";
+        proposalDocumentUrl = jvProposalDocumentFile
+          ? await uploadJvApplicationDocument(jvProposalDocumentFile, "proposal-document")
+          : "";
+        otherDocumentUrl = jvOtherDocumentFile
+          ? await uploadJvApplicationDocument(jvOtherDocumentFile, "other")
+          : "";
+      }
+    } catch (error) {
+      console.error(error);
+      showSuccess("Unable to upload JV application document. Use PDF, JPG, PNG, or WEBP under 20MB.");
+      return;
+    }
+
+    const newApplication: Omit<JVApplication, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      applicantName: jvApplicationForm.applicantName,
+      applicantEmail: jvApplicationForm.applicantEmail,
+      applicantPhone: jvApplicationForm.applicantPhone,
+      applicantRole: jvApplicationForm.applicantRole,
+      companyName: jvApplicationForm.companyName,
+      budgetCapacity: jvApplicationForm.budgetCapacity,
+      experienceSummary: jvApplicationForm.experienceSummary,
+      proposalMessage: jvApplicationForm.proposalMessage,
+      companyProfileUrl,
+      cacCertificateUrl,
+      portfolioUrl,
+      financialProofUrl,
+      proposalDocumentUrl,
+      otherDocumentUrl,
+      status: "New",
+      priority: "High",
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("jv_applications").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        applicant_name: jvApplicationForm.applicantName,
+        applicant_email: jvApplicationForm.applicantEmail || null,
+        applicant_phone: jvApplicationForm.applicantPhone,
+        applicant_role: jvApplicationForm.applicantRole,
+        company_name: jvApplicationForm.companyName || null,
+        budget_capacity: jvApplicationForm.budgetCapacity || null,
+        experience_summary: jvApplicationForm.experienceSummary || null,
+        proposal_message: jvApplicationForm.proposalMessage || null,
+        company_profile_url: companyProfileUrl || null,
+        cac_certificate_url: cacCertificateUrl || null,
+        portfolio_url: portfolioUrl || null,
+        financial_proof_url: financialProofUrl || null,
+        proposal_document_url: proposalDocumentUrl || null,
+        other_document_url: otherDocumentUrl || null,
+        status: "New",
+        priority: "High",
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit JV application. Check database settings.");
+        return;
+      }
+    } else {
+      setJvApplications((current) => [{ ...newApplication, id: Date.now() }, ...current]);
+    }
+
+    await createStaffNotification(
+      "New JV partnership application",
+      `${jvApplicationForm.applicantName} applied as ${jvApplicationForm.applicantRole} for ${selectedListing.title}.`,
+      "JV Application"
+    );
+
+    setJvApplicationForm({
+      applicantName: "",
+      applicantEmail: "",
+      applicantPhone: "",
+      applicantRole: "Developer",
+      companyName: "",
+      budgetCapacity: "",
+      experienceSummary: "",
+      proposalMessage: "",
+    });
+    setJvCompanyProfileFile(null);
+    setJvCacCertificateFile(null);
+    setJvPortfolioFile(null);
+    setJvFinancialProofFile(null);
+    setJvProposalDocumentFile(null);
+    setJvOtherDocumentFile(null);
+
+    showSuccess("JV partnership application sent with supporting documents. INAMAAD will review and contact you shortly.");
+  }
+
+  async function submitContactMessage(event: React.FormEvent) {
+    event.preventDefault();
+
+    const newMessage: Omit<ContactMessage, "id"> = {
+      ...contactForm,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("contact_messages").insert({
+        name: contactForm.name,
+        email: contactForm.email || null,
+        phone: contactForm.phone || null,
+        subject: contactForm.subject || "General enquiry",
+        message: contactForm.message,
+        status: "New",
+      });
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to send contact message. Check database settings.");
+        return;
+      }
+    } else {
+      setContactMessages((current) => [
+        { ...newMessage, id: Date.now() },
+        ...current,
+      ]);
+    }
+
+    await createStaffNotification(
+      "New contact message",
+      `${contactForm.name} sent a contact message: ${contactForm.subject || "General enquiry"}.`,
+      "Contact Message"
+    );
+
+    setContactForm({
+      name: "",
+      email: "",
+      phone: "",
+      subject: "",
+      message: "",
+    });
+
+    showSuccess("Contact message sent. INAMAAD will reply shortly.");
+  }
+
+  async function handleSignIn(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!supabase) {
+      setModal(null);
+      showSuccess("Demo sign in completed.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: signInForm.email,
+      password: signInForm.password,
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setSignInForm({ email: "", password: "" });
     setModal(null);
-    showMessage("Inspection request saved. Admin can confirm it from the dashboard.");
+    showSuccess("Signed in successfully.");
   }
 
-  function updateInspectionStatus(id: number, status: Inspection["status"]) {
-    const inspectionRecord = inspections.find((item) => item.id === id);
+  async function handleRegister(event: React.FormEvent) {
+    event.preventDefault();
 
-    setInspections((currentInspections) =>
-      currentInspections.map((inspection) =>
-        inspection.id === id ? { ...inspection, status } : inspection
-      )
-    );
-    addActivityLog(
-      "Inspection status updated",
-      `${inspectionRecord?.name || "Inspection"} was marked as ${status}.`,
-      "Inspection"
-    );
-    showMessage(`Inspection marked as ${status}.`);
+    if (!supabase) {
+      setModal(null);
+      showSuccess("Demo account created.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signUp({
+      email: registerForm.email,
+      password: registerForm.password,
+      options: {
+        data: {
+          full_name: registerForm.name,
+        },
+      },
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setRegisterForm({ name: "", email: "", password: "" });
+    setModal(null);
+    showSuccess("Account created. Check your email if confirmation is required.");
   }
 
-  function deleteInspection(id: number) {
-    const inspectionRecord = inspections.find((item) => item.id === id);
+  async function unlockAdmin(event: React.FormEvent) {
+    event.preventDefault();
 
-    setInspections((currentInspections) =>
-      currentInspections.filter((inspection) => inspection.id !== id)
+    if (!supabase) {
+      if (adminPassword === LOCAL_ADMIN_PASSWORD) {
+        setAdminUnlocked(true);
+        setAdminPassword("");
+      } else {
+        showSuccess("Wrong admin password.");
+      }
+
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: adminEmail,
+      password: adminPassword,
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setAdminPassword("");
+    await checkAdminAccess();
+  }
+
+  async function logoutAdmin() {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+
+    setAdminUnlocked(false);
+    setUser(null);
+    setInvestorRequests([]);
+    setPropertyInquiries([]);
+    setPropertyViews([]);
+    setContactMessages([]);
+    setInspectionBookings([]);
+    setPropertyOffers([]);
+    setStaffNotifications([]);
+    setAdminActivityLogs([]);
+    setStaffMembers([]);
+    showSuccess("Staff signed out.");
+  }
+
+  async function createAdminActivityLog(
+    action: string,
+    targetType = "General",
+    targetId = "",
+    details = ""
+  ) {
+    const newLog: Omit<AdminActivityLog, "id"> = {
+      adminEmail: user?.email || adminEmail || "Local demo admin",
+      action,
+      targetType,
+      targetId,
+      details,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase && user) {
+      const { error } = await supabase.from("admin_activity_logs").insert({
+        admin_email: user.email,
+        action,
+        target_type: targetType,
+        target_id: targetId,
+        details,
+      });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      await loadDatabaseAdminActivityLogs();
+      return;
+    }
+
+    setAdminActivityLogs((current) => [
+      { ...newLog, id: Date.now() },
+      ...current.slice(0, 49),
+    ]);
+  }
+
+  async function addStaffMember(event: React.FormEvent) {
+    event.preventDefault();
+
+    const email = staffForm.email.trim().toLowerCase();
+    const fullName = staffForm.fullName.trim();
+
+    if (!email) {
+      showSuccess("Enter the staff email address.");
+      return;
+    }
+
+    if (!isSuperAdmin) {
+      showSuccess("Only Super Admin can add staff members.");
+      return;
+    }
+
+    if (!supabase || !user) {
+      const newStaff: StaffMember = {
+        email,
+        fullName,
+        role: staffForm.role,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+      setStaffMembers((current) => [
+        newStaff,
+        ...current.filter((member) => member.email !== email),
+      ]);
+      setStaffForm({ email: "", fullName: "", role: "Agent" });
+      showSuccess("Demo staff member added.");
+      return;
+    }
+
+    const { error } = await supabase.from("admin_users").insert({
+      email,
+      full_name: fullName || null,
+      role: staffForm.role,
+      is_active: true,
+    });
+
+    if (error) {
+      console.error(error);
+      showSuccess(
+        error.message || "Unable to add staff member. Make sure you are Super Admin."
+      );
+      return;
+    }
+
+    await createAdminActivityLog(
+      "Staff member added",
+      "Staff",
+      email,
+      `${fullName || email} was added as ${staffForm.role}.`
     );
-    addActivityLog(
-      "Inspection deleted",
-      `${inspectionRecord?.name || "Inspection request"} was deleted from admin.`,
-      "Inspection"
+    await loadDatabaseStaffMembers();
+    setStaffForm({ email: "", fullName: "", role: "Agent" });
+    showSuccess(
+      "Staff member added. Also create their login password in Supabase Authentication > Users."
     );
-    showMessage("Inspection request deleted.");
+  }
+
+  async function updateStaffMemberRole(email: string, role: StaffRole) {
+    if (!isSuperAdmin) {
+      showSuccess("Only Super Admin can change staff roles.");
+      return;
+    }
+
+    if (!supabase || !user) {
+      setStaffMembers((current) =>
+        current.map((member) =>
+          member.email === email ? { ...member, role } : member
+        )
+      );
+      return;
+    }
+
+    const { error } = await supabase
+      .from("admin_users")
+      .update({ role })
+      .eq("email", email);
+
+    if (error) {
+      console.error(error);
+      showSuccess(error.message || "Unable to update staff role.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      "Staff role updated",
+      "Staff",
+      email,
+      `${email} role changed to ${role}.`
+    );
+    await loadDatabaseStaffMembers();
+    showSuccess("Staff role updated.");
+  }
+
+  async function toggleStaffMemberActive(email: string, isActive: boolean) {
+    if (!isSuperAdmin) {
+      showSuccess("Only Super Admin can activate or deactivate staff.");
+      return;
+    }
+
+    if (email === user?.email && !isActive) {
+      showSuccess("You cannot deactivate your own active staff account.");
+      return;
+    }
+
+    if (!supabase || !user) {
+      setStaffMembers((current) =>
+        current.map((member) =>
+          member.email === email ? { ...member, isActive } : member
+        )
+      );
+      return;
+    }
+
+    const { error } = await supabase
+      .from("admin_users")
+      .update({ is_active: isActive })
+      .eq("email", email);
+
+    if (error) {
+      console.error(error);
+      showSuccess(error.message || "Unable to update staff access.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      isActive ? "Staff activated" : "Staff deactivated",
+      "Staff",
+      email,
+      `${email} access changed to ${isActive ? "Active" : "Inactive"}.`
+    );
+    await loadDatabaseStaffMembers();
+    showSuccess(isActive ? "Staff member activated." : "Staff member deactivated.");
+  }
+
+  async function deleteStaffMember(email: string) {
+    if (!isSuperAdmin) {
+      showSuccess("Only Super Admin can remove staff members.");
+      return;
+    }
+
+    if (email === user?.email) {
+      showSuccess("You cannot remove your own staff account.");
+      return;
+    }
+
+    if (!window.confirm(`Remove ${email} from staff access?`)) return;
+
+    if (!supabase || !user) {
+      setStaffMembers((current) =>
+        current.filter((member) => member.email !== email)
+      );
+      return;
+    }
+
+    const { error } = await supabase.from("admin_users").delete().eq("email", email);
+
+    if (error) {
+      console.error(error);
+      showSuccess(error.message || "Unable to remove staff member.");
+      return;
+    }
+
+    await createAdminActivityLog(
+      "Staff member removed",
+      "Staff",
+      email,
+      `${email} was removed from admin_users.`
+    );
+    await loadDatabaseStaffMembers();
+    showSuccess("Staff member removed.");
+  }
+
+  async function createStaffNotification(
+    title: string,
+    message: string,
+    type = "General"
+  ) {
+    const newNotification: Omit<StaffNotification, "id"> = {
+      title,
+      message,
+      type,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from("staff_notifications").insert({
+        title,
+        message,
+        type,
+        is_read: false,
+      });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      if (adminUnlocked) {
+        await loadDatabaseStaffNotifications();
+      }
+
+      return;
+    }
+
+    setStaffNotifications((current) => [
+      { ...newNotification, id: Date.now() },
+      ...current,
+    ]);
+  }
+
+  async function markNotificationRead(id: number) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("staff_notifications")
+        .update({ is_read: true })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to mark notification as read.");
+        return;
+      }
+
+      await loadDatabaseStaffNotifications();
+    } else {
+      setStaffNotifications((current) =>
+        current.map((notification) =>
+          notification.id === id ? { ...notification, isRead: true } : notification
+        )
+      );
+    }
+
+    showSuccess("Notification marked as read.");
+  }
+
+  async function markAllNotificationsRead() {
+    if (supabase) {
+      const { error } = await supabase
+        .from("staff_notifications")
+        .update({ is_read: true })
+        .eq("is_read", false);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to mark notifications as read.");
+        return;
+      }
+
+      await loadDatabaseStaffNotifications();
+    } else {
+      setStaffNotifications((current) =>
+        current.map((notification) => ({ ...notification, isRead: true }))
+      );
+    }
+
+    showSuccess("All notifications marked as read.");
+  }
+
+  async function deleteStaffNotification(id: number) {
+    if (supabase) {
+      const { error } = await supabase
+        .from("staff_notifications")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete notification.");
+        return;
+      }
+
+      await loadDatabaseStaffNotifications();
+    } else {
+      setStaffNotifications((current) =>
+        current.filter((notification) => notification.id !== id)
+      );
+    }
+
+    showSuccess("Notification deleted.");
+  }
+
+  async function approveListing(id: number) {
+    if (!canApproveListings) {
+      showSuccess("Your role cannot approve property listings.");
+      return;
+    }
+
+    const listingToApprove = listings.find((listing) => listing.id === id);
+
+    if (listingToApprove && !isListingVerificationComplete(listingToApprove)) {
+      showSuccess("Complete the verification checklist before approving this listing.");
+      return;
+    }
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("listings")
+        .update({ status: "Verified" })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to approve listing.");
+        return;
+      }
+
+      await loadDatabaseListings();
+    } else {
+      setListings((current) =>
+        current.map((listing) =>
+          listing.id === id ? { ...listing, status: "Verified" } : listing
+        )
+      );
+    }
+
+    await createAdminActivityLog(
+      "Approved property listing",
+      "Listing",
+      String(id),
+      listingToApprove ? `${listingToApprove.title} was approved and made public.` : "Listing approved."
+    );
+
+    showSuccess("Listing approved.");
+  }
+
+  async function deleteListing(id: number) {
+    if (!canDeleteListings) {
+      showSuccess("Your role cannot delete property listings.");
+      return;
+    }
+
+    const listingToDelete = listings.find((listing) => listing.id === id);
+
+    if (supabase) {
+      const { error } = await supabase.from("listings").delete().eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete listing.");
+        return;
+      }
+
+      await loadDatabaseListings();
+    } else {
+      setListings((current) => current.filter((listing) => listing.id !== id));
+    }
+
+    await createAdminActivityLog(
+      "Deleted property listing",
+      "Listing",
+      String(id),
+      listingToDelete ? `${listingToDelete.title} was deleted.` : "Listing deleted."
+    );
+
+    showSuccess("Listing deleted.");
+  }
+
+  async function updateInvestorRequestStatus(id: number, status: LeadStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update lead status.");
+      return;
+    }
+
+    const requestToUpdate = investorRequests.find((request) => request.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("investor_requests")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update investor request status.");
+        return;
+      }
+
+      await loadDatabaseInvestorRequests();
+    } else {
+      setInvestorRequests((current) =>
+        current.map((request) =>
+          request.id === id ? { ...request, status } : request
+        )
+      );
+    }
+
+    await createAdminActivityLog(
+      `Marked investor request ${status}`,
+      "Investor Request",
+      String(id),
+      requestToUpdate ? `${requestToUpdate.name} / ${requestToUpdate.interest}` : "Investor request status updated."
+    );
+
+    showSuccess(`Investor request marked as ${status}.`);
+  }
+
+  async function updatePropertyInquiryStatus(id: number, status: LeadStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update lead status.");
+      return;
+    }
+
+    const inquiryToUpdate = propertyInquiries.find((inquiry) => inquiry.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("property_inquiries")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update property inquiry status.");
+        return;
+      }
+
+      await loadDatabasePropertyInquiries();
+    } else {
+      setPropertyInquiries((current) =>
+        current.map((inquiry) =>
+          inquiry.id === id ? { ...inquiry, status } : inquiry
+        )
+      );
+    }
+
+    await createAdminActivityLog(
+      `Marked property inquiry ${status}`,
+      "Property Inquiry",
+      String(id),
+      inquiryToUpdate ? `${inquiryToUpdate.name} / ${inquiryToUpdate.listingTitle}` : "Property inquiry status updated."
+    );
+
+    showSuccess(`Property inquiry marked as ${status}.`);
+  }
+
+  async function deleteInvestorRequest(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete leads.");
+      return;
+    }
+
+    const requestToDelete = investorRequests.find((request) => request.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("investor_requests")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete investor request.");
+        return;
+      }
+
+      await loadDatabaseInvestorRequests();
+    } else {
+      setInvestorRequests((current) =>
+        current.filter((request) => request.id !== id)
+      );
+    }
+
+    await createAdminActivityLog(
+      "Deleted investor request",
+      "Investor Request",
+      String(id),
+      requestToDelete ? `${requestToDelete.name} / ${requestToDelete.interest}` : "Investor request deleted."
+    );
+
+    showSuccess("Investor request removed.");
+  }
+
+  async function deletePropertyInquiry(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete leads.");
+      return;
+    }
+
+    const inquiryToDelete = propertyInquiries.find((inquiry) => inquiry.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("property_inquiries")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete property inquiry.");
+        return;
+      }
+
+      await loadDatabasePropertyInquiries();
+    } else {
+      setPropertyInquiries((current) =>
+        current.filter((inquiry) => inquiry.id !== id)
+      );
+    }
+
+    await createAdminActivityLog(
+      "Deleted property inquiry",
+      "Property Inquiry",
+      String(id),
+      inquiryToDelete ? `${inquiryToDelete.name} / ${inquiryToDelete.listingTitle}` : "Property inquiry deleted."
+    );
+
+    showSuccess("Property inquiry removed.");
+  }
+
+  async function updateContactMessageStatus(id: number, status: LeadStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update lead status.");
+      return;
+    }
+
+    const messageToUpdate = contactMessages.find((message) => message.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("contact_messages")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update contact message status.");
+        return;
+      }
+
+      await loadDatabaseContactMessages();
+    } else {
+      setContactMessages((current) =>
+        current.map((message) =>
+          message.id === id ? { ...message, status } : message
+        )
+      );
+    }
+
+    await createAdminActivityLog(
+      `Marked contact message ${status}`,
+      "Contact Message",
+      String(id),
+      messageToUpdate ? `${messageToUpdate.name} / ${messageToUpdate.subject}` : "Contact message status updated."
+    );
+
+    showSuccess(`Contact message marked as ${status}.`);
+  }
+
+  async function deleteContactMessage(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete leads.");
+      return;
+    }
+
+    const messageToDelete = contactMessages.find((message) => message.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("contact_messages")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete contact message.");
+        return;
+      }
+
+      await loadDatabaseContactMessages();
+    } else {
+      setContactMessages((current) =>
+        current.filter((message) => message.id !== id)
+      );
+    }
+
+    await createAdminActivityLog(
+      "Deleted contact message",
+      "Contact Message",
+      String(id),
+      messageToDelete ? `${messageToDelete.name} / ${messageToDelete.subject}` : "Contact message deleted."
+    );
+
+    showSuccess("Contact message removed.");
+  }
+
+  async function updatePropertyOfferStatus(id: number, status: OfferStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update offer status.");
+      return;
+    }
+
+    const offerToUpdate = propertyOffers.find((offer) => offer.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("property_offers")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update offer status.");
+        return;
+      }
+
+      await loadDatabasePropertyOffers();
+    } else {
+      setPropertyOffers((current) =>
+        current.map((offer) => (offer.id === id ? { ...offer, status } : offer))
+      );
+    }
+
+    await createAdminActivityLog(
+      `Marked property offer ${status}`,
+      "Property Offer",
+      String(id),
+      offerToUpdate ? `${offerToUpdate.buyerName} / ${offerToUpdate.listingTitle}` : "Property offer status updated."
+    );
+
+    showSuccess(`Property offer marked as ${status}.`);
+  }
+
+  async function deletePropertyOffer(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete offers.");
+      return;
+    }
+
+    const offerToDelete = propertyOffers.find((offer) => offer.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("property_offers")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete property offer.");
+        return;
+      }
+
+      await loadDatabasePropertyOffers();
+    } else {
+      setPropertyOffers((current) => current.filter((offer) => offer.id !== id));
+    }
+
+    await createAdminActivityLog(
+      "Deleted property offer",
+      "Property Offer",
+      String(id),
+      offerToDelete ? `${offerToDelete.buyerName} / ${offerToDelete.listingTitle}` : "Property offer deleted."
+    );
+
+    showSuccess("Property offer removed.");
+  }
+
+  async function updateInspectionBookingStatus(id: number, status: InspectionStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update inspection booking status.");
+      return;
+    }
+
+    const bookingToUpdate = inspectionBookings.find((booking) => booking.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("inspection_bookings")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update inspection booking status.");
+        return;
+      }
+
+      await loadDatabaseInspectionBookings();
+    } else {
+      setInspectionBookings((current) =>
+        current.map((booking) =>
+          booking.id === id ? { ...booking, status } : booking
+        )
+      );
+    }
+
+    await createAdminActivityLog(
+      `Marked inspection booking ${status}`,
+      "Inspection Booking",
+      String(id),
+      bookingToUpdate ? `${bookingToUpdate.name} / ${bookingToUpdate.listingTitle}` : "Inspection booking status updated."
+    );
+
+    showSuccess(`Inspection booking marked as ${status}.`);
+  }
+
+  async function deleteInspectionBooking(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete bookings.");
+      return;
+    }
+
+    const bookingToDelete = inspectionBookings.find((booking) => booking.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("inspection_bookings")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete inspection booking.");
+        return;
+      }
+
+      await loadDatabaseInspectionBookings();
+    } else {
+      setInspectionBookings((current) =>
+        current.filter((booking) => booking.id !== id)
+      );
+    }
+
+    showSuccess("Inspection booking removed.");
   }
 
 
-  function downloadTextFile(filename: string, content: string, mimeType: string) {
-    const blob = new Blob([content], { type: mimeType });
+
+  async function updateJvApplicationStatus(id: number, status: JVApplicationStatus) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update JV application status.");
+      return;
+    }
+
+    const applicationToUpdate = jvApplications.find((application) => application.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("jv_applications")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to update JV application status.");
+        return;
+      }
+
+      await loadDatabaseJvApplications();
+    } else {
+      setJvApplications((current) =>
+        current.map((application) =>
+          application.id === id ? { ...application, status } : application
+        )
+      );
+    }
+
+    await createAdminActivityLog(
+      `Marked JV application ${status}`,
+      "JV Application",
+      String(id),
+      applicationToUpdate ? `${applicationToUpdate.applicantName} / ${applicationToUpdate.listingTitle}` : "JV application status updated."
+    );
+
+    showSuccess(`JV application marked as ${status}.`);
+  }
+
+
+
+  function jvEvaluationScore(application: JVApplication) {
+    return (
+      Number(application.experienceRating || 0) +
+      Number(application.financialCapacityRating || 0) +
+      Number(application.trackRecordRating || 0)
+    );
+  }
+
+  function jvEvaluationScoreClass(score: number) {
+    if (score >= 12) return "bg-emerald-100 text-emerald-700";
+    if (score >= 8) return "bg-blue-100 text-blue-700";
+    if (score >= 4) return "bg-amber-100 text-amber-700";
+    return "bg-red-100 text-red-700";
+  }
+
+  async function saveJvApplicationEvaluation(application: JVApplication) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot evaluate JV applications.");
+      return;
+    }
+
+    const evaluatedAt = new Date().toISOString();
+    const evaluatedByEmail = user?.email || adminEmail || "Local demo admin";
+    const score = jvEvaluationScore(application);
+
+    const payload = {
+      experience_rating: Number(application.experienceRating || 0),
+      financial_capacity_rating: Number(application.financialCapacityRating || 0),
+      track_record_rating: Number(application.trackRecordRating || 0),
+      document_review_status: application.documentReviewStatus || "Not Reviewed",
+      risk_level: application.riskLevel || "Normal",
+      evaluation_notes: application.evaluationNotes || null,
+      evaluated_by_email: evaluatedByEmail,
+      evaluated_at: evaluatedAt,
+    };
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("jv_applications")
+        .update(payload)
+        .eq("id", application.id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to save JV evaluation scorecard.");
+        return;
+      }
+
+      await loadDatabaseJvApplications();
+    } else {
+      setJvApplications((current) =>
+        current.map((item) =>
+          item.id === application.id
+            ? {
+                ...item,
+                evaluatedByEmail,
+                evaluatedAt,
+              }
+            : item
+        )
+      );
+    }
+
+    await createAdminActivityLog(
+      "Saved JV applicant evaluation",
+      "JV Application",
+      String(application.id),
+      `${application.applicantName} scored ${score}/15. Risk: ${application.riskLevel || "Normal"}. Document review: ${application.documentReviewStatus || "Not Reviewed"}.`
+    );
+
+    showSuccess(`JV evaluation saved. Score: ${score}/15.`);
+  }
+
+  async function deleteJvApplication(id: number) {
+    if (!canDeleteLeads) {
+      showSuccess("Your role cannot delete JV applications.");
+      return;
+    }
+
+    const applicationToDelete = jvApplications.find((application) => application.id === id);
+
+    if (supabase) {
+      const { error } = await supabase
+        .from("jv_applications")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to delete JV application.");
+        return;
+      }
+
+      await loadDatabaseJvApplications();
+    } else {
+      setJvApplications((current) =>
+        current.filter((application) => application.id !== id)
+      );
+    }
+
+    await createAdminActivityLog(
+      "Deleted JV application",
+      "JV Application",
+      String(id),
+      applicationToDelete ? `${applicationToDelete.applicantName} / ${applicationToDelete.listingTitle}` : "JV application deleted."
+    );
+
+    showSuccess("JV application removed.");
+  }
+
+  function getAssignedStaffLabel(email?: string) {
+    if (!email) return "Unassigned";
+
+    const staffMember = staffMembers.find((member) => member.email === email);
+
+    if (!staffMember) return email;
+
+    return `${staffMember.fullName || staffMember.email} • ${staffMember.role}`;
+  }
+
+  function getLeadKindLabel(kind: LeadKind) {
+    if (kind === "investor_requests") return "Investor Request";
+    if (kind === "property_inquiries") return "Property Inquiry";
+    if (kind === "property_offers") return "Property Offer";
+    if (kind === "jv_applications") return "JV Application";
+    if (kind === "contact_messages") return "Contact Message";
+    return "Inspection Booking";
+  }
+
+  async function reloadLeadKind(kind: LeadKind) {
+    if (kind === "investor_requests") await loadDatabaseInvestorRequests();
+    if (kind === "property_inquiries") await loadDatabasePropertyInquiries();
+    if (kind === "property_offers") await loadDatabasePropertyOffers();
+    if (kind === "jv_applications") await loadDatabaseJvApplications();
+    if (kind === "contact_messages") await loadDatabaseContactMessages();
+    if (kind === "inspection_bookings") await loadDatabaseInspectionBookings();
+  }
+
+  function updateLocalLeadDraft(
+    kind: LeadKind,
+    id: number,
+    changes: any
+  ) {
+    if (kind === "investor_requests") {
+      setInvestorRequests((current) =>
+        current.map((request) =>
+          request.id === id ? { ...request, ...changes } : request
+        )
+      );
+    }
+
+    if (kind === "property_inquiries") {
+      setPropertyInquiries((current) =>
+        current.map((inquiry) =>
+          inquiry.id === id ? { ...inquiry, ...changes } : inquiry
+        )
+      );
+    }
+
+    if (kind === "property_offers") {
+      setPropertyOffers((current) =>
+        current.map((offer) =>
+          offer.id === id ? { ...offer, ...changes } : offer
+        )
+      );
+    }
+
+    if (kind === "jv_applications") {
+      setJvApplications((current) =>
+        current.map((application) =>
+          application.id === id ? { ...application, ...changes } : application
+        )
+      );
+    }
+
+    if (kind === "contact_messages") {
+      setContactMessages((current) =>
+        current.map((message) =>
+          message.id === id ? { ...message, ...changes } : message
+        )
+      );
+    }
+
+    if (kind === "inspection_bookings") {
+      setInspectionBookings((current) =>
+        current.map((booking) =>
+          booking.id === id ? { ...booking, ...changes } : booking
+        )
+      );
+    }
+  }
+
+  async function updateLeadAssignment(
+    kind: LeadKind,
+    id: number,
+    assignedToEmail: string
+  ) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot assign leads.");
+      return;
+    }
+
+    const cleanEmail = assignedToEmail || "";
+
+    if (supabase) {
+      const { error } = await supabase
+        .from(kind)
+        .update({ assigned_to_email: cleanEmail || null })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to assign this lead. Check staff permissions.");
+        return;
+      }
+
+      await reloadLeadKind(kind);
+    } else {
+      updateLocalLeadDraft(kind, id, { assignedToEmail: cleanEmail });
+    }
+
+    await createAdminActivityLog(
+      cleanEmail ? "Assigned lead to staff" : "Unassigned lead",
+      getLeadKindLabel(kind),
+      String(id),
+      cleanEmail ? `Assigned to ${cleanEmail}.` : "Lead assignment removed."
+    );
+
+    showSuccess(cleanEmail ? `Lead assigned to ${cleanEmail}.` : "Lead unassigned.");
+  }
+
+  async function saveLeadStaffNotes(kind: LeadKind, id: number, staffNotes: string) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot save staff notes.");
+      return;
+    }
+
+    if (supabase) {
+      const { error } = await supabase
+        .from(kind)
+        .update({ staff_notes: staffNotes || null })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to save staff notes.");
+        return;
+      }
+
+      await reloadLeadKind(kind);
+    } else {
+      updateLocalLeadDraft(kind, id, { staffNotes });
+    }
+
+    await createAdminActivityLog(
+      "Updated staff lead notes",
+      getLeadKindLabel(kind),
+      String(id),
+      staffNotes || "Staff notes cleared."
+    );
+
+    showSuccess("Staff notes saved.");
+  }
+
+  async function saveLeadFollowUpDetails(
+    kind: LeadKind,
+    id: number,
+    priority: LeadPriority,
+    followUpDate: string,
+    lastContactedAt: string
+  ) {
+    if (!canManageLeads) {
+      showSuccess("Your role cannot update follow-up reminders.");
+      return;
+    }
+
+    const cleanFollowUpDate = followUpDate || null;
+    const cleanLastContactedAt = lastContactedAt || null;
+
+    if (supabase) {
+      const { error } = await supabase
+        .from(kind)
+        .update({
+          priority,
+          follow_up_date: cleanFollowUpDate,
+          last_contacted_at: cleanLastContactedAt,
+        })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to save follow-up details.");
+        return;
+      }
+
+      await reloadLeadKind(kind);
+    } else {
+      updateLocalLeadDraft(kind, id, {
+        priority,
+        followUpDate,
+        lastContactedAt,
+      });
+    }
+
+    await createAdminActivityLog(
+      "Updated lead follow-up",
+      getLeadKindLabel(kind),
+      String(id),
+      `Priority: ${priority}. Follow-up: ${followUpDate || "none"}. Last contacted: ${lastContactedAt ? formatDate(lastContactedAt) : "not set"}.`
+    );
+
+    showSuccess("Follow-up details saved.");
+  }
+
+  function markLeadContactedToday(
+    kind: LeadKind,
+    id: number,
+    priority: LeadPriority,
+    followUpDate: string
+  ) {
+    saveLeadFollowUpDetails(kind, id, priority, followUpDate, new Date().toISOString());
+  }
+
+  function renderLeadAssignmentControls(
+    kind: LeadKind,
+    id: number,
+    assignedToEmail?: string,
+    staffNotes?: string,
+    priority: LeadPriority = "Normal",
+    followUpDate = "",
+    lastContactedAt = ""
+  ) {
+    return (
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-[#f7f8fb] p-4">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Assigned staff
+            </span>
+            <select
+              value={assignedToEmail || ""}
+              onChange={(event) => updateLeadAssignment(kind, id, event.target.value)}
+              disabled={!canManageLeads || assignableStaffMembers.length === 0}
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              <option value="">Unassigned</option>
+              {assignableStaffMembers.map((member) => (
+                <option key={member.email} value={member.email}>
+                  {member.fullName || member.email} — {member.role}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="rounded-2xl bg-white p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Current owner
+            </p>
+            <p className="mt-2 text-sm font-black text-[#0d1c38]">
+              {getAssignedStaffLabel(assignedToEmail)}
+            </p>
+            {assignableStaffMembers.length === 0 && (
+              <p className="mt-1 text-xs font-bold text-red-500">
+                Add active staff members first.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Priority
+            </span>
+            <select
+              value={priority || "Normal"}
+              onChange={(event) =>
+                updateLocalLeadDraft(kind, id, {
+                  priority: event.target.value as LeadPriority,
+                })
+              }
+              disabled={!canManageLeads}
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              <option value="Low">Low</option>
+              <option value="Normal">Normal</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Follow-up date
+            </span>
+            <input
+              type="date"
+              value={followUpDate || ""}
+              onChange={(event) =>
+                updateLocalLeadDraft(kind, id, { followUpDate: event.target.value })
+              }
+              disabled={!canManageLeads}
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            />
+          </label>
+
+          <div className="rounded-2xl bg-white p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Last contacted
+            </p>
+            <p className="mt-2 text-sm font-black text-[#0d1c38]">
+              {lastContactedAt ? formatDate(lastContactedAt) : "Not contacted yet"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            onClick={() =>
+              saveLeadFollowUpDetails(
+                kind,
+                id,
+                priority || "Normal",
+                followUpDate || "",
+                lastContactedAt || ""
+              )
+            }
+            disabled={!canManageLeads}
+            className="rounded-full bg-[#d49613] px-5 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            Save follow-up
+          </button>
+
+          <button
+            onClick={() =>
+              markLeadContactedToday(
+                kind,
+                id,
+                priority || "Normal",
+                followUpDate || ""
+              )
+            }
+            disabled={!canManageLeads}
+            className="rounded-full bg-emerald-600 px-5 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            Mark contacted today
+          </button>
+        </div>
+
+        <label className="mt-3 block">
+          <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+            Private staff notes
+          </span>
+          <textarea
+            value={staffNotes || ""}
+            onChange={(event) =>
+              updateLocalLeadDraft(kind, id, { staffNotes: event.target.value })
+            }
+            disabled={!canManageLeads}
+            rows={2}
+            placeholder="Example: Called client, prefers Lekki, follow up tomorrow."
+            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          />
+        </label>
+
+        <button
+          onClick={() => saveLeadStaffNotes(kind, id, staffNotes || "")}
+          disabled={!canManageLeads}
+          className="mt-3 rounded-full bg-[#0d1c38] px-5 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          Save staff notes
+        </button>
+      </div>
+    );
+  }
+
+  function escapeCsvValue(value: unknown) {
+    const text = String(value ?? "");
+
+    if (/[",\n\r]/.test(text)) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    return text;
+  }
+
+  function downloadCsv(filename: string, headers: string[], rows: unknown[][]) {
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map(escapeCsvValue).join(","))
+      .join("\n");
+
+    const blob = new Blob([`\uFEFF${csvContent}`], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-
     link.href = url;
     link.download = filename;
     document.body.appendChild(link);
     link.click();
     link.remove();
-
     URL.revokeObjectURL(url);
-  }
 
-  function escapeCsvValue(value: unknown) {
-    const textValue = String(value ?? "");
-
-    if (/[",\n\r]/.test(textValue)) {
-      return `"${textValue.replace(/"/g, '""')}"`;
-    }
-
-    return textValue;
-  }
-
-  function createCsv(rows: unknown[][]) {
-    return rows.map((row) => row.map(escapeCsvValue).join(",")).join("\n");
-  }
-
-  function exportActivityLogsCsv() {
-    const rows = [
-      ["Date", "Category", "Action", "Detail"],
-      ...activityLogs.map((log) => [
-        formatActivityDate(log.createdAt),
-        log.category,
-        log.action,
-        log.detail,
-      ]),
-    ];
-
-    downloadTextFile(
-      `inamaad-activity-log-${new Date().toISOString().slice(0, 10)}.csv`,
-      createCsv(rows),
-      "text/csv;charset=utf-8"
-    );
-
-    showMessage("Activity log CSV exported.");
+    showSuccess(`${filename} downloaded.`);
   }
 
   function exportListingsCsv() {
-    const rows = [
-      [
-        "Reference",
-        "Title",
-        "Type",
-        "Location",
-        "State",
-        "Price",
-        "ROI",
-        "Status",
-        "Bedrooms",
-        "Bathrooms",
-        "Land Size",
-        "Document",
-        "Owner / Agent",
-        "Owner Role",
-        "Owner Verified",
-        "Featured",
-        "Price Guidance",
-        "Price Confidence",
-        "Comparable Count",
-        "Market Difference",
-        "Admin Valuation Note",
-        "Due Diligence Score",
-        "Due Diligence Label",
-        "Due Diligence Passed Checks",
-        "Document Readiness Score",
-        "Document Readiness Label",
-        "Missing Document Items",
-        "Owner Verification Note",
-        "Owner Phone",
-        "WhatsApp",
-        "Summary",
-      ],
-      ...listings.map((item) => [
-        getListingReference(item.id),
-        item.title,
-        item.type,
-        item.location,
-        item.state,
-        item.price,
-        item.roi,
-        item.status,
-        item.bedrooms || "",
-        item.bathrooms || "",
-        item.landSize || "",
-        item.documentTitle || "",
-        item.ownerName || "",
-        item.ownerRole || "",
-        item.ownerVerified ? "Yes" : "No",
-        item.featured ? "Yes" : "No",
-        getPriceIntelligence(item, listings).label,
-        getPriceIntelligence(item, listings).confidence,
-        getPriceIntelligence(item, listings).comparableCount,
-        `${getPriceIntelligence(item, listings).percentVsMarket}%`,
-        item.valuationNote || "",
-        `${getDueDiligenceScore(item)}%`,
-        getDueDiligenceLabel(getDueDiligenceScore(item)),
-        `${getDueDiligenceChecks(item).filter((check) => check.passed).length}/${getDueDiligenceChecks(item).length}`,
-        `${getDocumentReadinessScore(item)}%`,
-        getDocumentReadinessLabel(getDocumentReadinessScore(item)),
-        getMissingDocumentItems(item).map((entry) => entry.label).join("; "),
-        item.ownerVerificationNote || "",
-        item.ownerPhone || "",
-        item.whatsapp || "",
-        item.summary,
-      ]),
-    ];
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
 
-    downloadTextFile("inamaad-listings.csv", createCsv(rows), "text/csv;charset=utf-8");
-    showMessage("Listings CSV exported.");
-  }
-
-  function exportLeadsCsv() {
-    const rows = [
+    downloadCsv(
+      "inamaad-listings.csv",
       [
         "ID",
-        "Listing",
+        "Reference",
+        "Title",
+        "Location",
+        "Price",
+        "Numeric Value",
+        "Agency Fee",
+        "Legal / Documentation Fee",
+        "Service Charge",
+        "Caution Fee",
+        "Survey Fee",
+        "Development Fee",
+        "Total Estimated Cost",
+        "Payment Plan Available",
+        "Installment Details",
+        "Type",
+        "Category",
+        "Yield / Highlight",
+        "Description",
+        "Document Title",
+        "Document Status",
+        "Document Details",
+        "Document File URL",
+        "Approval Status",
+        "Availability Status",
+        "Availability Note",
+        "Available From",
+        "Contact Role",
+        "Company Name",
+        "Owner / Contact Name",
+        "Owner Phone",
+        "Contact WhatsApp",
+        "Contact Email",
+        "Contact Address",
+        "Public Contact Visibility",
+        "Mandate Status",
+        "Image URL",
+        "Created At",
+      ],
+      listings.map((listing) => [
+        listing.id,
+        buildListingReference(listing.id),
+        listing.title,
+        listing.location,
+        listing.price,
+        listing.value,
+        listing.agencyFee || "",
+        listing.legalFee || "",
+        listing.serviceCharge || "",
+        listing.cautionFee || "",
+        listing.surveyFee || "",
+        listing.developmentFee || "",
+        listing.totalEstimatedCost || calculateTotalEstimatedCost(listing),
+        listing.paymentPlanAvailable ? "Yes" : "No",
+        listing.installmentDetails || "",
+        listing.type,
+        listing.category,
+        listing.yieldText,
+        listing.description,
+        listing.documentTitle || "",
+        listing.documentStatus || "",
+        listing.documentDetails || "",
+        listing.documentFileUrl || "",
+        listing.status,
+        listing.availabilityStatus || "Available",
+        listing.availabilityNote || "",
+        listing.availableFrom || "",
+        listing.contactRole || "Owner",
+        listing.companyName || "",
+        listing.ownerName || "",
+        listing.ownerPhone || "",
+        listing.contactWhatsapp || "",
+        listing.contactEmail || "",
+        listing.contactAddress || "",
+        listing.publicContactVisibility || "Hide Phone",
+        listing.mandateStatus || "Not Confirmed",
+        listing.imageUrl || "",
+        listing.createdAt || "",
+      ])
+    );
+  }
+
+  function exportInvestorRequestsCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
+    downloadCsv(
+      "inamaad-investor-requests.csv",
+      [
+        "ID",
         "Name",
         "Email",
         "Phone",
         "Budget",
+        "Interest",
         "Status",
-        "CRM Stage",
-        "Priority",
-        "Source",
-        "Follow Up Date",
-        "Notes",
+        "Assigned To",
+        "Staff Notes",
         "Message",
         "Created At",
       ],
-      ...leads.map((lead) => [
-        lead.id,
-        lead.listingTitle || "",
-        lead.name,
-        lead.email,
-        lead.phone,
-        lead.budget,
-        lead.status,
-        getLeadStage(lead),
-        getLeadPriority(lead),
-        getLeadSource(lead),
-        lead.followUpDate || "",
-        lead.notes || "",
-        lead.message,
-        lead.createdAt,
-      ]),
-    ];
-
-    downloadTextFile("inamaad-leads.csv", createCsv(rows), "text/csv;charset=utf-8");
-    showMessage("Leads CSV exported.");
+      investorRequests.map((request) => [
+        request.id,
+        request.name,
+        request.email,
+        request.phone,
+        request.budget,
+        request.interest,
+        request.status || "New",
+        request.assignedToEmail || "",
+        request.staffNotes || "",
+        request.message || "",
+        request.createdAt,
+      ])
+    );
   }
 
-  function exportInspectionsCsv() {
-    const rows = [
+  function exportPropertyInquiriesCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
+    downloadCsv(
+      "inamaad-property-inquiries.csv",
       [
         "ID",
-        "Listing",
+        "Listing ID",
+        "Listing Title",
+        "Name",
+        "Email",
+        "Phone",
+        "Status",
+        "Assigned To",
+        "Staff Notes",
+        "Message",
+        "Created At",
+      ],
+      propertyInquiries.map((inquiry) => [
+        inquiry.id,
+        inquiry.listingId || "",
+        inquiry.listingTitle,
+        inquiry.name,
+        inquiry.email || "",
+        inquiry.phone,
+        inquiry.status || "New",
+        inquiry.assignedToEmail || "",
+        inquiry.staffNotes || "",
+        inquiry.message || "",
+        inquiry.createdAt,
+      ])
+    );
+  }
+
+  function exportContactMessagesCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
+    downloadCsv(
+      "inamaad-contact-messages.csv",
+      [
+        "ID",
+        "Name",
+        "Email",
+        "Phone",
+        "Subject",
+        "Status",
+        "Assigned To",
+        "Staff Notes",
+        "Message",
+        "Created At",
+      ],
+      contactMessages.map((message) => [
+        message.id,
+        message.name,
+        message.email || "",
+        message.phone || "",
+        message.subject || "General enquiry",
+        message.status || "New",
+        message.assignedToEmail || "",
+        message.staffNotes || "",
+        message.message || "",
+        message.createdAt,
+      ])
+    );
+  }
+
+  function exportInspectionBookingsCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
+      return;
+    }
+
+    downloadCsv(
+      "inamaad-inspection-bookings.csv",
+      [
+        "ID",
+        "Listing ID",
+        "Listing Title",
         "Name",
         "Email",
         "Phone",
         "Preferred Date",
         "Preferred Time",
         "Status",
-        "Note",
+        "Assigned To",
+        "Staff Notes",
+        "Message",
         "Created At",
       ],
-      ...inspections.map((inspection) => [
-        inspection.id,
-        inspection.listingTitle || "",
-        inspection.name,
-        inspection.email,
-        inspection.phone,
-        inspection.preferredDate,
-        inspection.preferredTime,
-        inspection.status,
-        inspection.note,
-        inspection.createdAt,
-      ]),
-    ];
-
-    downloadTextFile(
-      "inamaad-inspections.csv",
-      createCsv(rows),
-      "text/csv;charset=utf-8"
+      inspectionBookings.map((booking) => [
+        booking.id,
+        booking.listingId || "",
+        booking.listingTitle,
+        booking.name,
+        booking.email || "",
+        booking.phone,
+        booking.preferredDate || "",
+        booking.preferredTime || "",
+        booking.status || "New",
+        booking.assignedToEmail || "",
+        booking.staffNotes || "",
+        booking.message || "",
+        booking.createdAt,
+      ])
     );
-    showMessage("Inspections CSV exported.");
   }
 
-  function exportFullBackupJson() {
-    const backup = {
-      app: "INAMAAD Real Estate",
-      version: "local-backup-v1",
-      exportedAt: new Date().toISOString(),
-      listings,
-      leads,
-      inspections,
-      activityLogs,
-      adminTasks,
-      savedListingIds,
-      listingViews,
-      recentListingIds,
-      compareListingIds,
-    };
-
-    downloadTextFile(
-      `inamaad-full-backup-${new Date().toISOString().slice(0, 10)}.json`,
-      JSON.stringify(backup, null, 2),
-      "application/json;charset=utf-8"
-    );
-
-    addActivityLog(
-      "Full backup exported",
-      "Admin exported a full JSON backup.",
-      "Backup"
-    );
-    showMessage("Full INAMAAD backup exported.");
-  }
-
-  function handleRestoreBackup(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-
-    if (!file) return;
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      try {
-        const parsedBackup = JSON.parse(String(reader.result || "{}"));
-
-        if (!parsedBackup || parsedBackup.app !== "INAMAAD Real Estate") {
-          showMessage("Invalid backup file.");
-          return;
-        }
-
-        if (Array.isArray(parsedBackup.listings)) {
-          setListings(parsedBackup.listings);
-        }
-
-        if (Array.isArray(parsedBackup.leads)) {
-          setLeads(parsedBackup.leads);
-        }
-
-        if (Array.isArray(parsedBackup.inspections)) {
-          setInspections(parsedBackup.inspections);
-        }
-
-        if (Array.isArray(parsedBackup.savedListingIds)) {
-          setSavedListingIds(parsedBackup.savedListingIds);
-        }
-
-        if (parsedBackup.listingViews && typeof parsedBackup.listingViews === "object") {
-          setListingViews(parsedBackup.listingViews);
-        }
-
-        if (Array.isArray(parsedBackup.recentListingIds)) {
-          setRecentListingIds(parsedBackup.recentListingIds);
-        }
-
-        if (Array.isArray(parsedBackup.compareListingIds)) {
-          setCompareListingIds(parsedBackup.compareListingIds);
-        }
-
-        if (Array.isArray(parsedBackup.activityLogs)) {
-          setActivityLogs(parsedBackup.activityLogs);
-        }
-
-        if (Array.isArray(parsedBackup.adminTasks)) {
-          setAdminTasks(parsedBackup.adminTasks);
-        }
-
-        addActivityLog(
-          "Backup restored",
-          "Admin restored an INAMAAD JSON backup.",
-          "Backup"
-        );
-        showMessage("Backup restored successfully.");
-      } catch {
-        showMessage("Backup restore failed. Upload a valid INAMAAD JSON backup.");
-      } finally {
-        e.target.value = "";
-      }
-    };
-
-    reader.onerror = () => {
-      showMessage("Backup file could not be read.");
-      e.target.value = "";
-    };
-
-    reader.readAsText(file);
-  }
-
-  function clearDemoDataConfirm() {
-    const confirmed = window.confirm(
-      "This will remove all local listings, leads, inspections, and saved properties from this browser. Export a backup first. Continue?"
-    );
-
-    if (!confirmed) return;
-
-    setListings(INITIAL_LISTINGS);
-    setLeads([]);
-    setInspections([]);
-    setSavedListingIds([]);
-    setListingViews({});
-    setRecentListingIds([]);
-    setCompareListingIds([]);
-    setExpandedListingId(null);
-    setSelectedListing(null);
-    setAdminTasks([]);
-    setActivityLogs([
-      {
-        id: Date.now(),
-        action: "Local data reset",
-        detail: "Admin reset local demo data to starter listings.",
-        category: "Admin",
-        createdAt: new Date().toISOString(),
-      },
-    ]);
-    showMessage("Local data reset to starter listings.");
-  }
-
-
-  function approveAllPendingListings() {
-    const pendingListings = listings.filter((item) => item.status !== "Verified");
-
-    if (!pendingListings.length) {
-      showMessage("No pending listings to approve.");
+  function exportPropertyViewsCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
       return;
     }
 
-    setListings((currentListings) =>
-      currentListings.map((item) =>
-        item.status === "Verified" ? item : { ...item, status: "Verified" }
-      )
+    downloadCsv(
+      "inamaad-property-views.csv",
+      ["ID", "Listing ID", "Listing Title", "Viewed At"],
+      propertyViews.map((view) => [
+        view.id,
+        view.listingId,
+        view.listingTitle,
+        view.viewedAt,
+      ])
     );
-
-    addActivityLog(
-      "Bulk listings approved",
-      `${pendingListings.length} pending listing${pendingListings.length === 1 ? "" : "s"} approved from follow-up center.`,
-      "Admin"
-    );
-    showMessage(`${pendingListings.length} pending listing${pendingListings.length === 1 ? "" : "s"} approved.`);
   }
 
-  function verifyAllUnverifiedOwners() {
-    const unverifiedListings = listings.filter((item) => !item.ownerVerified);
-
-    if (!unverifiedListings.length) {
-      showMessage("All owners / agents are already verified.");
+  function exportBusinessReportCsv() {
+    if (!canExportReports) {
+      showSuccess("Your role cannot export reports.");
       return;
     }
 
-    setListings((currentListings) =>
-      currentListings.map((item) =>
-        item.ownerVerified
-          ? item
-          : {
-              ...item,
-              ownerVerified: true,
-              ownerVerificationNote:
-                item.ownerVerificationNote || "Owner / agent checked by INAMAAD admin.",
-            }
-      )
-    );
-
-    addActivityLog(
-      "Bulk owners verified",
-      `${unverifiedListings.length} owner / agent profile${unverifiedListings.length === 1 ? "" : "s"} verified from follow-up center.`,
-      "Admin"
-    );
-    showMessage(`${unverifiedListings.length} owner / agent profile${unverifiedListings.length === 1 ? "" : "s"} verified.`);
-  }
-
-  function markAllNewLeadsContacted() {
-    const newLeads = leads.filter((lead) => lead.status === "New");
-
-    if (!newLeads.length) {
-      showMessage("No new leads to mark as contacted.");
-      return;
-    }
-
-    setLeads((currentLeads) =>
-      currentLeads.map((lead) =>
-        lead.status === "New"
-          ? { ...lead, status: "Contacted", crmStage: "Contacted" }
-          : lead
-      )
-    );
-
-    addActivityLog(
-      "Bulk leads contacted",
-      `${newLeads.length} new lead${newLeads.length === 1 ? "" : "s"} marked as contacted.`,
-      "Admin"
-    );
-    showMessage(`${newLeads.length} new lead${newLeads.length === 1 ? "" : "s"} marked as contacted.`);
-  }
-
-  function confirmAllNewInspections() {
-    const newInspections = inspections.filter(
-      (inspection) => inspection.status === "New"
-    );
-
-    if (!newInspections.length) {
-      showMessage("No new inspections to confirm.");
-      return;
-    }
-
-    setInspections((currentInspections) =>
-      currentInspections.map((inspection) =>
-        inspection.status === "New"
-          ? { ...inspection, status: "Confirmed" }
-          : inspection
-      )
-    );
-
-    addActivityLog(
-      "Bulk inspections confirmed",
-      `${newInspections.length} inspection request${newInspections.length === 1 ? "" : "s"} confirmed from follow-up center.`,
-      "Admin"
-    );
-    showMessage(`${newInspections.length} inspection request${newInspections.length === 1 ? "" : "s"} confirmed.`);
-  }
-
-  function featureTopViewedFromFollowUp() {
-    const topIds = topViewedListings
-      .filter((item) => Number(item.viewCount || 0) > 0)
-      .slice(0, 3)
-      .map((item) => item.id);
-
-    if (!topIds.length) {
-      showMessage("Open property details first so top-viewed listings can be detected.");
-      return;
-    }
-
-    setListings((currentListings) =>
-      currentListings.map((item) =>
-        topIds.includes(item.id) ? { ...item, featured: true } : item
-      )
-    );
-
-    addActivityLog(
-      "Top viewed listings featured",
-      `${topIds.length} top-viewed listing${topIds.length === 1 ? "" : "s"} marked as featured.`,
-      "Admin"
-    );
-    showMessage("Top viewed listings marked as featured.");
-  }
-
-
-  function handleConciergeSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    const createdLead: Lead = {
-      id: Date.now(),
-      name: conciergeForm.name.trim(),
-      email: conciergeForm.email.trim(),
-      phone: conciergeForm.phone.trim(),
-      budget: conciergeForm.budget.trim(),
-      message: [
-        `Preferred location: ${conciergeForm.location || "Not specified"}`,
-        `Property type: ${conciergeForm.propertyType || "Not specified"}`,
-        `Timeline: ${conciergeForm.timeline || "Not specified"}`,
-        `Message: ${conciergeForm.message || "No extra message"}`,
-      ].join("\n"),
-      createdAt: new Date().toISOString(),
-      status: "New",
-      crmStage: "New",
-      priority: "High",
-      source: "Buyer concierge",
-      followUpDate: "",
-      notes: "",
-    };
-
-    setLeads((currentLeads) => [createdLead, ...currentLeads]);
-    addActivityLog(
-      "Buyer brief submitted",
-      `${createdLead.name} submitted a buyer concierge brief.`,
-      "Lead"
-    );
-
-    setConciergeForm({
-      name: "",
-      email: "",
-      phone: "",
-      budget: "",
-      location: "",
-      propertyType: "",
-      timeline: "",
-      message: "",
-    });
-
-    showMessage("Buyer brief submitted. INAMAAD can follow up from the admin dashboard.");
-  }
-
-  function renderPropertyCard(item: Listing, variant: "property" | "jv" = "property") {
-    const isExpanded = expandedListingId === item.id;
-    const isJV = variant === "jv" || isJVListing(item);
-    const isSaved = savedListingIds.includes(item.id);
-    const isCompared = compareListingIds.includes(item.id);
-    const priceIntel = getPriceIntelligence(item, listings);
-    const dueScore = getDueDiligenceScore(item);
-    const dueLabel = getDueDiligenceLabel(dueScore);
-
-    return (
-      <article
-        id={`property-${item.id}`}
-        key={`${variant}-${item.id}`}
-        className="property-card inamaad-card overflow-hidden rounded-2xl border border-slate-200 bg-white transition duration-300 hover:-translate-y-1"
-      >
-        <div className={`h-36 ${isJV ? "bg-gradient-to-br from-[#0d1c38] via-[#1d3258] to-[#f0bf3c]" : "bg-gradient-to-br from-[#0d1c38] via-[#1c3158] to-[#52627a]"} relative overflow-hidden`}>
-          {item.imageUrl ? (
-            <img
-              src={item.imageUrl}
-              alt={item.title}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          ) : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d1c38]/92 via-[#0d1c38]/35 to-transparent" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.22),transparent_28%),radial-gradient(circle_at_80%_70%,rgba(240,191,60,0.22),transparent_30%)]" />
-          <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
-            <div>
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0d1c38]">
-                  {item.status}
-                </span>
-
-                {item.ownerVerified ? (
-                  <span className="rounded-full bg-emerald-400 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0d1c38]">
-                    Verified owner
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-white/75 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-700">
-                    Owner review
-                  </span>
-                )}
-
-                {item.featured ? (
-                  <span className="rounded-full bg-[#f0bf3c] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0d1c38]">
-                    Featured
-                  </span>
-                ) : null}
-
-                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${getPriceBadgeClass(priceIntel.label)}`}>
-                  {priceIntel.label}
-                </span>
-
-                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${getDueDiligenceBadgeClass(dueScore)}`}>
-                  DD {dueScore}%
-                </span>
-              </div>
-              <p className="mt-2 text-xl font-black text-white">{item.price}</p>
-            </div>
-            <span className="rounded-full bg-[#f0bf3c] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0d1c38]">
-              {item.type}
-            </span>
-          </div>
-        </div>
-
-        <div className="property-card-body p-5">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="text-lg font-black leading-tight text-[#0d1c38]">
-                {item.title}
-              </h3>
-              <p className="mt-1 text-sm font-semibold text-slate-500">
-                {item.location}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => toggleSavedListing(item)}
-              className={`shrink-0 rounded-full px-3 py-2 text-xs font-black transition ${
-                isSaved
-                  ? "bg-[#f0bf3c] text-[#0d1c38]"
-                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-              }`}
-              aria-label={isSaved ? "Remove saved property" : "Save property"}
-            >
-              {isSaved ? "Saved" : "Save"}
-            </button>
-          </div>
-
-          <p className="property-card-summary text-sm leading-6 text-slate-600">
-            {item.summary}
-          </p>
-
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="property-card-stat rounded-xl bg-slate-50 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                Ref
-              </p>
-              <p className="mt-1 text-xs font-black text-[#0d1c38]">
-                {getListingReference(item.id)}
-              </p>
-            </div>
-
-            <div className="property-card-stat rounded-xl bg-slate-50 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                ROI
-              </p>
-              <p className="mt-1 text-xs font-black text-[#0d1c38]">{item.roi}</p>
-            </div>
-
-            <div className="property-card-stat rounded-xl bg-slate-50 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                State
-              </p>
-              <p className="mt-1 text-xs font-black text-[#0d1c38]">{item.state}</p>
-            </div>
-          </div>
-
-          <div className="mt-3 rounded-2xl border border-[#f0bf3c]/30 bg-[#fff7df] p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
-                  Price intelligence
-                </p>
-                <p className="mt-1 text-sm font-black text-[#0d1c38]">
-                  {priceIntel.guidance}
-                </p>
-              </div>
-
-              <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getPriceBadgeClass(priceIntel.label)}`}>
-                {priceIntel.confidence}
-              </span>
-            </div>
-
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className="rounded-xl bg-white p-2">
-                <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                  Avg guide
-                </p>
-                <p className="mt-1 text-xs font-black text-[#0d1c38]">
-                  {formatNairaCompact(priceIntel.stateAverage)}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-white p-2">
-                <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                  Market diff
-                </p>
-                <p className="mt-1 text-xs font-black text-[#0d1c38]">
-                  {priceIntel.percentVsMarket > 0 ? "+" : ""}{priceIntel.percentVsMarket}%
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-white p-2">
-                <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                  Comps
-                </p>
-                <p className="mt-1 text-xs font-black text-[#0d1c38]">
-                  {priceIntel.comparableCount}
-                </p>
-              </div>
-            </div>
-
-            {item.valuationNote ? (
-              <p className="mt-3 rounded-xl bg-white p-3 text-xs font-semibold leading-5 text-slate-600">
-                Admin note: {item.valuationNote}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700">
-                  Due diligence score
-                </p>
-                <p className="mt-1 text-sm font-black text-[#0d1c38]">
-                  {dueLabel}. {getDueDiligenceChecks(item).filter((check) => check.passed).length}/{getDueDiligenceChecks(item).length} checks passed.
-                </p>
-              </div>
-
-              <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getDueDiligenceBadgeClass(dueScore)}`}>
-                {dueScore}%
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-[#f8fafc] p-2">
-            {["Verified", "Direct enquiry", isJV ? "JV review" : "Docs review"].map((label) => (
-              <div key={label} className="rounded-xl bg-white px-2 py-2 text-center">
-                <p className="text-[10px] font-black text-[#0d1c38]">{label}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                  Owner / Agent
-                </p>
-                <p className="mt-1 text-sm font-black text-[#0d1c38]">
-                  {item.ownerName || "INAMAAD verified contact"}
-                </p>
-                <p className="text-xs font-semibold text-slate-500">
-                  {item.ownerRole || "Owner / Agent"}
-                </p>
-              </div>
-
-              <span
-                className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
-                  item.ownerVerified
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-yellow-50 text-yellow-700"
-                }`}
-              >
-                {item.ownerVerified ? "Verified" : "Pending"}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => openProperty(item)}
-              className="rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-black text-white transition hover:bg-[#162b52]"
-            >
-              View details
-            </button>
-
-            <button
-              type="button"
-              onClick={() => shareListing(item)}
-              className="rounded-xl border border-[#0d1c38] bg-white px-4 py-3 text-sm font-black text-[#0d1c38] transition hover:bg-slate-50"
-            >
-              Share
-            </button>
-          </div>
-
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => toggleCompareListing(item)}
-              className={`rounded-xl px-4 py-3 text-sm font-black transition ${
-                isCompared
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-              }`}
-            >
-              {isCompared ? "Compared" : "Compare"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => copyPropertySummary(item)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
-            >
-              Copy summary
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => toggleInlineDetails(item)}
-            className="mt-2 w-full rounded-xl bg-[#fff7df] px-4 py-3 text-sm font-black text-[#9b6b16] transition hover:bg-[#f7e8bd]"
-          >
-            {isExpanded ? "Hide property details" : "Open property details inside card"}
-          </button>
-
-          {isExpanded && (
-            <div className="mt-3 rounded-2xl border border-[#f0bf3c]/40 bg-[#fffaf0] p-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-white p-3">
-                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                    Listing type
-                  </p>
-                  <p className="mt-1 text-sm font-black text-[#0d1c38]">{item.type}</p>
-                </div>
-
-                <div className="rounded-xl bg-white p-3">
-                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                    Status
-                  </p>
-                  <p className="mt-1 text-sm font-black text-[#0d1c38]">
-                    {item.status}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-white p-3">
-                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                    Price / Value
-                  </p>
-                  <p className="mt-1 text-sm font-black text-[#0d1c38]">{item.price}</p>
-                </div>
-
-                <div className="rounded-xl bg-white p-3">
-                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                    Projected ROI
-                  </p>
-                  <p className="mt-1 text-sm font-black text-[#0d1c38]">{item.roi}</p>
-                </div>
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                {[
-                  ["Bedrooms", item.bedrooms || "Not stated"],
-                  ["Bathrooms", item.bathrooms || "Not stated"],
-                  ["Land size", item.landSize || "Not stated"],
-                  ["Document", item.documentTitle || "Under review"],
-                  ["Owner", item.ownerName || "INAMAAD contact"],
-                  ["Owner role", item.ownerRole || "Owner / Agent"],
-                  ["Verification", item.ownerVerified ? "Verified owner" : "Pending review"],
-                  ["Price guide", priceIntel.label],
-                  ["Confidence", priceIntel.confidence],
-                  ["Market average", formatNairaCompact(priceIntel.stateAverage)],
-                  ["Due diligence", `${dueScore}% · ${dueLabel}`],
-                  ["Document readiness", `${getDocumentReadinessScore(item)}% · ${getDocumentReadinessLabel(getDocumentReadinessScore(item))}`],
-                  ["Marketing readiness", `${marketingCampaignInsights.find((entry) => entry.item.id === item.id)?.marketingScore || 0}%`],
-                  ["Est. commission", formatNairaCompact(parseNairaValue(item.price) * commissionRateValue)],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-xl bg-white p-3">
-                    <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                      {label}
-                    </p>
-                    <p className="mt-1 text-sm font-black text-[#0d1c38]">
-                      {value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              {item.galleryUrls && item.galleryUrls.length > 0 ? (
-                <div className="mt-3">
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-wide text-slate-400">
-                    Gallery
-                  </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {item.galleryUrls.slice(0, 4).map((imageUrl, imageIndex) => (
-                      <img
-                        key={`${item.id}-gallery-${imageIndex}`}
-                        src={imageUrl}
-                        alt={`${item.title} gallery ${imageIndex + 1}`}
-                        className="h-16 w-full rounded-xl object-cover"
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {item.documentName ? (
-                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700">
-                    Document preview
-                  </p>
-                  <p className="mt-1 text-sm font-black text-[#0d1c38]">
-                    {item.documentName}
-                  </p>
-                </div>
-              ) : null}
-
-              <p className="mt-3 text-sm leading-6 text-slate-700">
-                {item.summary}
-              </p>
-
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                <a
-                  href={getWhatsappUrl(item)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-xl bg-green-500 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-green-600"
-                >
-                  WhatsApp enquiry
-                </a>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedListing(item)}
-                  className="rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-black text-white transition hover:bg-[#162b52]"
-                >
-                  Open full modal
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openLeadForm(item)}
-                  className="rounded-xl bg-[#f0bf3c] px-4 py-3 text-sm font-black text-[#0d1c38] transition hover:bg-[#f7ce62]"
-                >
-                  Request investment call
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openInspectionForm(item)}
-                  className="rounded-xl border border-[#f0bf3c] bg-white px-4 py-3 text-sm font-black text-[#9b6b16] transition hover:bg-[#fff7df]"
-                >
-                  Book inspection
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </article>
+    downloadCsv(
+      "inamaad-business-report.csv",
+      ["Metric", "Value"],
+      [
+        ["Total listings", listings.length],
+        ["Verified listings", verifiedListings.length],
+        ["Pending listings", pendingListings.length],
+        ["Total property value", totalPropertyValue],
+        ["Verified property value", verifiedPropertyValue],
+        ["Investor requests", investorRequests.length],
+        ["Property inquiries", propertyInquiries.length],
+        ["Property offers", propertyOffers.length],
+        ["Contact messages", contactMessages.length],
+        ["Inspection bookings", inspectionBookings.length],
+        ["Property views", totalPropertyViews],
+        ["Most viewed property", mostViewedProperty],
+        ["Most viewed property count", mostViewedPropertyCount],
+        ["Total leads", totalLeads],
+        ["Top location", topLocation],
+        ["Top location listing count", topLocationCount],
+        ["Top asset type", topType],
+        ["Top asset type listing count", topTypeCount],
+        ["Generated at", new Date().toISOString()],
+      ]
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f7fb] pb-24 text-slate-950 md:pb-0">
-      <SiteStyles />
+    <div className="min-h-screen bg-[#f7f8fb] text-slate-950">
+      <datalist id="nigeria-location-options">
+        {nigeriaLocationLabels.map((location) => (
+          <option key={location} value={location} />
+        ))}
+      </datalist>
 
-      <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#0d1c38]/94 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 lg:px-10">
-          <button
-            type="button"
-            onClick={() => scrollToSection("home")}
-            className="flex items-center gap-3"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f0bf3c] text-xl font-black text-[#0d1c38] shadow-lg">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
+          <a href="#" className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0d1c38] text-xl font-black text-[#f0bf3c] shadow-sm">
               I
             </div>
 
-            <div className="text-left">
-              <div className="font-black tracking-[0.18em] text-white">INAMAAD</div>
-              <div className="text-xs font-semibold text-white/45">
+            <div>
+              <div className="text-[15px] font-black uppercase tracking-wide text-[#0d1c38]">
+                INAMAAD
+              </div>
+              <div className="text-xs text-slate-500">
                 Real Estate Enterprise
               </div>
             </div>
-          </button>
+          </a>
 
-          <nav className="hidden items-center gap-7 text-sm md:flex">
-            {[
-              ["Home", "home"],
-              ["Properties", "properties"],
-              ["JV Deals", "jv"],
-              ["Investors", "why"],
-              ["Compliance", "compliance"],
-              ["About", "about"],
-            ].map(([label, id]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => scrollToSection(id)}
-                className="font-semibold text-white/70 transition-colors hover:text-[#f0bf3c]"
+          <nav className="hidden items-center gap-8 lg:flex">
+            {navLinks.map((item, index) => (
+              <a
+                key={item.label}
+                href={item.href}
+                className={`text-lg font-medium transition ${
+                  index === 0
+                    ? "rounded-xl bg-white px-5 py-3 text-[#0d1c38] shadow-sm"
+                    : "text-slate-600 hover:text-[#0d1c38]"
+                }`}
               >
-                {label}
-              </button>
+                {item.label}
+              </a>
             ))}
-
-            <button
-              type="button"
-              onClick={() => {
-                setAdminUnlocked(false);
-                setAdminPassword("");
-                setModal("admin");
-              }}
-              className="font-semibold text-white/70 transition-colors hover:text-[#f0bf3c]"
-            >
-              Admin
-            </button>
           </nav>
 
-          <div className="hidden items-center gap-3 md:flex">
-            {authUser ? (
-              <>
-                <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2">
-                  <p className="text-xs font-black uppercase tracking-wide text-emerald-200">
-                    Logged in
-                  </p>
-                  <p className="max-w-[180px] truncate text-xs font-semibold text-white">
-                    {authUser.email}
-                  </p>
-                </div>
+          <div className="hidden items-center gap-4 lg:flex">
+            <button
+              onClick={() => setModal("signin")}
+              className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
+            >
+              Sign In
+            </button>
 
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="rounded-xl border border-white/20 px-4 py-2 text-sm font-bold text-white/80 hover:bg-white/10"
-                >
-                  Sign out
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="rounded-full border border-red-400/25 bg-red-400/10 px-4 py-2">
-                  <p className="text-xs font-black uppercase tracking-wide text-red-100">
-                    Not logged in
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setModal("login")}
-                  className="text-sm font-bold text-white/75 hover:text-white"
-                >
-                  Sign in
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setModal("register")}
-                  className="rounded-xl bg-[#f0bf3c] px-5 py-2.5 text-sm font-black text-[#0d1c38] transition-colors hover:bg-[#f7ce62]"
-                >
-                  Get started
-                </button>
-              </>
-            )}
+            <button
+              onClick={() => setModal("investor")}
+              className="rounded-xl bg-[#0d1c38] px-6 py-3 text-lg font-semibold text-white shadow-sm transition hover:bg-[#13284f]"
+            >
+              Get Started
+            </button>
           </div>
 
           <button
-            type="button"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="rounded-xl bg-white/10 px-4 py-2 text-2xl leading-none text-white md:hidden"
+            onClick={() => setMobileOpen((current) => !current)}
+            className="rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-bold text-white lg:hidden"
           >
-            ☰
+            Menu
           </button>
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-white/10 bg-[#0d1c38] px-4 py-5 md:hidden">
-            <div className="grid gap-2 text-sm">
-              {[
-                ["Home", "home"],
-                ["Properties", "properties"],
-                ["JV Deals", "jv"],
-                ["Investors", "why"],
-                ["About", "about"],
-              ].map(([label, id]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => scrollToSection(id)}
-                  className="rounded-xl bg-white/5 px-4 py-3 text-left font-bold text-white/80"
+          <div className="border-t border-slate-200 bg-white px-6 py-5 lg:hidden">
+            <div className="grid gap-4 text-sm font-semibold text-slate-700">
+              {navLinks.map((item) => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
                 >
-                  {label}
-                </button>
+                  {item.label}
+                </a>
               ))}
 
-              <div className="mt-2 rounded-xl bg-white/5 p-3">
-                <p className="text-xs font-black uppercase tracking-wide text-white/40">
-                  Account status
-                </p>
-                <p className="mt-1 text-sm font-bold text-white">
-                  {authUser ? `Logged in: ${authUser.email}` : "Not logged in"}
-                </p>
-              </div>
-
               <button
-                type="button"
-                onClick={() => setModal(authUser ? "admin" : "register")}
-                className="mt-2 rounded-xl bg-[#f0bf3c] px-5 py-3 text-sm font-black text-[#0d1c38]"
+                onClick={() => {
+                  setMobileOpen(false);
+                  setModal("investor");
+                }}
+                className="rounded-xl bg-[#0d1c38] px-5 py-3 text-left font-black text-white"
               >
-                {authUser ? "Open admin" : "Get started"}
+                Get Started
               </button>
             </div>
           </div>
         )}
       </header>
 
-      {successMessage && (
-        <div className="fixed right-4 top-24 z-[90] max-w-sm rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-2xl">
-          <p className="text-sm font-black text-[#0d1c38]">{successMessage}</p>
-        </div>
-      )}
+      <main>
+        <section className="relative overflow-hidden bg-[#0d1c38]">
+          <div
+            className="absolute inset-0 bg-cover bg-left-center"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(13,28,56,0.78), rgba(13,28,56,0.78)), url('/hero-building.jpg')",
+            }}
+          />
 
-      <section
-        id="home"
-        className="relative overflow-hidden bg-[#0d1c38] px-4 pb-16 pt-32 lg:px-10 lg:pb-20 lg:pt-36"
-      >
-        <div className="pointer-events-none absolute inset-0 opacity-80">
-          <div className="absolute right-[-6rem] top-16 h-80 w-80 rounded-full bg-[#f0bf3c]/20 blur-3xl" />
-          <div className="absolute bottom-[-6rem] left-[-4rem] h-96 w-96 rounded-full bg-white/10 blur-3xl" />
-        </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.22),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.1),transparent_35%)]" />
 
-        <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#f0bf3c]/25 bg-[#f0bf3c]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#f7d978]">
-              ✦ Nigeria&apos;s verified investment marketplace
+          <div className="relative mx-auto max-w-7xl px-6 py-12 lg:px-10 lg:py-14">
+            <div className="max-w-5xl">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f0bf3c] sm:text-sm">
+                  Nigeria’s premier platform
+                </p>
+              </div>
+
+              <h1 className="max-w-3xl text-3xl font-black leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-[44px]">
+                Connecting Property,
+                <br />
+                <span className="text-[#f0bf3c]">Land</span>, Investors
+                <br />& Opportunities
+              </h1>
+
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">
+                Discover verified properties, joint venture deals, and
+                investment opportunities across Nigeria. Buy, sell, and invest
+                with confidence.
+              </p>
+
+              <div className="mt-8 max-w-6xl rounded-[24px] bg-white p-4 shadow-2xl">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1.1fr]">
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    type="text"
+                    placeholder="Search properties..."
+                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
+                  />
+
+                  <select
+                    value={propertyType}
+                    onChange={(event) => setPropertyType(event.target.value)}
+                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
+                  >
+                    <option>All</option>
+                    {propertyTypeOptions.map((type) => (
+                      <option key={type}>{type}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={listingPurpose}
+                    onChange={(event) => setListingPurpose(event.target.value)}
+                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
+                    aria-label="Listing purpose"
+                  >
+                    <option>All Purposes</option>
+                    {listingPurposeOptions.map((purpose) => (
+                      <option key={purpose}>{purpose}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={locationFilter}
+                    onChange={(event) => setLocationFilter(event.target.value)}
+                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
+                  >
+                    <option value="All Locations">All Locations</option>
+                    {nigeriaLocationOptions.map((location) => (
+                      <option key={location.label} value={location.value}>
+                        {location.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <a
+                    href="#properties"
+                    className="flex h-14 items-center justify-center rounded-2xl bg-[#0d1c38] px-6 text-lg font-semibold text-white transition hover:bg-[#13284f]"
+                  >
+                    Search
+                  </a>
+                </div>
+              </div>
+
+              {!usesDatabase && (
+                <p className="mt-4 text-xs font-semibold text-slate-300">
+                  Database not connected yet. Forms will use local demo storage until Supabase environment variables are added.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white">
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-6 py-12 lg:grid-cols-4 lg:px-10">
+            {stats.map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="mb-2 text-4xl font-black text-[#0d1c38] lg:text-5xl">
+                  {stat.value}
+                </div>
+
+                <div className="text-base font-medium text-slate-500">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+
+        <section className="bg-[#f7f8fb] px-6 py-16 lg:px-10">
+          <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
+            {categoryCards.map((card) => (
+              <div
+                key={card.title}
+                className="rounded-[26px] border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              >
+                <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#fff5d7] text-2xl font-black text-[#d39b19]">
+                  I
+                </div>
+
+                <h3 className="text-2xl font-black text-[#0d1c38]">
+                  {card.title}
+                </h3>
+
+                <p className="mt-4 text-base leading-7 text-slate-600">
+                  {card.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {recentlyViewedListings.length > 0 && (
+          <section className="bg-[#f7f8fb] px-6 pb-12 lg:px-10">
+            <div className="mx-auto max-w-7xl rounded-[2rem] border border-[#f0bf3c]/40 bg-[#fff7df] p-5 lg:p-7">
+              <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#9b6b16]">
+                    Recently viewed
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-[#0d1c38]">
+                    Continue from properties and JV deals you already opened.
+                  </h2>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setRecentListingIds([])}
+                  className="rounded-xl border border-[#f0bf3c] bg-white px-4 py-2 text-xs font-black text-[#9b6b16] hover:bg-[#fff7df]"
+                >
+                  Clear recent
+                </button>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                {recentlyViewedListings.slice(0, 3).map((listing) => (
+                  <button
+                    key={`recent-${listing.id}`}
+                    type="button"
+                    onClick={() => openListing(listing)}
+                    className="rounded-2xl border border-[#f0bf3c]/40 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <span className="rounded-full bg-[#0d1c38] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white">
+                        {isJointVentureListing(listing) ? "JV Deal" : "Property"}
+                      </span>
+                      <span className="text-xs font-black text-[#9b6b16]">
+                        {listing.price}
+                      </span>
+                    </div>
+                    <p className="line-clamp-1 text-sm font-black text-[#0d1c38]">
+                      {listing.title}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      {buildPublicLocationText(listing)}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section id="properties" className="bg-[#f7f8fb] px-6 py-20 lg:px-10">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+              <div>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
+                    Featured opportunities
+                  </p>
+                </div>
+
+                <h2 className="max-w-3xl text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
+                  Explore verified properties and investment deals.
+                </h2>
+
+                <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+                  Browse premium homes, land, commercial assets, and joint
+                  venture opportunities reviewed for serious investors.
+                </p>
+              </div>
+
+              <button
+                onClick={() => openPostModal("property")}
+                className="w-fit rounded-2xl bg-[#0d1c38] px-7 py-4 text-base font-bold text-white shadow-sm transition hover:bg-[#13284f]"
+              >
+                Submit Property
+              </button>
             </div>
 
-            <h1 className="hero-title max-w-3xl text-5xl font-black leading-[0.98] tracking-tight text-white lg:text-7xl">
-              Find verified real estate and JV deals with confidence.
-            </h1>
-
-            <p className="mt-6 max-w-2xl text-base leading-8 text-white/60 lg:text-xl">
-              Connect with verified property owners, developers, landowners, and joint venture opportunities through a marketplace built for trust, transparency, and mobile access.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => scrollToSection("properties")}
-                className="rounded-xl bg-[#f0bf3c] px-6 py-3 text-sm font-black text-[#0d1c38] transition hover:bg-[#f7ce62]"
-              >
-                Explore properties
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setModal("post")}
-                className="rounded-xl border border-white/25 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-              >
-                + Post opportunity
-              </button>
+            <div className="mt-10 flex flex-wrap gap-3">
+              {[
+                "All",
+                "Residential",
+                "Apartment / Flat",
+                "Bungalow",
+                "Terrace Duplex",
+                "Duplex",
+                "Land",
+                "Commercial",
+                "Office Space",
+                "Shop / Retail Space",
+                "Warehouse",
+                "Joint Venture",
+              ].map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setPropertyType(item)}
+                  className={`rounded-full border px-5 py-2.5 text-sm font-bold transition ${
+                    propertyType === item
+                      ? "border-[#0d1c38] bg-[#0d1c38] text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-[#0d1c38] hover:text-[#0d1c38]"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
             </div>
 
-            <div className="mt-12 grid grid-cols-2 gap-4 border-t border-white/10 pt-8 md:grid-cols-4">
-              {STATS.map((s) => (
-                <div key={s.label} className="rounded-2xl bg-white/5 p-4">
-                  <div className="text-2xl font-black text-white">{s.num}</div>
-                  <div className="mt-1 text-[10px] font-black uppercase tracking-wide text-white/40">
-                    {s.label}
+            <div className="mt-8 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[0.16em] text-[#d39b19]">
+                    Advanced search
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {filteredListings.length} verified result{filteredListings.length === 1 ? "" : "s"} found
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setQuery("");
+                    setPropertyType("All");
+                    setListingPurpose("All Purposes");
+                    setAvailabilityFilter("All Availability");
+                    setLocationFilter("All Locations");
+                    setMinValueFilter("");
+                    setMaxValueFilter("");
+                    setSortMode("Newest");
+                  }}
+                  className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black text-[#0d1c38] transition hover:border-[#0d1c38]"
+                >
+                  Clear filters
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  type="text"
+                  placeholder="Search title, location, type..."
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38] lg:col-span-2"
+                />
+
+                <input
+                  value={minValueFilter}
+                  onChange={(event) => setMinValueFilter(event.target.value)}
+                  type="number"
+                  min="0"
+                  placeholder="Min value"
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                />
+
+                <input
+                  value={maxValueFilter}
+                  onChange={(event) => setMaxValueFilter(event.target.value)}
+                  type="number"
+                  min="0"
+                  placeholder="Max value"
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                />
+
+                <select
+                  value={listingPurpose}
+                  onChange={(event) => setListingPurpose(event.target.value)}
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                  aria-label="Listing purpose"
+                >
+                  <option>All Purposes</option>
+                  {listingPurposeOptions.map((purpose) => (
+                    <option key={purpose}>{purpose}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={availabilityFilter}
+                  onChange={(event) => setAvailabilityFilter(event.target.value)}
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                  aria-label="Availability status"
+                >
+                  <option>All Availability</option>
+                  {availabilityStatusOptions.map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={sortMode}
+                  onChange={(event) => setSortMode(event.target.value)}
+                  className="h-14 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                >
+                  <option>Newest</option>
+                  <option>Price High to Low</option>
+                  <option>Price Low to High</option>
+                  <option>Title A-Z</option>
+                </select>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="mt-12 rounded-[28px] bg-white p-8 text-center font-bold text-slate-500">
+                Loading listings...
+              </div>
+            ) : (
+              <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {filteredListings.map((listing) => (
+                  <article
+                    key={listing.id}
+                    data-inamaad-open-listing="true"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openListing(listing)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openListing(listing);
+                      }
+                    }}
+                    className={`group cursor-pointer overflow-hidden rounded-[28px] border bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${
+                      listing.featured ? "border-[#f0bf3c] shadow-xl ring-2 ring-[#f0bf3c]/30" : "border-slate-200"
+                    }`}
+                  >
+                    <div className="relative h-72 overflow-hidden bg-[#0d1c38]">
+                      {listing.imageUrl ? (
+                        <img
+                          src={listing.imageUrl}
+                          alt={listing.title}
+                          className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <>
+                          <div className="absolute inset-0 bg-gradient-to-br from-[#0d1c38] via-[#1b3157] to-[#9b6b16]" />
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
+                        </>
+                      )}
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0d1c38]/95 via-[#0d1c38]/45 to-[#0d1c38]/10" />
+
+                      {propertyImagesByListingId[listing.id]?.length ? (
+                        <div className="absolute bottom-5 right-5 z-20 rounded-full bg-white/90 px-4 py-2 text-xs font-black text-[#0d1c38] shadow-lg">
+                          {propertyImagesByListingId[listing.id].length + (listing.imageUrl ? 1 : 0)} Photos
+                        </div>
+                      ) : null}
+
+                      <div className="relative z-10 flex h-full flex-col justify-between p-7 text-white">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex flex-wrap gap-2">
+                            <div className="rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide backdrop-blur">
+                              {listing.type}
+                            </div>
+
+                            {listing.featured && (
+                              <div className="rounded-full bg-[#f0bf3c] px-4 py-2 text-xs font-black uppercase tracking-wide text-[#0d1c38] shadow-lg">
+                                Featured
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white">
+                              {listing.status}
+                            </div>
+                            <div className={`rounded-full px-4 py-2 text-xs font-black ${availabilityBadgeClass(listing.availabilityStatus)}`}>
+                              {listing.availabilityStatus || "Available"}
+                            </div>
+                            <div className="rounded-full bg-white/15 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-white backdrop-blur">
+                              Ref {buildListingReference(listing.id)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
+                            {listing.featured ? "INAMAAD premium featured asset" : "INAMAAD verified asset"}
+                          </p>
+                          <h3 className="mt-3 max-w-sm text-3xl font-black leading-tight">
+                            {listing.title}
+                          </h3>
+                          <p className="mt-3 text-base font-medium text-slate-200">
+                            {listing.location}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-7">
+                      <div className="flex items-start justify-between gap-5">
+                        <div>
+                          <p className="text-sm font-bold text-slate-500">
+                            Starting price
+                          </p>
+                          <p className="mt-1 text-3xl font-black text-[#0d1c38]">
+                            {listing.price}
+                          </p>
+                          <p className="mt-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                            {availabilityShortNote(listing.availabilityStatus)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-[#fff6dc] px-4 py-3 text-right">
+                          <p className="text-xs font-bold text-slate-500">
+                            Type
+                          </p>
+                          <p className="text-sm font-black text-[#9b6b16]">
+                            {listing.category}
+                          </p>
+                        </div>
+                      </div>
+
+                      {isJointVentureListing(listing) ? (
+                        <div className="mt-5 flex flex-wrap gap-2 text-xs font-black text-[#0d1c38]">
+                          {listing.jvStructure ? <span className="rounded-full bg-amber-100 px-3 py-2">{listing.jvStructure}</span> : null}
+                          {listing.jvProjectStage ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.jvProjectStage}</span> : null}
+                          {listing.landSize ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.landSize}</span> : null}
+                          {listing.jvExpectedUnits ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.jvExpectedUnits} units</span> : null}
+                        </div>
+                      ) : (listing.bedrooms || listing.bathrooms || listing.landSize) && (
+                        <div className="mt-5 flex flex-wrap gap-2 text-xs font-black text-[#0d1c38]">
+                          {listing.bedrooms ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.bedrooms} Beds</span> : null}
+                          {listing.bathrooms ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.bathrooms} Baths</span> : null}
+                          {listing.landSize ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.landSize}</span> : null}
+                        </div>
+                      )}
+
+                      <p className="mt-5 min-h-[72px] text-base leading-7 text-slate-600">
+                        {listing.description}
+                      </p>
+
+                      <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+                        <p className="text-sm font-bold text-slate-500">
+                          Investment highlight
+                        </p>
+                        <p className="mt-2 text-base font-black text-[#0d1c38]">
+                          {listing.yieldText}
+                        </p>
+                      </div>
+
+                      <div className="mt-6 grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          data-inamaad-open-listing="true"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            openListing(listing);
+                          }}
+                          className="flex items-center justify-center rounded-2xl bg-[#0d1c38] px-5 py-4 text-base font-bold text-white transition hover:bg-[#13284f]"
+                        >
+                          View Details
+                        </button>
+
+                        <button
+                          type="button"
+                          data-inamaad-no-refresh="true"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            shareListing(listing);
+                          }}
+                          className="flex items-center justify-center rounded-2xl border border-[#0d1c38] bg-white px-5 py-4 text-base font-black text-[#0d1c38] transition hover:bg-slate-50"
+                        >
+                          Share
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section id="process" className="bg-white px-6 py-20 lg:px-10">
+          <div className="mx-auto max-w-7xl">
+            <div className="max-w-3xl">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
+                  How it works
+                </p>
+              </div>
+
+              <h2 className="text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
+                A cleaner way to find real estate opportunities.
+              </h2>
+
+              <p className="mt-5 text-lg leading-8 text-slate-600">
+                INAMAAD is built to make property discovery, investor matching,
+                and opportunity submission more structured and professional.
+              </p>
+            </div>
+
+            <div className="mt-12 grid gap-7 md:grid-cols-3">
+              {processSteps.map((step, index) => (
+                <div
+                  key={step.title}
+                  className="rounded-[28px] border border-slate-200 bg-[#f7f8fb] p-8"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0d1c38] text-lg font-black text-[#f0bf3c]">
+                    0{index + 1}
                   </div>
+
+                  <h3 className="mt-8 text-2xl font-black text-[#0d1c38]">
+                    {step.title}
+                  </h3>
+
+                  <p className="mt-4 text-base leading-7 text-slate-600">
+                    {step.text}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
+        </section>
 
-          <div className="rounded-[2rem] border border-white/10 bg-white/8 p-4 shadow-2xl backdrop-blur">
-            <div className="overflow-hidden rounded-[1.5rem] bg-white">
-              <div className="flex h-56 items-center justify-center bg-gradient-to-br from-[#f0bf3c] via-[#98702d] to-[#0d1c38]">
-                <div className="text-center">
-                  <div className="mb-3 text-6xl">🏙️</div>
-                  <p className="text-xl font-black text-white">
-                    Premium Property Deal
+        <section id="about" className="bg-[#f7f8fb] px-6 py-20 lg:px-10">
+          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div className="relative overflow-hidden rounded-[32px] bg-[#0d1c38] p-10 text-white">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.15),transparent_35%)]" />
+
+              <div className="relative">
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
+                  Verification first
+                </p>
+
+                <h2 className="mt-5 text-4xl font-black leading-tight md:text-5xl">
+                  Built for serious investors, not random property adverts.
+                </h2>
+
+                <p className="mt-6 text-lg leading-8 text-slate-200">
+                  INAMAAD is designed to help investors, developers, landowners,
+                  and property sellers connect through a more trusted and
+                  structured marketplace.
+                </p>
+
+                <div className="mt-8 grid gap-4">
+                  {verificationItems.map((item) => (
+                    <div
+                      key={item}
+                      className="rounded-2xl bg-white/10 p-5 text-base font-bold backdrop-blur"
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-4 flex items-center gap-3">
+                <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
+                  About INAMAAD
+                </p>
+              </div>
+
+              <h2 className="text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
+                Real estate opportunities with stronger clarity.
+              </h2>
+
+              <p className="mt-6 text-lg leading-8 text-slate-600">
+                The goal of INAMAAD is to become a trusted marketplace for
+                verified homes, land, commercial property, and joint venture
+                opportunities across Nigeria.
+              </p>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="text-3xl font-black text-[#0d1c38]">Fast</p>
+                  <p className="mt-3 text-slate-600">
+                    Search and filter opportunities quickly.
+                  </p>
+                </div>
+
+                <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="text-3xl font-black text-[#0d1c38]">Trusted</p>
+                  <p className="mt-3 text-slate-600">
+                    Listings are reviewed before public approval.
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
 
-              <div className="p-6">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="rounded-full bg-[#f0bf3c]/15 px-3 py-1 text-xs font-black text-[#9b6b16]">
-                    VERIFIED
-                  </span>
-                  <span className="text-xs font-semibold text-slate-400">
-                    Abuja, Nigeria
-                  </span>
-                </div>
-
-                <h3 className="mb-2 text-xl font-black text-[#0d1c38]">
-                  Luxury Mixed-use Development
-                </h3>
-
-                <p className="mb-5 text-sm leading-7 text-slate-500">
-                  A verified investment opportunity with document-backed ownership, developer profile, and JV structure.
+        <section id="jv" className="bg-[#0d1c38] px-6 py-20 text-white lg:px-10">
+          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+            <div>
+              <div className="mb-4 flex items-center gap-3">
+                <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
+                  Joint venture deals
                 </p>
+              </div>
 
-                <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-5">
-                  <div>
-                    <p className="text-xs text-slate-400">Value</p>
-                    <p className="font-black text-[#0d1c38]">₦3.5B</p>
-                  </div>
+              <h2 className="text-4xl font-black tracking-tight md:text-6xl">
+                Connect landowners, investors, and developers.
+              </h2>
 
-                  <div>
-                    <p className="text-xs text-slate-400">ROI</p>
-                    <p className="font-black text-[#0d1c38]">24%</p>
-                  </div>
+              <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
+                INAMAAD helps structure discovery for joint venture
+                opportunities, where landowners, developers, and investors can
+                find better-fit partnerships.
+              </p>
 
-                  <div>
-                    <p className="text-xs text-slate-400">Status</p>
-                    <p className="font-black text-[#0d1c38]">Open</p>
-                  </div>
-                </div>
+              <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+                <button
+                  onClick={() => openPostModal("jv")}
+                  className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-base font-black text-[#0d1c38] hover:bg-[#ffd45a]"
+                >
+                  Submit JV Deal
+                </button>
 
                 <button
-                  type="button"
-                  onClick={() => openLeadForm(featuredProperty || undefined)}
-                  className="mt-6 w-full rounded-xl bg-[#0d1c38] py-3 text-sm font-black text-white transition hover:bg-[#162b52]"
+                  onClick={() => setModal("investor")}
+                  className="rounded-2xl border border-white/20 px-7 py-4 text-base font-black text-white hover:bg-white/10"
                 >
-                  Request access
+                  Investor Access
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      <div className="px-4 lg:px-10">
-        <form
-          onSubmit={handleSearch}
-          className="relative z-10 mx-auto -mt-8 max-w-7xl rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
-        >
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
-              Search investments
-            </p>
-
-            {(keyword || selectedState || type || statusFilter !== "all" || sortMode !== "newest") && (
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="text-xs font-black text-[#9b6b16] hover:text-[#f0bf3c]"
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-6">
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-500">
-                Keyword
-              </label>
-              <input
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="Location, project..."
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-500">
-                State
-              </label>
-              <input
-                value={selectedState}
-                onChange={(e) => setSelectedState(e.target.value)}
-                placeholder="Lagos, Abuja..."
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-500">
-                Type
-              </label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              >
-                <option value="">All property types</option>
-                <option value="residential">Residential</option>
-                <option value="commercial">Commercial</option>
-                <option value="land">Land</option>
-                <option value="joint_venture">Joint Venture</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-500">
-                Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              >
-                <option value="all">All status</option>
-                <option value="Verified">Verified only</option>
-                <option value="Pending review">Pending review</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-500">
-                Sort
-              </label>
-              <select
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              >
-                <option value="newest">Newest first</option>
-                <option value="price_high">Price high to low</option>
-                <option value="price_low">Price low to high</option>
-                <option value="roi_high">Highest ROI</option>
-                <option value="title_az">Title A-Z</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white transition hover:bg-[#162b52]"
-            >
-              Search
-            </button>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {[
-              ["Verified", "Verified"],
-              ["Pending", "Pending review"],
-              ["Residential", "residential"],
-              ["Commercial", "commercial"],
-              ["Land", "land"],
-            ].map(([label, value]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => {
-                  if (value === "Verified" || value === "Pending review") {
-                    setStatusFilter(value);
-                  } else {
-                    setType(value);
-                  }
-                }}
-                className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black text-slate-600 transition hover:border-[#f0bf3c] hover:bg-[#fff7df] hover:text-[#9b6b16]"
-              >
-                {label}
-              </button>
-            ))}
-
-            <button
-              type="button"
-              onClick={() => setSortMode("price_high")}
-              className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black text-slate-600 transition hover:border-[#f0bf3c] hover:bg-[#fff7df] hover:text-[#9b6b16]"
-            >
-              Highest price
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSortMode("roi_high")}
-              className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black text-slate-600 transition hover:border-[#f0bf3c] hover:bg-[#fff7df] hover:text-[#9b6b16]"
-            >
-              Highest ROI
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <section className="mx-auto max-w-7xl px-4 py-10 lg:px-10">
-        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
-            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
-              Professional marketplace tools
-            </p>
-            <h2 className="text-2xl font-black tracking-tight text-[#0d1c38]">
-              Faster property discovery for buyers, investors, and landowners.
-            </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
-              Save listings, open property details inside cards, contact INAMAAD through WhatsApp, and separate JV opportunities from standard property listings.
-            </p>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-6">
-              <div className="rounded-2xl bg-[#f8fafc] p-4">
-                <p className="text-2xl font-black text-[#0d1c38]">{propertyListings.length}</p>
-                <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
-                  Properties
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-7 backdrop-blur">
+              <div className="rounded-[24px] bg-white p-7 text-[#0d1c38]">
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-[#d39b19]">
+                  JV Profile
                 </p>
-              </div>
 
-              <div className="rounded-2xl bg-[#fff7df] p-4">
-                <p className="text-2xl font-black text-[#0d1c38]">{jvListings.length}</p>
-                <p className="mt-1 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
-                  JV Deals
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-emerald-50 p-4">
-                <p className="text-2xl font-black text-[#0d1c38]">{savedListings.length}</p>
-                <p className="mt-1 text-xs font-black uppercase tracking-wide text-emerald-700">
-                  Saved
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-blue-50 p-4">
-                <p className="text-2xl font-black text-[#0d1c38]">{leads.length}</p>
-                <p className="mt-1 text-xs font-black uppercase tracking-wide text-blue-700">
-                  Leads
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-purple-50 p-4">
-                <p className="text-2xl font-black text-[#0d1c38]">{inspections.length}</p>
-                <p className="mt-1 text-xs font-black uppercase tracking-wide text-purple-700">
-                  Inspections
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-orange-50 p-4">
-                <p className="text-2xl font-black text-[#0d1c38]">{totalListingViews}</p>
-                <p className="mt-1 text-xs font-black uppercase tracking-wide text-orange-700">
-                  Views
-                </p>
+                <div className="mt-6 grid gap-4">
+                  {[
+                    ["Landowners", "Submit land for development"],
+                    ["Developers", "Find JV-ready land opportunities"],
+                    ["Investors", "Join structured real estate projects"],
+                    ["Market", "Lagos, Abuja, and emerging corridors"],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-between gap-5 rounded-2xl bg-[#f7f8fb] p-5"
+                    >
+                      <p className="text-sm font-bold text-slate-500">
+                        {label}
+                      </p>
+                      <p className="text-right text-sm font-black text-[#0d1c38]">
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
+        </section>
 
-          <div className="rounded-[2rem] border border-slate-200 bg-[#0d1c38] p-5 text-white shadow-sm lg:p-6">
-            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
-              Quick access
-            </p>
-            <h3 className="text-xl font-black">Saved properties</h3>
-
-            {savedListings.length > 0 ? (
-              <div className="mt-4 space-y-3">
-                {savedListings.slice(0, 3).map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      scrollToSection(isJVListing(item) ? "jv" : "properties");
-                      setExpandedListingId(item.id);
-                    }}
-                    className="w-full rounded-2xl bg-white/10 p-3 text-left hover:bg-white/15"
-                  >
-                    <p className="text-sm font-black text-white">{item.title}</p>
-                    <p className="mt-1 text-xs font-semibold text-white/55">
-                      {item.location} · {item.price}
+        <section id="investors" className="bg-white px-6 py-20 lg:px-10">
+          <div className="mx-auto max-w-7xl">
+            <div className="rounded-[32px] bg-[#f7f8fb] p-8 md:p-12">
+              <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
+                <div>
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                    <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
+                      Investors
                     </p>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-4 text-sm leading-7 text-white/60">
-                Tap the Save button on any property to keep it here for quick access.
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
+                  </div>
 
-      <section className="mx-auto max-w-7xl px-4 pb-4 lg:px-10">
-        <div className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-[2rem] border border-blue-100 bg-blue-50 p-5 lg:p-6">
-            <div className="mb-4 flex items-start justify-between gap-3">
+                  <h2 className="max-w-3xl text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
+                    Access deals that match your capital and strategy.
+                  </h2>
+
+                  <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">
+                    Tell INAMAAD your preferred location, budget, and
+                    investment interest. Your request is saved for admin review
+                    and follow-up.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-4 sm:flex-row lg:flex-col">
+                  <button
+                    onClick={() => setModal("investor")}
+                    className="rounded-2xl bg-[#0d1c38] px-7 py-4 text-base font-black text-white hover:bg-[#13284f]"
+                  >
+                    Request Investor Access
+                  </button>
+
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%20INAMAAD%20Real%20Estate%2C%20I%20want%20to%20speak%20about%20property%20investment.`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-2xl border border-slate-300 px-7 py-4 text-center text-base font-black text-[#0d1c38] hover:border-[#0d1c38]"
+                  >
+                    Speak on WhatsApp
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="calculator" className="bg-white px-6 py-20 lg:px-10">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
               <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-blue-700">
-                  Compare properties
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
+                    Investment calculator
+                  </p>
+                </div>
+
+                <h2 className="text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
+                  Estimate rental income, appreciation, and ROI before you invest.
+                </h2>
+
+                <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
+                  Use this quick calculator to estimate the potential return of a property opportunity. It is for planning only; final figures should be verified during due diligence.
                 </p>
-                <h3 className="mt-1 text-xl font-black text-[#0d1c38]">
-                  Compare up to 3 listings
-                </h3>
+
+                <div className="mt-7 rounded-[28px] border border-amber-200 bg-amber-50 p-6 text-sm leading-6 text-amber-900">
+                  <strong>Tip:</strong> Use realistic rent and growth assumptions. For premium Lagos and Abuja locations, update the growth rate based on the specific area, title quality, demand, and infrastructure.
+                </div>
               </div>
 
-              {compareListings.length > 0 ? (
+              <div className="rounded-[32px] border border-slate-200 bg-[#f7f8fb] p-6 shadow-xl shadow-slate-200/70">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block">
+                    <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                      Purchase price / value
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={calculatorForm.purchasePrice}
+                      onChange={(event) =>
+                        setCalculatorForm({ ...calculatorForm, purchasePrice: event.target.value })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                      Expected yearly rent
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={calculatorForm.annualRent}
+                      onChange={(event) =>
+                        setCalculatorForm({ ...calculatorForm, annualRent: event.target.value })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                      Annual growth %
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={calculatorForm.annualGrowth}
+                      onChange={(event) =>
+                        setCalculatorForm({ ...calculatorForm, annualGrowth: event.target.value })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                      Holding years
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={calculatorForm.holdingYears}
+                      onChange={(event) =>
+                        setCalculatorForm({ ...calculatorForm, holdingYears: event.target.value })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  {[
+                    ["Future property value", formatNairaCompact(calculatorFutureValue)],
+                    ["Total rental income", formatNairaCompact(calculatorTotalRent)],
+                    ["Estimated capital gain", formatNairaCompact(calculatorEstimatedGain)],
+                    ["Estimated total ROI", `${calculatorRoi}%`],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-3xl bg-white p-5 shadow-sm">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                        {label}
+                      </p>
+                      <p className="mt-2 text-2xl font-black text-[#0d1c38]">
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
                 <button
                   type="button"
-                  onClick={clearCompareList}
-                  className="rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700"
+                  onClick={() => setModal("investor")}
+                  className="mt-6 w-full rounded-2xl bg-[#0d1c38] px-7 py-4 text-sm font-black text-white hover:bg-[#13284f]"
                 >
-                  Clear
+                  Request investor guidance
                 </button>
-              ) : null}
-            </div>
-
-            {compareListings.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[560px] overflow-hidden rounded-2xl bg-white text-left text-xs">
-                  <thead className="bg-[#0d1c38] text-white">
-                    <tr>
-                      <th className="p-3">Property</th>
-                      <th className="p-3">Price</th>
-                      <th className="p-3">ROI</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3">Owner</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {compareListings.map((item) => (
-                      <tr key={`compare-${item.id}`} className="border-t border-slate-100">
-                        <td className="p-3 font-black text-[#0d1c38]">
-                          {item.title}
-                          <p className="mt-1 font-semibold text-slate-500">{item.location}</p>
-                        </td>
-                        <td className="p-3 font-black text-[#0d1c38]">{item.price}</td>
-                        <td className="p-3 font-black text-[#0d1c38]">{item.roi}</td>
-                        <td className="p-3">{item.status}</td>
-                        <td className="p-3">
-                          {item.ownerVerified ? "Verified" : "Pending"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
-            ) : (
-              <p className="rounded-2xl bg-white p-4 text-sm leading-7 text-slate-600">
-                Use the Compare button on property cards to compare price, ROI, status, and owner verification.
-              </p>
-            )}
-          </div>
-
-          <div className="rounded-[2rem] border border-orange-100 bg-orange-50 p-5 lg:p-6">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-700">
-              Recently viewed
-            </p>
-            <h3 className="mt-1 text-xl font-black text-[#0d1c38]">
-              Continue from where you stopped
-            </h3>
-
-            {recentlyViewedListings.length > 0 ? (
-              <div className="mt-4 space-y-3">
-                {recentlyViewedListings.slice(0, 4).map((item) => (
-                  <button
-                    key={`recent-${item.id}`}
-                    type="button"
-                    onClick={() => {
-                      scrollToSection(isJVListing(item) ? "jv" : "properties");
-                      setExpandedListingId(item.id);
-                    }}
-                    className="w-full rounded-2xl bg-white p-3 text-left shadow-sm hover:shadow-md"
-                  >
-                    <p className="text-sm font-black text-[#0d1c38]">{item.title}</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">
-                      {item.location} · {item.price} · {Number(listingViews[item.id] || 0)} views
-                    </p>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-4 rounded-2xl bg-white p-4 text-sm leading-7 text-slate-600">
-                Open a property details modal or inside-card details, and it will appear here.
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section id="properties" className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
-        <div className="mb-8 flex items-end justify-between gap-5">
-          <div>
-            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
-              Featured properties
-            </p>
-            <h2 className="text-3xl font-black tracking-tight text-[#0d1c38]">
-              Premium verified listings
-            </h2>
-            <p className="mt-2 text-sm font-medium text-slate-500">
-              Showing {filteredProperties.length} property result
-              {filteredProperties.length === 1 ? "" : "s"}
-            </p>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {type ? (
-                <span className="rounded-full bg-[#fff7df] px-3 py-1 text-[11px] font-black text-[#9b6b16]">
-                  Type: {getTypeLabel(type)}
-                </span>
-              ) : null}
-
-              {statusFilter !== "all" ? (
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-blue-700">
-                  Status: {statusFilter}
-                </span>
-              ) : null}
-
-              {sortMode !== "newest" ? (
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-black text-emerald-700">
-                  Sort: {sortMode.replace("_", " ")}
-                </span>
-              ) : null}
             </div>
           </div>
+        </section>
 
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="hidden text-sm font-black text-[#9b6b16] hover:text-[#f0bf3c] md:block"
-          >
-            View all →
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProperties.map((item) => renderPropertyCard(item, "property"))}
-
-          {filteredProperties.length === 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center md:col-span-2 lg:col-span-3">
-              <h3 className="mb-2 text-lg font-black text-[#0d1c38]">
-                No matching properties found
-              </h3>
-              <p className="mb-5 text-sm text-slate-500">
-                Try searching another location, keyword, or property type.
-              </p>
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white"
-              >
-                Clear search
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section id="jv" className="border-y border-slate-200 bg-white py-14">
-        <div className="mx-auto max-w-7xl px-4 lg:px-10">
-          <div className="mb-8 flex items-end justify-between gap-5">
-            <div>
-              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
-                Joint ventures
-              </p>
-
-              <h2 className="text-3xl font-black tracking-tight text-[#0d1c38]">
-                Active JV opportunities
-              </h2>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => openLeadForm()}
-              className="hidden text-sm font-black text-[#9b6b16] hover:text-[#f0bf3c] md:block"
-            >
-              Request JV access →
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {jvListings.map((deal) => renderPropertyCard(deal, "jv"))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-y border-slate-100 bg-white py-14">
-        <div className="mx-auto max-w-7xl px-4 lg:px-10">
-          <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
-            Browse by category
-          </p>
-
-          <h2 className="mb-8 text-3xl font-black tracking-tight text-[#0d1c38]">
-            Investment categories
-          </h2>
-
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {CATEGORIES.map((c) => (
-              <button
-                key={c.label}
-                type="button"
-                onClick={() => handleCategoryClick(c.typeValue)}
-                className="rounded-2xl border border-slate-200 bg-white p-5 text-center transition-all hover:border-[#f0bf3c]/60 hover:shadow-lg"
-              >
-                <div className="mb-3 text-3xl">{c.icon}</div>
-
-                <p className="mb-1 text-sm font-black text-[#0d1c38]">
-                  {c.label}
-                </p>
-
-                <p className="text-xs font-semibold text-slate-400">
-                  {c.count} listings
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="why" className="border-t border-slate-100 bg-[#f6f7fb] py-14">
-        <div className="mx-auto max-w-7xl px-4 lg:px-10">
-          <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
-            Why INAMAAD
-          </p>
-
-          <h2 className="mb-10 text-3xl font-black tracking-tight text-[#0d1c38]">
-            Built for serious investors
-          </h2>
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            {WHY.map((w) => (
-              <div
-                key={w.title}
-                className="rounded-2xl border border-slate-200 bg-white p-6"
-              >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-[#f0bf3c]/15">
-                  <div className="h-3 w-3 rounded-full bg-[#f0bf3c]" />
+        <section id="contact" className="bg-[#0d1c38] px-6 py-20 text-white lg:px-10">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+              <div>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
+                    Contact
+                  </p>
                 </div>
 
-                <h3 className="mb-2 text-base font-black text-[#0d1c38]">
-                  {w.title}
-                </h3>
+                <h2 className="text-4xl font-black tracking-tight md:text-6xl">
+                  Ready to invest or submit a real estate opportunity?
+                </h2>
 
-                <p className="text-sm leading-7 text-slate-500">{w.body}</p>
+                <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
+                  Start with investor access, submit your property, or contact
+                  INAMAAD directly on WhatsApp.
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
-        <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
-            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
-              Buyer safety center
-            </p>
-            <h2 className="text-3xl font-black tracking-tight text-[#0d1c38]">
-              Safer property decisions before payment.
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-slate-500">
-              INAMAAD should help buyers and investors slow down, verify ownership, inspect documents, and contact only trusted parties before committing funds.
-            </p>
+              <form
+                onSubmit={submitContactMessage}
+                className="rounded-[2rem] bg-white p-6 text-[#0d1c38] shadow-2xl shadow-black/20"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                  Send message
+                </p>
+                <h3 className="mt-2 text-2xl font-black">Contact INAMAAD</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Messages from this form are saved directly inside your staff portal.
+                </p>
 
-            <div className="mt-6 grid gap-3">
-              {[
-                "Confirm owner / agent verification status",
-                "Check uploaded title or document preview",
-                "Book inspection before payment",
-                "Use WhatsApp enquiry for traceable communication",
-                "Save and compare properties before deciding",
-              ].map((item) => (
-                <div key={item} className="flex gap-3 rounded-2xl bg-[#f8fafc] p-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-black text-emerald-700">
-                    ✓
+                <div className="mt-5 grid gap-3">
+                  <input
+                    required
+                    value={contactForm.name}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, name: event.target.value })
+                    }
+                    placeholder="Full name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <input
+                      type="email"
+                      value={contactForm.email}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, email: event.target.value })
+                      }
+                      placeholder="Email optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={contactForm.phone}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, phone: event.target.value })
+                      }
+                      placeholder="Phone or WhatsApp"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
                   </div>
-                  <p className="text-sm font-bold leading-7 text-[#0d1c38]">{item}</p>
+
+                  <input
+                    value={contactForm.subject}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, subject: event.target.value })
+                    }
+                    placeholder="Subject e.g. Property investment"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <textarea
+                    required
+                    value={contactForm.message}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, message: event.target.value })
+                    }
+                    placeholder="Write your message"
+                    rows={4}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <button className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-sm font-black text-[#0d1c38] hover:bg-[#ffd45a]">
+                    Send message
+                  </button>
+
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-2xl border border-slate-200 px-7 py-4 text-center text-sm font-black text-[#0d1c38] hover:border-[#0d1c38]"
+                  >
+                    Or WhatsApp: +{WHATSAPP_NUMBER}
+                  </a>
                 </div>
-              ))}
+              </form>
             </div>
           </div>
+        </section>
 
-          <div className="rounded-[2rem] border border-slate-200 bg-[#0d1c38] p-5 text-white shadow-sm lg:p-6">
-            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
-              Help and FAQ
-            </p>
-            <h3 className="text-3xl font-black">Common questions</h3>
+        <section id="faq" className="bg-[#f7f8fb] px-6 py-20 lg:px-10">
+          <div className="mx-auto max-w-5xl">
+            <div className="text-center">
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
+                FAQ
+              </p>
 
-            <div className="mt-6 space-y-3">
-              {[
-                [
-                  "How do I know a property is trusted?",
-                  "Check the Verified status, owner / agent verification badge, document preview, and use the inspection booking feature before payment.",
-                ],
-                [
-                  "Can I compare properties?",
-                  "Yes. Use the Compare button on property cards to compare price, ROI, location, trust signals, and details side by side.",
-                ],
-                [
-                  "Where do buyer enquiries go?",
-                  "Investor calls, buyer briefs, and inspection requests are saved into the Admin dashboard for follow-up.",
-                ],
-                [
-                  "Are JV deals separate from normal properties?",
-                  "Yes. Joint venture opportunities stay in the JV Deals section and do not use normal bedroom or bathroom logic.",
-                ],
-                [
-                  "Can admin export data?",
-                  "Yes. Admin can export listings, leads, inspections, and a full JSON backup.",
-                ],
-              ].map(([question, answer]) => (
-                <details
-                  key={question}
-                  className="rounded-2xl border border-white/10 bg-white/10 p-4 open:bg-white/15"
+              <h2 className="mt-3 text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
+                Common questions
+              </h2>
+            </div>
+
+            <div className="mt-12 grid gap-5">
+              {faqItems.map((item) => (
+                <div
+                  key={item.question}
+                  className="rounded-[24px] border border-slate-200 bg-white p-7 shadow-sm"
                 >
-                  <summary className="cursor-pointer text-sm font-black text-white">
-                    {question}
-                  </summary>
-                  <p className="mt-3 text-sm leading-7 text-white/65">{answer}</p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    {item.question}
+                  </h3>
 
-      <section className="mx-auto max-w-7xl px-4 pb-4 lg:px-10">
-        <div className="rounded-[2rem] border border-[#f0bf3c]/30 bg-[#fff7df] p-5 shadow-sm lg:p-6">
-          <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div>
-              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
-                Professional web presence
-              </p>
-              <h2 className="text-2xl font-black tracking-tight text-[#0d1c38]">
-                SEO, social sharing, and trust metadata are now active.
-              </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
-                INAMAAD now sets a professional browser title, description, Open Graph sharing tags, mobile app metadata, canonical link, and real estate structured data when the app loads.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={shareMarketplace}
-                className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#162b52]"
-              >
-                Share marketplace
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  installInamaadSeoMetadata();
-                  showMessage("SEO metadata refreshed.");
-                }}
-                className="rounded-xl border border-[#0d1c38] bg-white px-5 py-3 text-sm font-black text-[#0d1c38] hover:bg-slate-50"
-              >
-                Refresh metadata
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
-        <div className="grid gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-[0.9fr_1.1fr] lg:p-6">
-          <div className="rounded-[1.5rem] bg-[#0d1c38] p-6 text-white">
-            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
-              Buyer concierge
-            </p>
-            <h2 className="text-3xl font-black leading-tight">
-              Need help choosing the right property?
-            </h2>
-            <p className="mt-4 text-sm leading-7 text-white/60">
-              Submit your buying brief and INAMAAD can match you with verified properties, JV deals, or inspection options from the admin lead dashboard.
-            </p>
-
-            <div className="mt-6 grid gap-3">
-              {[
-                "Verified property matching",
-                "Inspection planning",
-                "Investor lead tracking",
-                "Owner / agent verification support",
-              ].map((item) => (
-                <div key={item} className="rounded-2xl bg-white/10 p-3">
-                  <p className="text-sm font-black text-white">✓ {item}</p>
+                  <p className="mt-3 text-base leading-7 text-slate-600">
+                    {item.answer}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
+        </section>
+      </main>
 
-          <form onSubmit={handleConciergeSubmit} className="grid gap-3">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#9b6b16]">
-                Submit buying brief
-              </p>
-              <h3 className="mt-1 text-2xl font-black text-[#0d1c38]">
-                Professional buyer request
-              </h3>
-            </div>
+      <footer className="border-t border-slate-200 bg-white px-6 py-10 lg:px-10">
+        <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1.3fr_0.7fr_0.7fr]">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0d1c38] text-xl font-black text-[#f0bf3c]">
+                I
+              </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <input
-                required
-                value={conciergeForm.name}
-                onChange={(e) =>
-                  setConciergeForm({ ...conciergeForm, name: e.target.value })
-                }
-                placeholder="Full name"
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              />
-
-              <input
-                required
-                type="email"
-                value={conciergeForm.email}
-                onChange={(e) =>
-                  setConciergeForm({ ...conciergeForm, email: e.target.value })
-                }
-                placeholder="Email address"
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              />
-
-              <input
-                required
-                value={conciergeForm.phone}
-                onChange={(e) =>
-                  setConciergeForm({ ...conciergeForm, phone: e.target.value })
-                }
-                placeholder="Phone / WhatsApp"
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              />
-
-              <input
-                required
-                value={conciergeForm.budget}
-                onChange={(e) =>
-                  setConciergeForm({ ...conciergeForm, budget: e.target.value })
-                }
-                placeholder="Budget, e.g. ₦100M - ₦500M"
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <input
-                value={conciergeForm.location}
-                onChange={(e) =>
-                  setConciergeForm({ ...conciergeForm, location: e.target.value })
-                }
-                placeholder="Preferred location"
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              />
-
-              <select
-                value={conciergeForm.propertyType}
-                onChange={(e) =>
-                  setConciergeForm({
-                    ...conciergeForm,
-                    propertyType: e.target.value,
-                  })
-                }
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              >
-                <option value="">Any type</option>
-                <option value="Residential">Residential</option>
-                <option value="Commercial">Commercial</option>
-                <option value="Land">Land</option>
-                <option value="Joint Venture">Joint Venture</option>
-              </select>
-
-              <select
-                value={conciergeForm.timeline}
-                onChange={(e) =>
-                  setConciergeForm({ ...conciergeForm, timeline: e.target.value })
-                }
-                className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-              >
-                <option value="">Timeline</option>
-                <option value="Immediately">Immediately</option>
-                <option value="This month">This month</option>
-                <option value="1-3 months">1-3 months</option>
-                <option value="Still researching">Still researching</option>
-              </select>
-            </div>
-
-            <textarea
-              value={conciergeForm.message}
-              onChange={(e) =>
-                setConciergeForm({ ...conciergeForm, message: e.target.value })
-              }
-              rows={4}
-              placeholder="Tell us what you want: location, property size, title/document preference, inspection needs..."
-              className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-            />
-
-            <button className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#162b52]">
-              Submit buyer brief
-            </button>
-          </form>
-        </div>
-      </section>
-
-      <section id="compliance" className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
-        <div className="rounded-[2rem] border border-red-100 bg-white p-5 shadow-sm lg:p-6">
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="rounded-[1.5rem] bg-red-50 p-6">
-              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-red-600">
-                Compliance and fraud protection
-              </p>
-              <h2 className="text-3xl font-black tracking-tight text-[#0d1c38]">
-                Do not pay anyone without verification.
-              </h2>
-              <p className="mt-4 text-sm leading-7 text-slate-600">
-                INAMAAD should guide buyers, landowners, developers, and investors to verify ownership, documents, inspection access, and stakeholder identity before payment or commitment.
-              </p>
-
-              <div className="mt-5 rounded-2xl border border-red-100 bg-white p-4">
-                <p className="text-sm font-black text-red-700">
-                  Important safety notice
+              <div>
+                <p className="text-sm font-black uppercase tracking-wide text-[#0d1c38]">
+                  INAMAAD
                 </p>
-                <p className="mt-2 text-sm leading-7 text-slate-600">
-                  Avoid cash payments, private pressure deals, fake urgency, unverifiable agents, and payment into personal accounts without proper agreement, receipt, inspection, and document review.
+                <p className="text-xs text-slate-500">
+                  Real Estate Enterprise
                 </p>
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                [
-                  "Document check",
-                  "Confirm title documents, survey plans, allocation letters, deeds, or C of O before moving forward.",
-                ],
-                [
-                  "Owner / agent check",
-                  "Use the owner verification badge, admin verification note, and direct contact details before negotiation.",
-                ],
-                [
-                  "Inspection first",
-                  "Book inspection and confirm the property physically before payment or final commitment.",
-                ],
-                [
-                  "Agreement trail",
-                  "Keep written agreements, receipts, WhatsApp records, and stakeholder names for accountability.",
-                ],
-                [
-                  "JV due diligence",
-                  "For JV deals, confirm land title, sharing formula, developer capacity, project stage, and legal structure.",
-                ],
-                [
-                  "Admin backup",
-                  "Export leads, inspections, and listing backups regularly before major business decisions.",
-                ],
-              ].map(([title, body]) => (
-                <div key={title} className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-4">
-                  <p className="text-sm font-black text-[#0d1c38]">{title}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">{body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 rounded-[1.5rem] border border-slate-200 bg-[#f8fafc] p-4 lg:grid-cols-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                Buyer responsibility
-              </p>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Buyers should independently verify documents and inspect properties before payment.
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                Platform role
-              </p>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                INAMAAD helps organize verified opportunities, enquiries, inspections, and records.
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                Professional advice
-              </p>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Use a lawyer, surveyor, valuer, or qualified real estate professional for final checks.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="about" className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
-        <div className="flex flex-col items-start justify-between gap-8 rounded-[2rem] bg-[#0d1c38] px-6 py-10 md:flex-row md:items-center lg:px-10">
-          <div>
-            <h2 className="mb-3 text-3xl font-black text-white">
-              Ready to invest with confidence?
-            </h2>
-
-            <p className="max-w-md text-sm leading-7 text-white/55">
-              Join investors, developers, and landowners already using INAMAAD to discover verified real estate opportunities.
+            <p className="mt-5 max-w-md text-base leading-7 text-slate-600">
+              A real estate marketplace for verified property, land, commercial
+              assets, investors, and joint venture opportunities.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setModal("register")}
-              className="rounded-xl bg-[#f0bf3c] px-6 py-3 text-sm font-black text-[#0d1c38] transition hover:bg-[#f7ce62]"
-            >
-              Create free account
-            </button>
+          <div>
+            <p className="font-black text-[#0d1c38]">Company</p>
 
-            <button
-              type="button"
-              onClick={() => setModal("post")}
-              className="rounded-xl border border-white/25 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-            >
-              Post opportunity
-            </button>
+            <div className="mt-4 grid gap-3 text-sm text-slate-600">
+              <a href="#properties">Properties</a>
+              <a href="#jv">JV Deals</a>
+              <a href="#about">About</a>
+              <a href="#contact">Contact</a>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <section id="legal" className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
-          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-            <div className="rounded-[1.5rem] bg-[#0d1c38] p-6 text-white">
-              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
-                Legal and privacy center
-              </p>
-              <h2 className="text-3xl font-black tracking-tight">
-                Clear rules for safer real estate use.
-              </h2>
-              <p className="mt-4 text-sm leading-7 text-white/65">
-                This marketplace stores demo listings, saved properties, leads, inspections, comparison items, and admin activity in the user’s browser local storage until a backend database is connected.
-              </p>
+          <div>
+            <p className="font-black text-[#0d1c38]">Access</p>
+
+            <div className="mt-4 grid gap-3 text-sm text-slate-600">
+              <button
+                onClick={() => setModal("signin")}
+                className="w-fit text-left"
+              >
+                Sign In
+              </button>
 
               <button
-                type="button"
-                onClick={acceptPrivacyNotice}
-                className="mt-6 rounded-xl bg-[#f0bf3c] px-5 py-3 text-sm font-black text-[#0d1c38] hover:bg-[#f7ce62]"
+                onClick={() => setModal("investor")}
+                className="w-fit text-left"
               >
-                Accept privacy notice
+                Investor Access
+              </button>
+
+              <button
+                onClick={() => {
+                  setAdminPassword("");
+                  setModal("admin");
+                }}
+                className="w-fit text-left text-xs text-slate-400 hover:text-slate-700"
+              >
+                Staff portal
               </button>
             </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                [
-                  "Privacy notice",
-                  "Buyer briefs, leads, inspections, saved notes, and admin records are currently saved in this browser for demo/business testing.",
-                ],
-                [
-                  "Terms of use",
-                  "Users should verify title, ownership, inspection access, and legal documents before payment or agreement.",
-                ],
-                [
-                  "No payment guarantee",
-                  "Do not treat listed prices, ROI, or JV offers as final legal advice or guaranteed investment return.",
-                ],
-                [
-                  "Data responsibility",
-                  "Admins should export backups regularly and move production data to a secure backend before public launch.",
-                ],
-                [
-                  "Professional checks",
-                  "Use lawyers, surveyors, valuers, and qualified real estate professionals for final verification.",
-                ],
-                [
-                  "Local data control",
-                  "Browser-stored demo data can be reset from the safety guard or admin backup tools when needed.",
-                ],
-              ].map(([title, body]) => (
-                <div key={title} className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-4">
-                  <p className="text-sm font-black text-[#0d1c38]">{title}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">{body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <footer className="border-t border-slate-200 bg-white px-4 py-10 lg:px-10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-lg font-black tracking-[0.18em] text-[#0d1c38]">
-              INAMAAD
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              Verified real estate, JV deals, and investor access across Nigeria.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => scrollToSection("properties")}
-              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-[#0d1c38]"
-            >
-              Properties
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection("jv")}
-              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-[#0d1c38]"
-            >
-              JV Deals
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection("compliance")}
-              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-[#0d1c38]"
-            >
-              Compliance
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection("legal")}
-              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-[#0d1c38]"
-            >
-              Legal
-            </button>
-            <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-xl bg-green-500 px-4 py-2 text-sm font-black text-white"
-            >
-              WhatsApp
-            </a>
           </div>
         </div>
       </footer>
 
-      {selectedListing && (
-        <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-6 backdrop-blur-sm md:items-center">
-          <div className="w-full max-w-2xl rounded-[1.5rem] bg-white p-5 shadow-2xl md:p-6">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <p className="mb-2 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
-                  {selectedListing.type} · {getListingReference(selectedListing.id)}
-                </p>
-                <h2 className="text-2xl font-black leading-tight text-[#0d1c38]">
-                  {selectedListing.title}
-                </h2>
-              </div>
+      <a
+        href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%20INAMAAD%20Real%20Estate%2C%20I%20am%20interested%20in%20your%20verified%20property%20investment%20opportunities.`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Chat with INAMAAD on WhatsApp"
+        className="fixed bottom-6 right-6 z-[120] flex items-center gap-3 rounded-full bg-green-500 px-5 py-4 text-white shadow-2xl hover:bg-green-600"
+      >
+        <span className="text-sm font-black">WA</span>
+        <span className="hidden text-sm font-black sm:inline">WhatsApp</span>
+      </a>
 
-              <button
-                type="button"
-                onClick={() => setSelectedListing(null)}
-                className="rounded-full bg-slate-100 px-4 py-2 text-2xl leading-none text-slate-500 hover:text-[#0d1c38]"
-              >
-                ×
-              </button>
-            </div>
+      {successMessage && (
+        <div className="fixed left-1/2 top-24 z-[130] w-[90%] max-w-md -translate-x-1/2 rounded-2xl bg-[#0d1c38] px-5 py-4 text-center text-sm font-bold text-white shadow-2xl">
+          {successMessage}
+        </div>
+      )}
 
-            {selectedListing.imageUrl ? (
-              <img
-                src={selectedListing.imageUrl}
-                alt={selectedListing.title}
-                className="mb-5 h-56 w-full rounded-2xl object-cover"
-              />
-            ) : null}
-
-            {selectedListing.galleryUrls && selectedListing.galleryUrls.length > 0 ? (
-              <div className="mb-5 grid grid-cols-4 gap-2">
-                {selectedListing.galleryUrls.slice(0, 4).map((imageUrl, imageIndex) => (
-                  <img
-                    key={`modal-gallery-${imageIndex}`}
-                    src={imageUrl}
-                    alt={`${selectedListing.title} gallery ${imageIndex + 1}`}
-                    className="h-20 w-full rounded-xl object-cover"
-                  />
-                ))}
-              </div>
-            ) : null}
-
-            {selectedListing.documentName ? (
-              <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
-                  Document preview
-                </p>
-                <p className="mt-1 font-black text-[#0d1c38]">
-                  {selectedListing.documentName}
-                </p>
-
-                {selectedListing.documentDataUrl ? (
-                  <a
-                    href={selectedListing.documentDataUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white"
-                  >
-                    Open uploaded document
-                  </a>
-                ) : null}
-              </div>
-            ) : null}
-
-            <p className="mb-5 text-sm leading-7 text-slate-600">
-              {selectedListing.summary}
-            </p>
-
-            <div className="mb-6 grid grid-cols-2 gap-3 rounded-2xl bg-[#f6f7fb] p-4">
-              <div>
-                <p className="text-xs text-slate-400">Location</p>
-                <p className="font-black text-[#0d1c38]">
-                  {selectedListing.location}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-400">Price</p>
-                <p className="font-black text-[#0d1c38]">{selectedListing.price}</p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-400">Projected ROI</p>
-                <p className="font-black text-[#0d1c38]">{selectedListing.roi}</p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-400">Status</p>
-                <p className="font-black text-[#0d1c38]">{selectedListing.status}</p>
-              </div>
-            </div>
-
-            <div className="mb-6 grid grid-cols-2 gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-              {[
-                ["Bedrooms", selectedListing.bedrooms || "Not stated"],
-                ["Bathrooms", selectedListing.bathrooms || "Not stated"],
-                ["Land size", selectedListing.landSize || "Not stated"],
-                ["Document", selectedListing.documentTitle || "Under review"],
-                ["Owner phone", selectedListing.ownerPhone || "Contact INAMAAD"],
-                ["WhatsApp", selectedListing.whatsapp || "Contact INAMAAD"],
-                ["Owner / Agent", selectedListing.ownerName || "INAMAAD contact"],
-                ["Owner role", selectedListing.ownerRole || "Owner / Agent"],
-                ["Owner verified", selectedListing.ownerVerified ? "Verified" : "Pending review"],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <p className="text-xs text-slate-400">{label}</p>
-                  <p className="font-black text-[#0d1c38]">{value}</p>
-                </div>
-              ))}
-            </div>
-
-            {(() => {
-              const modalPriceIntel = getPriceIntelligence(selectedListing, listings);
-
-              return (
-                <div className="mb-6 rounded-2xl border border-[#f0bf3c]/30 bg-[#fff7df] p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-wide text-[#9b6b16]">
-                        Price guidance
-                      </p>
-                      <p className="mt-1 text-lg font-black text-[#0d1c38]">
-                        {modalPriceIntel.label} · {modalPriceIntel.confidence} confidence
-                      </p>
-                    </div>
-
-                    <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${getPriceBadgeClass(modalPriceIntel.label)}`}>
-                      {modalPriceIntel.percentVsMarket > 0 ? "+" : ""}{modalPriceIntel.percentVsMarket}% vs guide
-                    </span>
-                  </div>
-
-                  <p className="mt-3 text-sm leading-7 text-slate-600">
-                    {modalPriceIntel.guidance}
-                  </p>
-
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    <div className="rounded-xl bg-white p-3">
-                      <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                        Avg guide
-                      </p>
-                      <p className="mt-1 text-xs font-black text-[#0d1c38]">
-                        {formatNairaCompact(modalPriceIntel.stateAverage)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl bg-white p-3">
-                      <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                        Comps
-                      </p>
-                      <p className="mt-1 text-xs font-black text-[#0d1c38]">
-                        {modalPriceIntel.comparableCount}
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl bg-white p-3">
-                      <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                        Buyer action
-                      </p>
-                      <p className="mt-1 text-xs font-black text-[#0d1c38]">
-                        Verify first
-                      </p>
-                    </div>
-                  </div>
-
-                  {selectedListing.valuationNote ? (
-                    <p className="mt-3 rounded-xl bg-white p-3 text-xs font-semibold leading-5 text-slate-600">
-                      Admin valuation note: {selectedListing.valuationNote}
-                    </p>
-                  ) : null}
-                </div>
-              );
-            })()}
-
-            {(() => {
-              const modalDueScore = getDueDiligenceScore(selectedListing);
-              const modalChecks = getDueDiligenceChecks(selectedListing);
-
-              return (
-                <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                  <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
-                        Verification checklist
-                      </p>
-                      <p className="mt-1 text-lg font-black text-[#0d1c38]">
-                        {getDueDiligenceLabel(modalDueScore)} · {modalDueScore}% due diligence
-                      </p>
-                    </div>
-
-                    <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${getDueDiligenceBadgeClass(modalDueScore)}`}>
-                      {modalChecks.filter((check) => check.passed).length}/{modalChecks.length} passed
-                    </span>
-                  </div>
-
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {modalChecks.map((check) => (
-                      <div
-                        key={check.label}
-                        className="rounded-xl bg-white p-3"
-                      >
-                        <p className={`text-xs font-black ${check.passed ? "text-emerald-700" : "text-red-600"}`}>
-                          {check.passed ? "✓" : "!"} {check.label}
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-slate-500">
-                          {check.detail}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <a
-                href={getWhatsappUrl(selectedListing)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-xl bg-green-500 px-5 py-3 text-center text-sm font-black text-white hover:bg-green-600"
-              >
-                WhatsApp enquiry
-              </a>
-
-              <button
-                type="button"
-                onClick={() => {
-                  openLeadForm(selectedListing);
-                }}
-                className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#162b52]"
-              >
-                Request investor access
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openInspectionForm(selectedListing)}
-                className="rounded-xl border border-[#f0bf3c] bg-[#fff7df] px-5 py-3 text-sm font-black text-[#9b6b16] hover:bg-[#f7e8bd]"
-              >
-                Book property inspection
-              </button>
-
-              <button
-                type="button"
-                onClick={() => copyPropertySummary(selectedListing)}
-                className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-black text-blue-700 hover:bg-blue-100"
-              >
-                Copy summary
-              </button>
-
-              <button
-                type="button"
-                onClick={() => printPropertySummary(selectedListing)}
-                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 sm:col-span-2"
-              >
-                Print property summary
-              </button>
-            </div>
-          </div>
+      {isRefreshingData && (
+        <div className="fixed right-6 top-24 z-[130] rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#0d1c38] shadow-xl">
+          Syncing latest data...
         </div>
       )}
 
       {modal && (
-        <div className="fixed inset-0 z-[130] flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm md:items-center">
-          <div className="w-full max-w-lg rounded-[1.5rem] bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-start justify-between gap-4">
+        <div
+          data-inamaad-no-refresh="true"
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm"
+        >
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[30px] bg-white p-6 shadow-2xl md:p-8">
+            <div className="mb-6 flex items-start justify-between gap-5">
               <div>
-                <p className="mb-2 text-xs font-black uppercase tracking-widest text-[#9b6b16]">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#d39b19]">
                   INAMAAD
                 </p>
-                <h2 className="text-2xl font-black text-[#0d1c38]">
-                  {modal === "login" && "Sign in"}
-                  {modal === "register" && "Create your account"}
-                  {modal === "forgot" && "Forgot password"}
-                  {modal === "post" && "Post opportunity"}
+
+                <h2 className="mt-2 text-2xl font-black text-[#0d1c38]">
+                  {modal === "signin" && "Sign in"}
+                  {modal === "register" && "Create account"}
+                  {modal === "post" && "Submit opportunity"}
                   {modal === "investor" && "Request investor access"}
-                  {modal === "inspection" && "Book property inspection"}
-                  {modal === "admin" && "Admin dashboard"}
+                  {modal === "admin" && "Staff portal"}
+                  {modal === "edit" && "Edit listing"}
+                  {modal === "details" && selectedListing?.title}
                 </h2>
               </div>
 
               <button
-                type="button"
-                onClick={() => setModal(null)}
-                className="text-2xl text-slate-400 hover:text-[#0d1c38]"
+                onClick={() => {
+                  setModal(null);
+                  setSelectedListing(null);
+                  setEditingListing(null);
+                }}
+                className="rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-200"
               >
-                ×
+                Close
               </button>
             </div>
 
-            {modal === "login" && (
-              <form onSubmit={handleLogin} className="space-y-4">
+            {modal === "signin" && (
+              <form onSubmit={handleSignIn} className="grid gap-4">
                 <input
                   required
                   type="email"
-                  value={loginForm.email}
-                  onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                  value={signInForm.email}
+                  onChange={(event) =>
+                    setSignInForm({ ...signInForm, email: event.target.value })
+                  }
                   placeholder="Email address"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
+
                 <input
                   required
                   type="password"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                  value={signInForm.password}
+                  onChange={(event) =>
+                    setSignInForm({
+                      ...signInForm,
+                      password: event.target.value,
+                    })
+                  }
                   placeholder="Password"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button className="w-full rounded-xl bg-[#0d1c38] py-3 text-sm font-black text-white">
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
                   Sign in
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setModal("forgot")}
-                  className="w-full text-sm font-black text-[#9b6b16] hover:text-[#f0bf3c]"
+                  onClick={() => setModal("register")}
+                  className="text-sm font-bold text-slate-500"
                 >
-                  Forgot password?
-                </button>
-              </form>
-            )}
-
-            {modal === "forgot" && (
-              <form onSubmit={handleForgotPassword} className="space-y-4">
-                <p className="text-sm leading-7 text-slate-500">
-                  Enter your email. For production reset emails, connect Supabase SMTP.
-                </p>
-                <input
-                  required
-                  type="email"
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                  placeholder="Email address"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                />
-                <button className="w-full rounded-xl bg-[#0d1c38] py-3 text-sm font-black text-white">
-                  Request password reset
+                  Create a new account
                 </button>
               </form>
             )}
 
             {modal === "register" && (
-              <form onSubmit={handleRegister} className="space-y-4">
+              <form onSubmit={handleRegister} className="grid gap-4">
                 <input
                   required
                   value={registerForm.name}
-                  onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
+                  onChange={(event) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      name: event.target.value,
+                    })
+                  }
                   placeholder="Full name"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
+
                 <input
                   required
                   type="email"
                   value={registerForm.email}
-                  onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                  onChange={(event) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      email: event.target.value,
+                    })
+                  }
                   placeholder="Email address"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
-                <select
-                  value={registerForm.role}
-                  onChange={(e) => setRegisterForm({ ...registerForm, role: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                >
-                  <option>Investor</option>
-                  <option>Developer</option>
-                  <option>Landowner</option>
-                  <option>Agent</option>
-                </select>
+
                 <input
                   required
                   type="password"
                   value={registerForm.password}
-                  onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                  onChange={(event) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      password: event.target.value,
+                    })
+                  }
                   placeholder="Password"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
-                <button className="w-full rounded-xl bg-[#0d1c38] py-3 text-sm font-black text-white">
+
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
                   Create account
                 </button>
               </form>
             )}
 
             {modal === "post" && (
-              <form onSubmit={handlePostListing} className="space-y-4">
-                <input
-                  required
-                  value={newListing.title}
-                  onChange={(e) =>
-                    setNewListing({ ...newListing, title: e.target.value })
-                  }
-                  placeholder="Opportunity title"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                />
-                <input
-                  required
-                  value={newListing.location}
-                  onChange={(e) =>
-                    setNewListing({ ...newListing, location: e.target.value })
-                  }
-                  placeholder="Location"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                />
-                <input
-                  required
-                  value={newListing.state}
-                  onChange={(e) =>
-                    setNewListing({ ...newListing, state: e.target.value })
-                  }
-                  placeholder="State"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                />
-                <input
-                  required
-                  value={newListing.price}
-                  onChange={(e) =>
-                    setNewListing({ ...newListing, price: e.target.value })
-                  }
-                  placeholder="Price, e.g. ₦500M"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                />
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <input
-                    value={newListing.bedrooms}
-                    onChange={(e) =>
-                      setNewListing({ ...newListing, bedrooms: e.target.value })
-                    }
-                    placeholder="Bedrooms, e.g. 4"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  <input
-                    value={newListing.bathrooms}
-                    onChange={(e) =>
-                      setNewListing({ ...newListing, bathrooms: e.target.value })
-                    }
-                    placeholder="Bathrooms, e.g. 5"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+              <form key={`post-${postMode}-${postFormRenderKey}`} onSubmit={submitListing} className="grid gap-4">
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Need help? Use examples like these:</p>
+                  <p className="mt-2"><span className="font-black">Title:</span> 4 Bedroom Smart Duplex in Lekki Phase 1</p>
+                  <p><span className="font-black">Investment highlight:</span> Estimated 14% yearly appreciation with strong rental demand</p>
+                  <p><span className="font-black">Opportunity:</span> A verified property in a fast-growing location, suitable for rental income, resale value, or long-term investment.</p>
+                  <p className="mt-2 rounded-xl bg-white px-3 py-2 text-slate-600"><span className="font-black text-[#0d1c38]">Quick guide:</span> choose the building/asset under Property type, then choose For Sale, For Rent, Short Let, Lease, Investment, or JV under Listing purpose.</p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <input
-                    value={newListing.landSize}
-                    onChange={(e) =>
-                      setNewListing({ ...newListing, landSize: e.target.value })
-                    }
-                    placeholder="Land size, e.g. 600sqm"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  <input
-                    value={newListing.documentTitle}
-                    onChange={(e) =>
-                      setNewListing({ ...newListing, documentTitle: e.target.value })
-                    }
-                    placeholder="Document title, e.g. C of O"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                <div className="grid gap-3 rounded-3xl border border-slate-200 bg-[#f7f8fb] p-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => switchPostSubmissionMode("property")}
+                    className={`rounded-2xl px-5 py-3 text-sm font-black ${!postFormIsJointVenture ? "bg-white text-[#0d1c38] shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
+                  >
+                    Property Listing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchPostSubmissionMode("jv")}
+                    className={`rounded-2xl px-5 py-3 text-sm font-black ${postFormIsJointVenture ? "bg-white text-[#0d1c38] shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
+                  >
+                    JV Deal
+                  </button>
                 </div>
 
-                <div className="rounded-2xl border border-[#f0bf3c]/30 bg-[#fff7df] p-4">
-                  <p className="mb-3 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
-                    Owner / Agent verification information
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input
+                    required
+                    value={postForm.title}
+                    onChange={(event) =>
+                      setPostForm({ ...postForm, title: event.target.value })
+                    }
+                    placeholder="Property title, e.g. 4 Bedroom Terrace Duplex in Lekki Phase 1"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <select
+                    required
+                    value={postForm.stateName}
+                    onChange={(event) =>
+                      setPostForm({ ...postForm, stateName: event.target.value })
+                    }
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    aria-label="State or FCT"
+                  >
+                    {nigeriaLocationLabels.map((location) => (
+                      <option key={location}>{location}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Exact property location</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Use State/FCT and City/Area publicly. Keep full address hidden unless you want visitors to see it.
                   </p>
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <input
-                      value={newListing.ownerName}
-                      onChange={(e) =>
-                        setNewListing({ ...newListing, ownerName: e.target.value })
-                      }
-                      placeholder="Owner / Agent name"
-                      className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                      required
+                      value={postForm.cityArea}
+                      onChange={(event) => setPostForm({ ...postForm, cityArea: event.target.value })}
+                      placeholder="City / Area, e.g. Garki, Maitama, Lekki Phase 1"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
 
-                    <select
-                      value={newListing.ownerRole}
-                      onChange={(e) =>
-                        setNewListing({ ...newListing, ownerRole: e.target.value })
+                    <input
+                      value={postForm.nearbyLandmark}
+                      onChange={(event) => setPostForm({ ...postForm, nearbyLandmark: event.target.value })}
+                      placeholder="Nearby landmark, e.g. close to Shoprite / airport road"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.fullAddress}
+                      onChange={(event) => setPostForm({ ...postForm, fullAddress: event.target.value })}
+                      placeholder="Full address / estate name, kept private unless enabled"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+
+                    <input
+                      value={postForm.googleMapLink}
+                      onChange={(event) => setPostForm({ ...postForm, googleMapLink: event.target.value })}
+                      placeholder="Google Maps link, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={postForm.showExactAddress}
+                      onChange={(event) => setPostForm({ ...postForm, showExactAddress: event.target.checked })}
+                    />
+                    Show exact address and map link publicly
+                  </label>
+
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Public display: {postForm.cityArea || "Area"}, {postForm.stateName || "State/FCT"}
+                  </p>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Property video / virtual tour</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Add YouTube, TikTok, Instagram, Google Drive, virtual tour, or drone video links. Leave blank if not available.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={postForm.videoUrl}
+                      onChange={(event) => setPostForm({ ...postForm, videoUrl: event.target.value })}
+                      placeholder="YouTube / property video link"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.virtualTourUrl}
+                      onChange={(event) => setPostForm({ ...postForm, virtualTourUrl: event.target.value })}
+                      placeholder="Virtual tour link, e.g. Matterport / 360 tour"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.droneVideoUrl}
+                      onChange={(event) => setPostForm({ ...postForm, droneVideoUrl: event.target.value })}
+                      placeholder="Drone video link, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={postForm.showVideoPublicly}
+                      onChange={(event) => setPostForm({ ...postForm, showVideoPublicly: event.target.checked })}
+                    />
+                    Show video / virtual tour links publicly
+                  </label>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
+                    <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                      {postFormIsJointVenture ? "Estimated JV value / project cost" : "Price currency"}
+                    </label>
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
+                        ₦ NGN
+                      </span>
+                      <input
+                        required
+                        inputMode="numeric"
+                        value={postForm.price}
+                        onChange={(event) =>
+                          setPostForm({
+                            ...postForm,
+                            price: formatPriceInput(event.target.value),
+                          })
+                        }
+                        placeholder="Enter amount, e.g. 50000000"
+                        className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
+                      />
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-slate-500">
+                      Auto calculated: {formatPricePreview(postForm.price)}
+                    </p>
+                  </div>
+
+                  <select
+                    value={postForm.type}
+                    onChange={(event) => {
+                      const nextType = event.target.value;
+                      if (nextType === "Joint Venture") {
+                        switchPostSubmissionMode("jv");
+                        return;
                       }
-                      className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                      setPostForm({ ...postForm, type: nextType });
+                    }}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    aria-label="Property type"
+                  >
+                    {propertyTypeOptions.map((type) => (
+                      <option key={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Price breakdown and payment details</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    Add extra Nigerian real estate costs. The total estimated cost is calculated automatically from property price plus fees.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    {[
+                      ["agencyFee", "Agency fee, e.g. 5000000"],
+                      ["legalFee", "Legal / documentation fee, e.g. 2500000"],
+                      ["serviceCharge", "Service charge, optional"],
+                      ["cautionFee", "Caution fee, optional"],
+                      ["surveyFee", "Survey fee, optional"],
+                      ["developmentFee", "Development fee, optional"],
+                    ].map(([field, placeholder]) => (
+                      <div key={field} className="rounded-2xl border border-amber-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
+                        <label className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                          {placeholder.split(",")[0]}
+                        </label>
+                        <div className="mt-2 flex items-center gap-3">
+                          <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">₦</span>
+                          <input
+                            inputMode="numeric"
+                            value={postForm[field as keyof typeof postForm] as string}
+                            onChange={(event) =>
+                              setPostForm({
+                                ...postForm,
+                                [field]: formatPriceInput(event.target.value),
+                              })
+                            }
+                            placeholder={placeholder}
+                            className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-[#0d1c38] p-4 text-white">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f0bf3c]">Auto total estimated cost</p>
+                    <p className="mt-2 text-2xl font-black">{calculateTotalEstimatedCost(postForm) || "₦0"}</p>
+                    <p className="mt-1 text-xs text-slate-300">Property price + agency + legal/documentation + service + caution + survey + development fees.</p>
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={postForm.paymentPlanAvailable}
+                      onChange={(event) => setPostForm({ ...postForm, paymentPlanAvailable: event.target.checked })}
+                    />
+                    Payment plan / installment is available
+                  </label>
+
+                  <textarea
+                    value={postForm.installmentDetails}
+                    onChange={(event) => setPostForm({ ...postForm, installmentDetails: event.target.value })}
+                    placeholder="Installment details, e.g. 30% initial deposit, balance over 6 months"
+                    className="mt-4 min-h-[90px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <select
+                    value={postForm.category}
+                    onChange={(event) => {
+                      const nextPurpose = event.target.value;
+                      if (nextPurpose === "JV Partnership") {
+                        switchPostSubmissionMode("jv");
+                        return;
+                      }
+                      setPostForm({
+                        ...postForm,
+                        category: nextPurpose,
+                      });
+                    }}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    aria-label="Listing purpose"
+                  >
+                    {listingPurposeOptions.map((purpose) => (
+                      <option key={purpose}>{purpose}</option>
+                    ))}
+                  </select>
+
+                  <div className="grid gap-4 md:col-span-2 md:grid-cols-3">
+                    <select
+                      value={postForm.availabilityStatus}
+                      onChange={(event) =>
+                        setPostForm({
+                          ...postForm,
+                          availabilityStatus: event.target.value as AvailabilityStatus,
+                        })
+                      }
+                      aria-label="Availability status"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     >
-                      <option value="Owner">Owner</option>
-                      <option value="Agent">Agent</option>
-                      <option value="Developer">Developer</option>
-                      <option value="Landowner">Landowner</option>
-                      <option value="Company Representative">Company Representative</option>
+                      {availabilityStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="date"
+                      value={postForm.availableFrom}
+                      onChange={(event) =>
+                        setPostForm({ ...postForm, availableFrom: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Available from date"
+                    />
+
+                    <input
+                      value={postForm.availabilityNote}
+                      onChange={(event) =>
+                        setPostForm({ ...postForm, availabilityNote: event.target.value })
+                      }
+                      placeholder="Availability note, e.g. Vacant now, reserved till Friday, tenant leaves July"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <input
+                    value={postForm.yieldText}
+                    onChange={(event) =>
+                      setPostForm({
+                        ...postForm,
+                        yieldText: event.target.value,
+                      })
+                    }
+                    placeholder="Investment highlight, e.g. Estimated 14% yearly appreciation"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                {postFormIsJointVenture ? (
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">Joint venture project profile</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      JV deals should be described as development opportunities, not bedroom/bathroom listings. Use this section for landowner, developer, investor, sharing formula, and project stage.
+                    </p>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <select
+                        value={postForm.jvStructure}
+                        onChange={(event) => setPostForm({ ...postForm, jvStructure: event.target.value })}
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="JV structure"
+                      >
+                        {jvStructureOptions.map((structure) => (
+                          <option key={structure}>{structure}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={postForm.jvProjectStage}
+                        onChange={(event) => setPostForm({ ...postForm, jvProjectStage: event.target.value })}
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="JV project stage"
+                      >
+                        {jvProjectStageOptions.map((stage) => (
+                          <option key={stage}>{stage}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <input
+                        value={postForm.landSize}
+                        onChange={(event) => setPostForm({ ...postForm, landSize: event.target.value })}
+                        placeholder="JV land size, e.g. 3,500sqm, 2 hectares, 20 plots"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={postForm.jvExpectedUnits}
+                        onChange={(event) => setPostForm({ ...postForm, jvExpectedUnits: event.target.value })}
+                        placeholder="Expected units, e.g. 24 terraces, 80 apartments"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={postForm.jvEstimatedProjectCost}
+                        onChange={(event) => setPostForm({ ...postForm, jvEstimatedProjectCost: formatPriceInput(event.target.value) })}
+                        placeholder="Estimated project cost, e.g. ₦1,500,000,000"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={postForm.jvCompletionTimeline}
+                        onChange={(event) => setPostForm({ ...postForm, jvCompletionTimeline: event.target.value })}
+                        placeholder="Completion timeline, e.g. 18 months after approval"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <textarea
+                        value={postForm.jvLandContribution}
+                        onChange={(event) => setPostForm({ ...postForm, jvLandContribution: event.target.value })}
+                        placeholder="Landowner contribution, e.g. clean land with C of O, access road, vacant possession"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={postForm.jvDeveloperRequirement}
+                        onChange={(event) => setPostForm({ ...postForm, jvDeveloperRequirement: event.target.value })}
+                        placeholder="Developer requirement, e.g. fund construction, handle approvals, deliver infrastructure"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={postForm.jvInvestorRequirement}
+                        onChange={(event) => setPostForm({ ...postForm, jvInvestorRequirement: event.target.value })}
+                        placeholder="Investor requirement, e.g. equity funding, staged capital, off-plan buyer pool"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={postForm.jvSharingFormula}
+                        onChange={(event) => setPostForm({ ...postForm, jvSharingFormula: event.target.value })}
+                        placeholder="Sharing formula, e.g. 40% landowner / 60% developer, or units split after cost recovery"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <textarea
+                      value={postForm.jvTerms}
+                      onChange={(event) => setPostForm({ ...postForm, jvTerms: event.target.value })}
+                      placeholder="JV terms and notes, e.g. required due diligence, legal structure, approvals, exit plan, profit-sharing terms"
+                      className="mt-4 min-h-[110px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">Property specifications and amenities</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Add the details buyers and tenants normally search for. Leave fields empty if they do not apply, for example land may not need bedrooms.
+                    </p>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-4">
+                      <input type="number" min="0" value={postForm.bedrooms} onChange={(event) => setPostForm({ ...postForm, bedrooms: event.target.value })} placeholder="Bedrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={postForm.bathrooms} onChange={(event) => setPostForm({ ...postForm, bathrooms: event.target.value })} placeholder="Bathrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={postForm.toilets} onChange={(event) => setPostForm({ ...postForm, toilets: event.target.value })} placeholder="Toilets, e.g. 5" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={postForm.parkingSpaces} onChange={(event) => setPostForm({ ...postForm, parkingSpaces: event.target.value })} placeholder="Parking spaces, e.g. 2" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <input value={postForm.landSize} onChange={(event) => setPostForm({ ...postForm, landSize: event.target.value })} placeholder="Land size, e.g. 500sqm, 1 plot, 2 hectares" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input value={postForm.propertySize} onChange={(event) => setPostForm({ ...postForm, propertySize: event.target.value })} placeholder="Built-up size, e.g. 320sqm" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <select value={postForm.furnishingStatus} onChange={(event) => setPostForm({ ...postForm, furnishingStatus: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Furnishing status">
+                        {furnishingStatusOptions.map((status) => (<option key={status}>{status}</option>))}
+                      </select>
+                      <select value={postForm.propertyCondition} onChange={(event) => setPostForm({ ...postForm, propertyCondition: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Property condition">
+                        {propertyConditionOptions.map((condition) => (<option key={condition}>{condition}</option>))}
+                      </select>
+                    </div>
+
+                    <input list="amenity-options" value={postForm.amenities} onChange={(event) => setPostForm({ ...postForm, amenities: event.target.value })} placeholder="Amenities, e.g. 24/7 Security, CCTV, Swimming Pool, Fitted Kitchen" className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                  </div>
+                )}
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Neighborhood and infrastructure</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Add environment details buyers ask for before inspection. Use short, clear examples.
+                  </p>
+
+                  <textarea
+                    value={postForm.neighborhoodOverview}
+                    onChange={(event) => setPostForm({ ...postForm, neighborhoodOverview: event.target.value })}
+                    placeholder="Neighborhood overview, e.g. Quiet gated estate close to schools, malls, and major access roads."
+                    className="mt-4 min-h-[96px] w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={postForm.roadAccess}
+                      onChange={(event) => setPostForm({ ...postForm, roadAccess: event.target.value })}
+                      placeholder="Road access, e.g. tarred road, interlocked estate road"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.distanceToMajorRoad}
+                      onChange={(event) => setPostForm({ ...postForm, distanceToMajorRoad: event.target.value })}
+                      placeholder="Distance to major road, e.g. 3 minutes to expressway"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.powerSupply}
+                      onChange={(event) => setPostForm({ ...postForm, powerSupply: event.target.value })}
+                      placeholder="Power supply, e.g. 18 hours average, transformer available"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.waterSupply}
+                      onChange={(event) => setPostForm({ ...postForm, waterSupply: event.target.value })}
+                      placeholder="Water supply, e.g. borehole, treated estate water"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.securityFeatures}
+                      onChange={(event) => setPostForm({ ...postForm, securityFeatures: event.target.value })}
+                      placeholder="Security, e.g. gated estate, CCTV, armed security"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.estateFeatures}
+                      onChange={(event) => setPostForm({ ...postForm, estateFeatures: event.target.value })}
+                      placeholder="Estate features, e.g. drainage, streetlights, gym, playground"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.nearbySchools}
+                      onChange={(event) => setPostForm({ ...postForm, nearbySchools: event.target.value })}
+                      placeholder="Nearby schools, e.g. 5 mins to Greensprings / Nile University"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.nearbyHospitals}
+                      onChange={(event) => setPostForm({ ...postForm, nearbyHospitals: event.target.value })}
+                      placeholder="Nearby hospitals, e.g. 7 mins to Evercare / National Hospital"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.nearbyMalls}
+                      onChange={(event) => setPostForm({ ...postForm, nearbyMalls: event.target.value })}
+                      placeholder="Nearby malls/markets, e.g. 10 mins to Novare Mall"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={postForm.nearbyTransport}
+                      onChange={(event) => setPostForm({ ...postForm, nearbyTransport: event.target.value })}
+                      placeholder="Nearby transport, e.g. BRT, airport road, expressway access"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Neighborhood and infrastructure</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Update road, power, security, and nearby infrastructure details for this listing.
+                  </p>
+
+                  <textarea
+                    value={editForm.neighborhoodOverview}
+                    onChange={(event) => setEditForm({ ...editForm, neighborhoodOverview: event.target.value })}
+                    placeholder="Neighborhood overview, e.g. Quiet gated estate close to schools, malls, and major access roads."
+                    className="mt-4 min-h-[96px] w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={editForm.roadAccess}
+                      onChange={(event) => setEditForm({ ...editForm, roadAccess: event.target.value })}
+                      placeholder="Road access, e.g. tarred road, interlocked estate road"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.distanceToMajorRoad}
+                      onChange={(event) => setEditForm({ ...editForm, distanceToMajorRoad: event.target.value })}
+                      placeholder="Distance to major road, e.g. 3 minutes to expressway"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.powerSupply}
+                      onChange={(event) => setEditForm({ ...editForm, powerSupply: event.target.value })}
+                      placeholder="Power supply, e.g. 18 hours average, transformer available"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.waterSupply}
+                      onChange={(event) => setEditForm({ ...editForm, waterSupply: event.target.value })}
+                      placeholder="Water supply, e.g. borehole, treated estate water"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.securityFeatures}
+                      onChange={(event) => setEditForm({ ...editForm, securityFeatures: event.target.value })}
+                      placeholder="Security, e.g. gated estate, CCTV, armed security"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.estateFeatures}
+                      onChange={(event) => setEditForm({ ...editForm, estateFeatures: event.target.value })}
+                      placeholder="Estate features, e.g. drainage, streetlights, gym, playground"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.nearbySchools}
+                      onChange={(event) => setEditForm({ ...editForm, nearbySchools: event.target.value })}
+                      placeholder="Nearby schools, e.g. 5 mins to Greensprings / Nile University"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.nearbyHospitals}
+                      onChange={(event) => setEditForm({ ...editForm, nearbyHospitals: event.target.value })}
+                      placeholder="Nearby hospitals, e.g. 7 mins to Evercare / National Hospital"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.nearbyMalls}
+                      onChange={(event) => setEditForm({ ...editForm, nearbyMalls: event.target.value })}
+                      placeholder="Nearby malls/markets, e.g. 10 mins to Novare Mall"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.nearbyTransport}
+                      onChange={(event) => setEditForm({ ...editForm, nearbyTransport: event.target.value })}
+                      placeholder="Nearby transport, e.g. BRT, airport road, expressway access"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Property document / title papers</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Add the title document buyers expect to see, for example C of O, R of O, Governor's Consent, Deed of Assignment, Survey Plan, Excision, or Gazette.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={postForm.documentTitle}
+                      onChange={(event) =>
+                        setPostForm({ ...postForm, documentTitle: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Document title"
+                    >
+                      {documentTitleOptions.map((documentTitle) => (
+                        <option key={documentTitle}>{documentTitle}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={postForm.documentStatus}
+                      onChange={(event) =>
+                        setPostForm({ ...postForm, documentStatus: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Document status"
+                    >
+                      {documentStatusOptions.map((documentStatus) => (
+                        <option key={documentStatus}>{documentStatus}</option>
+                      ))}
                     </select>
                   </div>
 
                   <textarea
-                    value={newListing.ownerVerificationNote}
-                    onChange={(e) =>
-                      setNewListing({
-                        ...newListing,
-                        ownerVerificationNote: e.target.value,
-                      })
+                    value={postForm.documentDetails}
+                    onChange={(event) =>
+                      setPostForm({ ...postForm, documentDetails: event.target.value })
                     }
-                    placeholder="Verification note, e.g. owner has C of O, direct mandate, company authorization..."
+                    placeholder="Optional document details, e.g. Survey plan available, Deed of Assignment executed, C of O processing, Gazette number, allocation file number..."
                     rows={3}
-                    className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <input
-                    value={newListing.ownerPhone}
-                    onChange={(e) =>
-                      setNewListing({ ...newListing, ownerPhone: e.target.value })
-                    }
-                    placeholder="Owner phone"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <input
-                    value={newListing.whatsapp}
-                    onChange={(e) =>
-                      setNewListing({ ...newListing, whatsapp: e.target.value })
-                    }
-                    placeholder="WhatsApp number"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-                </div>
-
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
-                  <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">
-                    Property image preview
-                  </label>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleNewListingImageUpload}
-                    className="w-full rounded-xl bg-white px-3 py-3 text-sm"
-                  />
-
-                  {newListing.imageUrl ? (
-                    <div className="mt-3">
-                      <img
-                        src={newListing.imageUrl}
-                        alt="Property preview"
-                        className="h-40 w-full rounded-xl object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setNewListing({ ...newListing, imageUrl: "" })}
-                        className="mt-2 text-xs font-black text-red-600"
-                      >
-                        Remove image
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Optional for now. Use a clear front-view property photo below 2.5MB.
+                  <div className="mt-4 rounded-2xl border border-dashed border-amber-300 bg-white p-5">
+                    <label className="text-sm font-black text-[#0d1c38]">
+                      Upload title document file
+                    </label>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Optional but recommended. Upload PDF, JPG, PNG, or WEBP under 10MB, such as C of O, survey plan, deed, allocation letter, or approval paper.
                     </p>
-                  )}
-                </div>
-
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
-                  <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">
-                    Extra gallery photos
-                  </label>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleNewListingGalleryUpload}
-                    className="w-full rounded-xl bg-white px-3 py-3 text-sm"
-                  />
-
-                  {newListing.galleryUrls.length > 0 ? (
-                    <div className="mt-3 grid grid-cols-4 gap-2">
-                      {newListing.galleryUrls.map((imageUrl, imageIndex) => (
-                        <div key={`new-gallery-${imageIndex}`} className="relative">
-                          <img
-                            src={imageUrl}
-                            alt={`Gallery preview ${imageIndex + 1}`}
-                            className="h-20 w-full rounded-xl object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeGalleryImage(imageIndex)}
-                            className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-1 text-[10px] font-black text-white"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Optional. Add up to 4 extra photos below 1.5MB each.
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-2xl border border-dashed border-emerald-200 bg-emerald-50 p-4">
-                  <label className="mb-2 block text-xs font-black uppercase tracking-wide text-emerald-700">
-                    Document upload preview
-                  </label>
-
-                  <input
-                    type="file"
-                    accept=".pdf,image/jpeg,image/png,image/webp"
-                    onChange={handleDocumentUpload}
-                    className="w-full rounded-xl bg-white px-3 py-3 text-sm"
-                  />
-
-                  {newListing.documentName ? (
-                    <div className="mt-3 rounded-xl bg-white p-3">
-                      <p className="text-xs font-black text-[#0d1c38]">
-                        {newListing.documentName}
+                    <input
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,image/webp"
+                      onChange={(event) =>
+                        setPostDocumentFile(event.target.files?.[0] || null)
+                      }
+                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    {postDocumentFile && (
+                      <p className="mt-3 text-xs font-bold text-emerald-700">
+                        Document selected: {postDocumentFile.name}
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        This preview will be saved with the listing.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={removeDocumentPreview}
-                        className="mt-2 text-xs font-black text-red-600"
-                      >
-                        Remove document
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs leading-5 text-emerald-700">
-                      Optional. Upload C of O, survey, deed, allocation letter, or title preview below 1.2MB.
-                    </p>
-                  )}
+                    )}
+                  </div>
                 </div>
 
-                <select
-                  value={newListing.typeValue}
-                  onChange={(e) =>
-                    setNewListing({ ...newListing, typeValue: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                >
-                  <option value="residential">Residential</option>
-                  <option value="commercial">Commercial</option>
-                  <option value="land">Land</option>
-                  <option value="joint_venture">Joint Venture</option>
-                </select>
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
+                  <label className="text-sm font-black text-[#0d1c38]">
+                    Property image
+                  </label>
 
-                <input
-                  value={newListing.roi}
-                  onChange={(e) =>
-                    setNewListing({ ...newListing, roi: e.target.value })
-                  }
-                  placeholder="Projected ROI, e.g. 20%"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                />
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Upload one clear JPG, PNG, or WEBP image. Maximum 5MB.
+                  </p>
+
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) =>
+                      setPostImageFile(event.target.files?.[0] || null)
+                    }
+                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  {postImageFile && (
+                    <p className="mt-3 text-xs font-bold text-emerald-700">
+                      Selected: {postImageFile.name}
+                    </p>
+                  )}
+
+                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                    <label className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                      More gallery images
+                    </label>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Optional. Add living room, bedroom, kitchen, bathroom, exterior, land/site, or document photos. You can select many images.
+                    </p>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(event) =>
+                        setPostGalleryFiles(Array.from(event.target.files || []))
+                      }
+                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    {postGalleryFiles.length > 0 && (
+                      <p className="mt-3 text-xs font-bold text-emerald-700">
+                        {postGalleryFiles.length} gallery image(s) selected
+                      </p>
+                    )}
+                  </div>
+                </div>
 
                 <textarea
                   required
-                  value={newListing.summary}
-                  onChange={(e) =>
-                    setNewListing({ ...newListing, summary: e.target.value })
+                  value={postForm.description}
+                  onChange={(event) =>
+                    setPostForm({
+                      ...postForm,
+                      description: event.target.value,
+                    })
                   }
-                  placeholder="Short summary of the opportunity"
+                  placeholder="Describe the opportunity, e.g. A verified property in a fast-growing location suitable for rental income, resale value, or long-term investment."
                   rows={4}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button className="w-full rounded-xl bg-[#0d1c38] py-3 text-sm font-black text-white">
-                  Submit opportunity
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Owner / agent / developer contact profile</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Record who submitted the property and how the public should see contact details. Keep phone hidden if INAMAAD should handle the lead first.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={postForm.contactRole}
+                      onChange={(event) => setPostForm({ ...postForm, contactRole: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Contact role"
+                    >
+                      {contactRoleOptions.map((role) => (
+                        <option key={role}>{role}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={postForm.mandateStatus}
+                      onChange={(event) => setPostForm({ ...postForm, mandateStatus: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Mandate status"
+                    >
+                      {mandateStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={postForm.ownerName}
+                      onChange={(event) => setPostForm({ ...postForm, ownerName: event.target.value })}
+                      placeholder="Contact person, e.g. Musa Abdullahi"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.companyName}
+                      onChange={(event) => setPostForm({ ...postForm, companyName: event.target.value })}
+                      placeholder="Company / developer name, e.g. INAMAAD Homes Ltd"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.ownerPhone}
+                      onChange={(event) => setPostForm({ ...postForm, ownerPhone: event.target.value })}
+                      placeholder="Phone number, e.g. 08106350486"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.contactWhatsapp}
+                      onChange={(event) => setPostForm({ ...postForm, contactWhatsapp: event.target.value })}
+                      placeholder="WhatsApp number, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.contactEmail}
+                      onChange={(event) => setPostForm({ ...postForm, contactEmail: event.target.value })}
+                      placeholder="Contact email, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={postForm.publicContactVisibility}
+                      onChange={(event) => setPostForm({ ...postForm, publicContactVisibility: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Public contact visibility"
+                    >
+                      {publicContactVisibilityOptions.map((visibility) => (
+                        <option key={visibility}>{visibility}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      value={postForm.contactAddress}
+                      onChange={(event) => setPostForm({ ...postForm, contactAddress: event.target.value })}
+                      placeholder="Contact office/address, optional. Keep private for staff use unless you choose Show All."
+                      rows={3}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+
+                    <select
+                      value={postForm.identityType}
+                      onChange={(event) => setPostForm({ ...postForm, identityType: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Identity verification type"
+                    >
+                      {identityTypeOptions.map((type) => (
+                        <option key={type}>{type}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={postForm.identityNumber}
+                      onChange={(event) => setPostForm({ ...postForm, identityNumber: event.target.value })}
+                      placeholder="ID number / NIN / passport number, optional for staff verification"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={postForm.companyRegistrationNumber}
+                      onChange={(event) => setPostForm({ ...postForm, companyRegistrationNumber: event.target.value })}
+                      placeholder="CAC / company registration number, e.g. RC1234567"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={postForm.mandateDocumentStatus}
+                      onChange={(event) => setPostForm({ ...postForm, mandateDocumentStatus: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Mandate document status"
+                    >
+                      {mandateDocumentStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      value={postForm.contactVerificationNotes}
+                      onChange={(event) => setPostForm({ ...postForm, contactVerificationNotes: event.target.value })}
+                      placeholder="Verification note, e.g. Agent claims direct mandate from owner; CAC pending confirmation."
+                      rows={3}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Public contact setting: {postForm.publicContactVisibility}. Staff can always see the full contact profile.
+                  </p>
+                </div>
+
+                <button
+                  disabled={isLoading}
+                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isLoading ? "Submitting..." : "Submit for admin review"}
+                </button>
+              </form>
+            )}
+
+            {modal === "edit" && editingListing && (
+              <form onSubmit={submitEditListing} className="grid gap-4">
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Admin writing guide:</p>
+                  <p className="mt-2"><span className="font-black">Title:</span> Luxury Apartments in Maitama, Abuja</p>
+                  <p><span className="font-black">Investment highlight:</span> Premium capital appreciation in Abuja’s prime district</p>
+                  <p><span className="font-black">Opportunity:</span> Explain the location, buyer/investor benefit, rental potential, documents, and why the property is valuable.</p>
+                </div>
+
+                <div className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-600">
+                  Editing: <span className="font-black text-[#0d1c38]">{editingListing.title}</span>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input
+                    required
+                    value={editForm.title}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, title: event.target.value })
+                    }
+                    placeholder="Property title, e.g. 4 Bedroom Terrace Duplex in Lekki Phase 1"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <select
+                    required
+                    value={editForm.stateName}
+                    onChange={(event) => setEditForm({ ...editForm, stateName: event.target.value })}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    aria-label="State or FCT"
+                  >
+                    {nigeriaLocationLabels.map((location) => (
+                      <option key={location}>{location}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Exact property location</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Control what the public sees. Staff can keep exact address private while showing the area/state.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      required
+                      value={editForm.cityArea}
+                      onChange={(event) => setEditForm({ ...editForm, cityArea: event.target.value })}
+                      placeholder="City / Area, e.g. Garki, Maitama, Lekki Phase 1"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.nearbyLandmark}
+                      onChange={(event) => setEditForm({ ...editForm, nearbyLandmark: event.target.value })}
+                      placeholder="Nearby landmark"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.fullAddress}
+                      onChange={(event) => setEditForm({ ...editForm, fullAddress: event.target.value })}
+                      placeholder="Full address / estate name"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+
+                    <input
+                      value={editForm.googleMapLink}
+                      onChange={(event) => setEditForm({ ...editForm, googleMapLink: event.target.value })}
+                      placeholder="Google Maps link"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={editForm.showExactAddress}
+                      onChange={(event) => setEditForm({ ...editForm, showExactAddress: event.target.checked })}
+                    />
+                    Show exact address and map link publicly
+                  </label>
+
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Public display: {editForm.cityArea || "Area"}, {editForm.stateName || "State/FCT"}
+                  </p>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Property video / virtual tour</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Use video links to show tours, drone footage, and walk-throughs without uploading heavy videos.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={editForm.videoUrl}
+                      onChange={(event) => setEditForm({ ...editForm, videoUrl: event.target.value })}
+                      placeholder="YouTube / property video link"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.virtualTourUrl}
+                      onChange={(event) => setEditForm({ ...editForm, virtualTourUrl: event.target.value })}
+                      placeholder="Virtual tour link"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    <input
+                      value={editForm.droneVideoUrl}
+                      onChange={(event) => setEditForm({ ...editForm, droneVideoUrl: event.target.value })}
+                      placeholder="Drone video link"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={editForm.showVideoPublicly}
+                      onChange={(event) => setEditForm({ ...editForm, showVideoPublicly: event.target.checked })}
+                    />
+                    Show video / virtual tour links publicly
+                  </label>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
+                    <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                      {postFormIsJointVenture ? "Estimated JV value / project cost" : "Price currency"}
+                    </label>
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
+                        ₦ NGN
+                      </span>
+                      <input
+                        required
+                        inputMode="numeric"
+                        value={editForm.price}
+                        onChange={(event) =>
+                          setEditForm({
+                            ...editForm,
+                            price: formatPriceInput(event.target.value),
+                          })
+                        }
+                        placeholder="Enter amount, e.g. 50000000"
+                        className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
+                      />
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-slate-500">
+                      Auto calculated: {formatPricePreview(editForm.price)}
+                    </p>
+                  </div>
+
+                  <select
+                    value={editForm.type}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, type: event.target.value })
+                    }
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    aria-label="Property type"
+                  >
+                    {propertyTypeOptions.map((type) => (
+                      <option key={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Price breakdown and payment details</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    Add extra Nigerian real estate costs. The total estimated cost is calculated automatically from property price plus fees.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    {[
+                      ["agencyFee", "Agency fee, e.g. 5000000"],
+                      ["legalFee", "Legal / documentation fee, e.g. 2500000"],
+                      ["serviceCharge", "Service charge, optional"],
+                      ["cautionFee", "Caution fee, optional"],
+                      ["surveyFee", "Survey fee, optional"],
+                      ["developmentFee", "Development fee, optional"],
+                    ].map(([field, placeholder]) => (
+                      <div key={field} className="rounded-2xl border border-amber-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
+                        <label className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                          {placeholder.split(",")[0]}
+                        </label>
+                        <div className="mt-2 flex items-center gap-3">
+                          <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">₦</span>
+                          <input
+                            inputMode="numeric"
+                            value={editForm[field as keyof typeof editForm] as string}
+                            onChange={(event) =>
+                              setEditForm({
+                                ...editForm,
+                                [field]: formatPriceInput(event.target.value),
+                              })
+                            }
+                            placeholder={placeholder}
+                            className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-[#0d1c38] p-4 text-white">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f0bf3c]">Auto total estimated cost</p>
+                    <p className="mt-2 text-2xl font-black">{calculateTotalEstimatedCost(editForm) || "₦0"}</p>
+                    <p className="mt-1 text-xs text-slate-300">Property price + agency + legal/documentation + service + caution + survey + development fees.</p>
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={editForm.paymentPlanAvailable}
+                      onChange={(event) => setEditForm({ ...editForm, paymentPlanAvailable: event.target.checked })}
+                    />
+                    Payment plan / installment is available
+                  </label>
+
+                  <textarea
+                    value={editForm.installmentDetails}
+                    onChange={(event) => setEditForm({ ...editForm, installmentDetails: event.target.value })}
+                    placeholder="Installment details, e.g. 30% initial deposit, balance over 6 months"
+                    className="mt-4 min-h-[90px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <select
+                    value={editForm.category}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, category: event.target.value })
+                    }
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    aria-label="Listing purpose"
+                  >
+                    {listingPurposeOptions.map((purpose) => (
+                      <option key={purpose}>{purpose}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={editForm.status}
+                    onChange={(event) =>
+                      setEditForm({
+                        ...editForm,
+                        status: event.target.value as ListingStatus,
+                      })
+                    }
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  >
+                    <option>Verified</option>
+                    <option>Pending Review</option>
+                  </select>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Availability status</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Use this to mark a property as Available, Reserved, Sold, Rented, Leased, or Off Market.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <select
+                      value={editForm.availabilityStatus}
+                      onChange={(event) =>
+                        setEditForm({
+                          ...editForm,
+                          availabilityStatus: event.target.value as AvailabilityStatus,
+                        })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Availability status"
+                    >
+                      {availabilityStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="date"
+                      value={editForm.availableFrom}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, availableFrom: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Available from date"
+                    />
+
+                    <input
+                      value={editForm.availabilityNote}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, availabilityNote: event.target.value })
+                      }
+                      placeholder="Note, e.g. Sold, reserved by client, vacant from 1 July"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+                </div>
+
+
+                {isJointVentureListing(editForm) ? (
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">Joint venture project profile</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      JV deals should be described as development opportunities, not bedroom/bathroom listings. Use this section for landowner, developer, investor, sharing formula, and project stage.
+                    </p>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <select
+                        value={editForm.jvStructure}
+                        onChange={(event) => setEditForm({ ...editForm, jvStructure: event.target.value })}
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="JV structure"
+                      >
+                        {jvStructureOptions.map((structure) => (
+                          <option key={structure}>{structure}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={editForm.jvProjectStage}
+                        onChange={(event) => setEditForm({ ...editForm, jvProjectStage: event.target.value })}
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="JV project stage"
+                      >
+                        {jvProjectStageOptions.map((stage) => (
+                          <option key={stage}>{stage}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <input
+                        value={editForm.landSize}
+                        onChange={(event) => setEditForm({ ...editForm, landSize: event.target.value })}
+                        placeholder="JV land size, e.g. 3,500sqm, 2 hectares, 20 plots"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={editForm.jvExpectedUnits}
+                        onChange={(event) => setEditForm({ ...editForm, jvExpectedUnits: event.target.value })}
+                        placeholder="Expected units, e.g. 24 terraces, 80 apartments"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={editForm.jvEstimatedProjectCost}
+                        onChange={(event) => setEditForm({ ...editForm, jvEstimatedProjectCost: formatPriceInput(event.target.value) })}
+                        placeholder="Estimated project cost, e.g. ₦1,500,000,000"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <input
+                        value={editForm.jvCompletionTimeline}
+                        onChange={(event) => setEditForm({ ...editForm, jvCompletionTimeline: event.target.value })}
+                        placeholder="Completion timeline, e.g. 18 months after approval"
+                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <textarea
+                        value={editForm.jvLandContribution}
+                        onChange={(event) => setEditForm({ ...editForm, jvLandContribution: event.target.value })}
+                        placeholder="Landowner contribution, e.g. clean land with C of O, access road, vacant possession"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={editForm.jvDeveloperRequirement}
+                        onChange={(event) => setEditForm({ ...editForm, jvDeveloperRequirement: event.target.value })}
+                        placeholder="Developer requirement, e.g. fund construction, handle approvals, deliver infrastructure"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={editForm.jvInvestorRequirement}
+                        onChange={(event) => setEditForm({ ...editForm, jvInvestorRequirement: event.target.value })}
+                        placeholder="Investor requirement, e.g. equity funding, staged capital, off-plan buyer pool"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                      <textarea
+                        value={editForm.jvSharingFormula}
+                        onChange={(event) => setEditForm({ ...editForm, jvSharingFormula: event.target.value })}
+                        placeholder="Sharing formula, e.g. 40% landowner / 60% developer, or units split after cost recovery"
+                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <textarea
+                      value={editForm.jvTerms}
+                      onChange={(event) => setEditForm({ ...editForm, jvTerms: event.target.value })}
+                      placeholder="JV terms and notes, e.g. required due diligence, legal structure, approvals, exit plan, profit-sharing terms"
+                      className="mt-4 min-h-[110px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <div className="mt-5 rounded-3xl border border-purple-200 bg-purple-50 p-5">
+                      <p className="text-sm font-black text-[#0d1c38]">JV deal pipeline</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        Manage this JV separately from normal property listings: due diligence, negotiation, agreement drafting, approval, rejection, or closure.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        <select
+                          value={editForm.jvDealStatus}
+                          onChange={(event) => setEditForm({ ...editForm, jvDealStatus: event.target.value as JVDealStatus })}
+                          className="rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="JV deal status"
+                        >
+                          {jvDealStatusOptions.map((status) => (<option key={status}>{status}</option>))}
+                        </select>
+                        <input
+                          type="date"
+                          value={editForm.jvNextActionDate}
+                          onChange={(event) => setEditForm({ ...editForm, jvNextActionDate: event.target.value })}
+                          className="rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="JV next action date"
+                        />
+                        <input
+                          value={editForm.jvNextAction}
+                          onChange={(event) => setEditForm({ ...editForm, jvNextAction: event.target.value })}
+                          placeholder="Next action, e.g. schedule negotiation"
+                          className="rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        />
+                      </div>
+
+                      <textarea
+                        value={editForm.jvInternalNotes}
+                        onChange={(event) => setEditForm({ ...editForm, jvInternalNotes: event.target.value })}
+                        placeholder="Private JV internal notes, negotiation risks, pending requirements, legal points..."
+                        className="mt-4 min-h-[110px] w-full rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <div className="mt-5 rounded-3xl border border-amber-300 bg-white p-5">
+                      <p className="text-sm font-black text-[#0d1c38]">JV due-diligence documents</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        Staff-only files for serious JV review. Upload feasibility study, concept drawings, layout, BOQ/costing, and proposal documents. Public users only see review status, not the private files.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <select
+                          value={editForm.jvLandTitleStatus}
+                          onChange={(event) => setEditForm({ ...editForm, jvLandTitleStatus: event.target.value })}
+                          className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="JV land title status"
+                        >
+                          {jvLandTitleStatusOptions.map((status) => (<option key={status}>{status}</option>))}
+                        </select>
+
+                        <select
+                          value={editForm.jvDevelopmentApprovalStatus}
+                          onChange={(event) => setEditForm({ ...editForm, jvDevelopmentApprovalStatus: event.target.value })}
+                          className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="JV development approval status"
+                        >
+                          {jvDevelopmentApprovalStatusOptions.map((status) => (<option key={status}>{status}</option>))}
+                        </select>
+                      </div>
+
+                      {[
+                        ["Feasibility study", editJvFeasibilityStudyFile, setEditJvFeasibilityStudyFile, editForm.jvFeasibilityStudyUrl, "feasibility study"],
+                        ["Architectural concept", editJvArchitecturalConceptFile, setEditJvArchitecturalConceptFile, editForm.jvArchitecturalConceptUrl, "architectural concept"],
+                        ["Estate layout", editJvEstateLayoutFile, setEditJvEstateLayoutFile, editForm.jvEstateLayoutUrl, "estate layout"],
+                        ["BOQ / project costing", editJvBoqFile, setEditJvBoqFile, editForm.jvBoqUrl, "BOQ / project costing"],
+                        ["JV proposal document", editJvProposalDocumentFile, setEditJvProposalDocumentFile, editForm.jvProposalDocumentUrl, "JV proposal document"],
+                      ].map(([label, selectedFile, setFile, existingUrl, secureLabel]) => (
+                        <div key={String(label)} className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <p className="text-sm font-black text-[#0d1c38]">{String(label)}</p>
+                              <p className="mt-1 text-xs text-slate-500">PDF, JPG, PNG, WEBP. Private to senior staff.</p>
+                              {selectedFile instanceof File ? (
+                                <p className="mt-1 text-xs font-bold text-emerald-700">Selected: {selectedFile.name}</p>
+                              ) : existingUrl ? (
+                                <p className="mt-1 text-xs font-bold text-emerald-700">Uploaded securely</p>
+                              ) : (
+                                <p className="mt-1 text-xs text-slate-500">No file uploaded yet</p>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <label className="cursor-pointer rounded-full bg-white px-4 py-2 text-xs font-black text-[#0d1c38] ring-1 ring-amber-200">
+                                Upload
+                                <input
+                                  type="file"
+                                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                                  className="hidden"
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0] || null;
+                                    (setFile as React.Dispatch<React.SetStateAction<File | null>>)(file);
+                                  }}
+                                />
+                              </label>
+
+                              <button
+                                type="button"
+                                onClick={() => openSecureJvDocument(String(existingUrl || ""), String(secureLabel))}
+                                className="rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                disabled={!existingUrl || !canOpenDocuments}
+                              >
+                                {canOpenDocuments ? "Open secure file" : "Locked"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">Property specifications and amenities</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Update the physical property details buyers and tenants use to compare listings.
+                    </p>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-4">
+                      <input type="number" min="0" value={editForm.bedrooms} onChange={(event) => setEditForm({ ...editForm, bedrooms: event.target.value })} placeholder="Bedrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={editForm.bathrooms} onChange={(event) => setEditForm({ ...editForm, bathrooms: event.target.value })} placeholder="Bathrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={editForm.toilets} onChange={(event) => setEditForm({ ...editForm, toilets: event.target.value })} placeholder="Toilets, e.g. 5" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input type="number" min="0" value={editForm.parkingSpaces} onChange={(event) => setEditForm({ ...editForm, parkingSpaces: event.target.value })} placeholder="Parking spaces, e.g. 2" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <input value={editForm.landSize} onChange={(event) => setEditForm({ ...editForm, landSize: event.target.value })} placeholder="Land size, e.g. 500sqm, 1 plot, 2 hectares" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                      <input value={editForm.propertySize} onChange={(event) => setEditForm({ ...editForm, propertySize: event.target.value })} placeholder="Built-up size, e.g. 320sqm" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <select value={editForm.furnishingStatus} onChange={(event) => setEditForm({ ...editForm, furnishingStatus: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Furnishing status">
+                        {furnishingStatusOptions.map((status) => (<option key={status}>{status}</option>))}
+                      </select>
+                      <select value={editForm.propertyCondition} onChange={(event) => setEditForm({ ...editForm, propertyCondition: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Property condition">
+                        {propertyConditionOptions.map((condition) => (<option key={condition}>{condition}</option>))}
+                      </select>
+                    </div>
+
+                    <input list="amenity-options" value={editForm.amenities} onChange={(event) => setEditForm({ ...editForm, amenities: event.target.value })} placeholder="Amenities, e.g. 24/7 Security, CCTV, Swimming Pool, Fitted Kitchen" className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
+                  </div>
+                )}
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Property document / title papers</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Keep this accurate. Examples: C of O, R of O, Governor's Consent, Deed of Assignment, Survey Plan, Excision, Gazette.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={editForm.documentTitle}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, documentTitle: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Document title"
+                    >
+                      {documentTitleOptions.map((documentTitle) => (
+                        <option key={documentTitle}>{documentTitle}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={editForm.documentStatus}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, documentStatus: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Document status"
+                    >
+                      {documentStatusOptions.map((documentStatus) => (
+                        <option key={documentStatus}>{documentStatus}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <textarea
+                    value={editForm.documentDetails}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, documentDetails: event.target.value })
+                    }
+                    placeholder="Optional document details, e.g. Survey plan available, C of O processing, registered deed number, allocation file number..."
+                    rows={3}
+                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="mt-4 rounded-2xl border border-dashed border-amber-300 bg-white p-5">
+                    <label className="text-sm font-black text-[#0d1c38]">
+                      Replace title document file
+                    </label>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Leave empty to keep the current document. Upload PDF, JPG, PNG, or WEBP under 10MB. The file is stored privately and only staff can open it. The file is stored privately and only staff can open it.
+                    </p>
+                    {editForm.documentFileUrl && !editDocumentFile && (
+                      <button
+                        type="button"
+                        onClick={() => openSecurePropertyDocument(editForm.documentFileUrl)}
+                        disabled={!canOpenDocuments}
+                        title={!canOpenDocuments ? "Your role cannot open secure documents" : "Open secure title document"}
+                        className="mt-4 inline-flex rounded-2xl bg-[#0d1c38] px-4 py-3 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        {canOpenDocuments ? "Open secure document" : "Secure document locked"}
+                      </button>
+                    )}
+                    <input
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,image/webp"
+                      onChange={(event) =>
+                        setEditDocumentFile(event.target.files?.[0] || null)
+                      }
+                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    {editDocumentFile && (
+                      <p className="mt-3 text-xs font-bold text-emerald-700">
+                        New document selected: {editDocumentFile.name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+
+                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">Admin verification checklist</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        Complete these checks before approving a property as verified.
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-4 py-2 text-xs font-black ${isListingVerificationComplete({
+                      ...editingListing,
+                      titleVerified: editForm.titleVerified,
+                      ownerVerified: editForm.ownerVerified,
+                      siteInspected: editForm.siteInspected,
+                      priceChecked: editForm.priceChecked,
+                      legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
+                    }) ? "bg-emerald-600 text-white" : "bg-amber-100 text-amber-800"}`}>
+                      {isListingVerificationComplete({
+                        ...editingListing,
+                        titleVerified: editForm.titleVerified,
+                        ownerVerified: editForm.ownerVerified,
+                        siteInspected: editForm.siteInspected,
+                        priceChecked: editForm.priceChecked,
+                        legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
+                      }) ? "Ready for approval" : "Verification incomplete"}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {[
+                      ["titleVerified", "Title document checked"],
+                      ["ownerVerified", "Owner identity verified"],
+                      ["siteInspected", "Site inspection done"],
+                      ["priceChecked", "Price checked against market"],
+                    ].map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-black text-[#0d1c38]">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editForm[key as keyof typeof editForm])}
+                          onChange={(event) =>
+                            setEditForm({ ...editForm, [key]: event.target.checked })
+                          }
+                          className="h-5 w-5 accent-emerald-600"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={editForm.legalReviewStatus}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, legalReviewStatus: event.target.value })
+                      }
+                      className="rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm outline-none focus:border-emerald-600"
+                      aria-label="Legal review status"
+                    >
+                      {legalReviewStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={verificationSummary({
+                        ...editingListing,
+                        titleVerified: editForm.titleVerified,
+                        ownerVerified: editForm.ownerVerified,
+                        siteInspected: editForm.siteInspected,
+                        priceChecked: editForm.priceChecked,
+                        legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
+                      })}
+                      readOnly
+                      className="rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm font-black text-emerald-700 outline-none"
+                      aria-label="Verification summary"
+                    />
+                  </div>
+
+                  <textarea
+                    value={editForm.verificationNotes}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, verificationNotes: event.target.value })
+                    }
+                    placeholder="Verification notes, e.g. C of O sighted, owner ID checked, site inspected by agent, legal team cleared document."
+                    rows={3}
+                    className="mt-4 w-full rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm outline-none focus:border-emerald-600"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-[#0d1c38]">
+                    <input
+                      type="checkbox"
+                      checked={editForm.featured}
+                      onChange={(event) =>
+                        setEditForm({ ...editForm, featured: event.target.checked })
+                      }
+                      className="h-5 w-5 accent-[#d4a017]"
+                    />
+                    Mark as featured / premium
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.featuredRank}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, featuredRank: event.target.value })
+                    }
+                    placeholder="Featured rank, e.g. 10"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <input
+                  value={editForm.yieldText}
+                  onChange={(event) =>
+                    setEditForm({ ...editForm, yieldText: event.target.value })
+                  }
+                  placeholder="Investment highlight, e.g. Estimated 14% yearly appreciation"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
+                  <label className="text-sm font-black text-[#0d1c38]">
+                    Replace property image
+                  </label>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Leave empty to keep the current image. Upload JPG, PNG, or WEBP under 5MB.
+                  </p>
+
+                  {editForm.imageUrl && !editImageFile && (
+                    <img
+                      src={editForm.imageUrl}
+                      alt={editForm.title}
+                      className="mt-4 h-36 w-full rounded-2xl object-cover"
+                    />
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) =>
+                      setEditImageFile(event.target.files?.[0] || null)
+                    }
+                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  {editImageFile && (
+                    <p className="mt-3 text-xs font-bold text-emerald-700">
+                      New image selected: {editImageFile.name}
+                    </p>
+                  )}
+
+                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                    <label className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                      Add more gallery images
+                    </label>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Existing gallery images stay saved. Add more photos for bedroom, kitchen, exterior, land/site, or documents.
+                    </p>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(event) =>
+                        setEditGalleryFiles(Array.from(event.target.files || []))
+                      }
+                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                    {editGalleryFiles.length > 0 && (
+                      <p className="mt-3 text-xs font-bold text-emerald-700">
+                        {editGalleryFiles.length} new gallery image(s) selected
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <textarea
+                  required
+                  value={editForm.description}
+                  onChange={(event) =>
+                    setEditForm({ ...editForm, description: event.target.value })
+                  }
+                  placeholder="Describe the opportunity, e.g. A verified property in a fast-growing location suitable for rental income, resale value, or long-term investment."
+                  rows={4}
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
+                  <p className="text-sm font-black text-[#0d1c38]">Owner / agent / developer contact profile</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Staff can update mandate status and choose what contact details public visitors may see.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <select
+                      value={editForm.contactRole}
+                      onChange={(event) => setEditForm({ ...editForm, contactRole: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Contact role"
+                    >
+                      {contactRoleOptions.map((role) => (
+                        <option key={role}>{role}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={editForm.mandateStatus}
+                      onChange={(event) => setEditForm({ ...editForm, mandateStatus: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Mandate status"
+                    >
+                      {mandateStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={editForm.ownerName}
+                      onChange={(event) => setEditForm({ ...editForm, ownerName: event.target.value })}
+                      placeholder="Contact person, e.g. Musa Abdullahi"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.companyName}
+                      onChange={(event) => setEditForm({ ...editForm, companyName: event.target.value })}
+                      placeholder="Company / developer name, e.g. INAMAAD Homes Ltd"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.ownerPhone}
+                      onChange={(event) => setEditForm({ ...editForm, ownerPhone: event.target.value })}
+                      placeholder="Phone number, e.g. 08106350486"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.contactWhatsapp}
+                      onChange={(event) => setEditForm({ ...editForm, contactWhatsapp: event.target.value })}
+                      placeholder="WhatsApp number, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.contactEmail}
+                      onChange={(event) => setEditForm({ ...editForm, contactEmail: event.target.value })}
+                      placeholder="Contact email, optional"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={editForm.publicContactVisibility}
+                      onChange={(event) => setEditForm({ ...editForm, publicContactVisibility: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Public contact visibility"
+                    >
+                      {publicContactVisibilityOptions.map((visibility) => (
+                        <option key={visibility}>{visibility}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      value={editForm.contactAddress}
+                      onChange={(event) => setEditForm({ ...editForm, contactAddress: event.target.value })}
+                      placeholder="Contact office/address, optional. Keep private unless visibility is Show All."
+                      rows={3}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+
+                    <select
+                      value={editForm.identityType}
+                      onChange={(event) => setEditForm({ ...editForm, identityType: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Identity verification type"
+                    >
+                      {identityTypeOptions.map((type) => (
+                        <option key={type}>{type}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={editForm.identityNumber}
+                      onChange={(event) => setEditForm({ ...editForm, identityNumber: event.target.value })}
+                      placeholder="ID number / NIN / passport number"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.companyRegistrationNumber}
+                      onChange={(event) => setEditForm({ ...editForm, companyRegistrationNumber: event.target.value })}
+                      placeholder="CAC / company registration number, e.g. RC1234567"
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={editForm.mandateDocumentStatus}
+                      onChange={(event) => setEditForm({ ...editForm, mandateDocumentStatus: event.target.value })}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="Mandate document status"
+                    >
+                      {mandateDocumentStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <label className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-black text-emerald-800 md:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editForm.contactProfileVerified)}
+                        onChange={(event) => setEditForm({ ...editForm, contactProfileVerified: event.target.checked })}
+                      />
+                      Owner/agent/developer profile verified
+                    </label>
+
+                    <textarea
+                      value={editForm.contactVerificationNotes}
+                      onChange={(event) => setEditForm({ ...editForm, contactVerificationNotes: event.target.value })}
+                      placeholder="Private verification notes, e.g. ID checked, CAC verified, mandate letter reviewed."
+                      rows={3}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
+                    />
+
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 md:col-span-2">
+                      <p className="text-sm font-black text-[#0d1c38]">Private verification document uploads</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Staff-only files. Upload owner ID, CAC certificate, and mandate/authorization letter. These files are stored in a private Supabase bucket and opened with temporary signed links only.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        {[
+                          {
+                            label: "Owner/agent ID document",
+                            url: editForm.identityDocumentUrl,
+                            file: editIdentityDocumentFile,
+                            setFile: setEditIdentityDocumentFile,
+                            openLabel: "owner/agent ID document",
+                          },
+                          {
+                            label: "CAC/company document",
+                            url: editForm.cacDocumentUrl,
+                            file: editCacDocumentFile,
+                            setFile: setEditCacDocumentFile,
+                            openLabel: "CAC/company document",
+                          },
+                          {
+                            label: "Mandate/authorization letter",
+                            url: editForm.mandateDocumentUrl,
+                            file: editMandateDocumentFile,
+                            setFile: setEditMandateDocumentFile,
+                            openLabel: "mandate/authorization letter",
+                          },
+                        ].map((item) => (
+                          <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <label className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                              {item.label}
+                            </label>
+                            <input
+                              type="file"
+                              accept="application/pdf,image/jpeg,image/png,image/webp"
+                              onChange={(event) => item.setFile(event.target.files?.[0] || null)}
+                              disabled={!canOpenDocuments}
+                              className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs outline-none focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:opacity-60"
+                            />
+                            <p className="mt-2 text-xs font-bold text-slate-500">
+                              {item.file ? `Selected: ${item.file.name}` : item.url ? "Uploaded" : "Not uploaded"}
+                            </p>
+                            {item.url && (
+                              <button
+                                type="button"
+                                onClick={() => openSecureVerificationDocument(item.url, item.openLabel)}
+                                disabled={!canOpenDocuments}
+                                className="mt-3 rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {canOpenDocuments ? "Open secure file" : "Locked"}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Public contact setting: {editForm.publicContactVisibility}. Staff can always see the full contact profile.
+                  </p>
+                </div>
+
+                <button
+                  disabled={isLoading}
+                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isLoading ? "Saving changes..." : "Save listing changes"}
                 </button>
               </form>
             )}
 
             {modal === "investor" && (
-              <form onSubmit={handleLeadSubmit} className="space-y-4">
-                {leadForm.listingTitle ? (
-                  <div className="rounded-2xl bg-[#fff7df] p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-[#9b6b16]">
-                      Enquiry for
-                    </p>
-                    <p className="mt-1 text-sm font-black text-[#0d1c38]">
-                      {leadForm.listingTitle}
-                    </p>
-                  </div>
-                ) : null}
+              <form onSubmit={submitInvestorRequest} className="grid gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input
+                    required
+                    value={investorForm.name}
+                    onChange={(event) =>
+                      setInvestorForm({
+                        ...investorForm,
+                        name: event.target.value,
+                      })
+                    }
+                    placeholder="Full name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
 
-                <input
-                  required
-                  value={leadForm.name}
-                  onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })}
-                  placeholder="Full name"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                />
-                <input
-                  required
-                  type="email"
-                  value={leadForm.email}
-                  onChange={(e) => setLeadForm({ ...leadForm, email: e.target.value })}
-                  placeholder="Email address"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                />
-                <input
-                  required
-                  value={leadForm.phone}
-                  onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })}
-                  placeholder="Phone / WhatsApp number"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                />
-                <input
-                  required
-                  value={leadForm.budget}
-                  onChange={(e) => setLeadForm({ ...leadForm, budget: e.target.value })}
-                  placeholder="Investment budget, e.g. ₦100M - ₦500M"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                />
+                  <input
+                    required
+                    type="email"
+                    value={investorForm.email}
+                    onChange={(event) =>
+                      setInvestorForm({
+                        ...investorForm,
+                        email: event.target.value,
+                      })
+                    }
+                    placeholder="Email address"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input
+                    required
+                    value={investorForm.phone}
+                    onChange={(event) =>
+                      setInvestorForm({
+                        ...investorForm,
+                        phone: event.target.value,
+                      })
+                    }
+                    placeholder="Phone number, e.g. 08106350486"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <input
+                    required
+                    value={investorForm.budget}
+                    onChange={(event) =>
+                      setInvestorForm({
+                        ...investorForm,
+                        budget: event.target.value,
+                      })
+                    }
+                    placeholder="Investment budget"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                </div>
+
+                <select
+                  value={investorForm.interest}
+                  onChange={(event) =>
+                    setInvestorForm({
+                      ...investorForm,
+                      interest: event.target.value,
+                    })
+                  }
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                >
+                  {investorInterestOptions.map((interest) => (
+                    <option key={interest}>{interest}</option>
+                  ))}
+                </select>
+
                 <textarea
-                  required
+                  value={investorForm.message}
+                  onChange={(event) =>
+                    setInvestorForm({
+                      ...investorForm,
+                      message: event.target.value,
+                    })
+                  }
+                  placeholder="Tell us what kind of deal you want"
                   rows={4}
-                  value={leadForm.message}
-                  onChange={(e) => setLeadForm({ ...leadForm, message: e.target.value })}
-                  placeholder="Tell us what kind of opportunity you want"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
-                <button className="w-full rounded-xl bg-[#0d1c38] py-3 text-sm font-black text-white">
-                  Submit enquiry
+
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                  Save investor request
                 </button>
               </form>
             )}
 
+            {modal === "details" && selectedListing && (
+              <div>
+                <div className="relative h-80 overflow-hidden rounded-[26px] bg-[#0d1c38]">
+                  {getListingGalleryImages(selectedListing)[0] ? (
+                    <img
+                      src={getListingGalleryImages(selectedListing)[0]}
+                      alt={selectedListing.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#0d1c38] via-[#1b3157] to-[#9b6b16]" />
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
+                    </>
+                  )}
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0d1c38]/95 via-[#0d1c38]/45 to-[#0d1c38]/10" />
+
+                  <div className="relative z-10 flex h-full flex-col justify-end p-8 text-white">
+                    <div className="mb-3 inline-flex w-fit rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide text-white backdrop-blur">
+                      Ref {buildListingReference(selectedListing.id)}
+                    </div>
+
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
+                      INAMAAD verified asset
+                    </p>
+
+                    <h3 className="mt-3 text-4xl font-black">
+                      {selectedListing.title}
+                    </h3>
+
+                    <p className="mt-3 text-lg text-slate-200">
+                      {buildPublicLocationText(selectedListing)}
+                    </p>
+                    <div className={`mt-4 w-fit rounded-full px-4 py-2 text-xs font-black ${availabilityBadgeClass(selectedListing.availabilityStatus)}`}>
+                      {selectedListing.availabilityStatus || "Available"}
+                    </div>
+                  </div>
+                </div>
+
+                {getListingGalleryImages(selectedListing).length > 1 && (
+                  <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-sm font-black text-[#0d1c38]">Property photo gallery</p>
+                      <p className="text-xs font-bold text-slate-500">
+                        {getListingGalleryImages(selectedListing).length} photos
+                      </p>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {getListingGalleryImages(selectedListing).map((imageUrl, index) => (
+                        <a
+                          key={`${imageUrl}-${index}`}
+                          href={imageUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group block overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
+                        >
+                          <img
+                            src={imageUrl}
+                            alt={`${selectedListing.title} photo ${index + 1}`}
+                            className="h-40 w-full object-cover transition duration-500 group-hover:scale-105"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 grid gap-5 md:grid-cols-[1fr_260px]">
+                  <div>
+                    <p className="text-sm font-bold text-slate-500">
+                      {buildPublicLocationText(selectedListing)}
+                    </p>
+
+                    <p className="mt-3 text-3xl font-black text-[#0d1c38]">
+                      {selectedListing.price}
+                    </p>
+
+                    {hasPriceBreakdown(selectedListing) && (
+                      <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                        <p className="font-black text-[#0d1c38]">Price breakdown</p>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          {selectedListing.agencyFee ? <p><span className="font-black">Agency fee:</span> {selectedListing.agencyFee}</p> : null}
+                          {selectedListing.legalFee ? <p><span className="font-black">Legal / documentation:</span> {selectedListing.legalFee}</p> : null}
+                          {selectedListing.serviceCharge ? <p><span className="font-black">Service charge:</span> {selectedListing.serviceCharge}</p> : null}
+                          {selectedListing.cautionFee ? <p><span className="font-black">Caution fee:</span> {selectedListing.cautionFee}</p> : null}
+                          {selectedListing.surveyFee ? <p><span className="font-black">Survey fee:</span> {selectedListing.surveyFee}</p> : null}
+                          {selectedListing.developmentFee ? <p><span className="font-black">Development fee:</span> {selectedListing.developmentFee}</p> : null}
+                        </div>
+                        <div className="mt-4 rounded-2xl bg-white p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Total estimated cost</p>
+                          <p className="mt-1 text-2xl font-black text-[#0d1c38]">
+                            {selectedListing.totalEstimatedCost || calculateTotalEstimatedCost(selectedListing)}
+                          </p>
+                        </div>
+                        {selectedListing.paymentPlanAvailable ? (
+                          <div className="mt-4 rounded-2xl bg-[#0d1c38] p-4 text-white">
+                            <p className="font-black text-[#f0bf3c]">Payment plan available</p>
+                            {selectedListing.installmentDetails ? <p className="mt-2 text-sm leading-6 text-slate-200">{selectedListing.installmentDetails}</p> : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+
+                    <p className="mt-4 text-base leading-8 text-slate-600">
+                      {selectedListing.description}
+                    </p>
+
+                    <div className="mt-5 rounded-2xl bg-[#f7f8fb] p-5 font-bold text-slate-700">
+                      {selectedListing.yieldText}
+                    </div>
+
+                    {(selectedListing.stateName || selectedListing.cityArea || selectedListing.fullAddress || selectedListing.nearbyLandmark || selectedListing.googleMapLink) && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-700">
+                        <p className="font-black text-[#0d1c38]">Location details</p>
+                        <p className="mt-2"><span className="font-black">Area:</span> {buildPublicLocationText(selectedListing)}</p>
+                        {selectedListing.nearbyLandmark ? <p><span className="font-black">Nearby landmark:</span> {selectedListing.nearbyLandmark}</p> : null}
+                        {selectedListing.showExactAddress && selectedListing.fullAddress ? (
+                          <p><span className="font-black">Exact address:</span> {selectedListing.fullAddress}</p>
+                        ) : (
+                          <p className="text-slate-500">Exact address is hidden until staff confirms access.</p>
+                        )}
+                        {selectedListing.showExactAddress && selectedListing.googleMapLink ? (
+                          <a
+                            href={selectedListing.googleMapLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white"
+                          >
+                            Open Google Maps
+                          </a>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {selectedListing.showVideoPublicly !== false && (selectedListing.videoUrl || selectedListing.virtualTourUrl || selectedListing.droneVideoUrl) && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-700">
+                        <p className="font-black text-[#0d1c38]">Video and virtual tour</p>
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          {selectedListing.videoUrl ? (
+                            <a
+                              href={selectedListing.videoUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white"
+                            >
+                              Watch property video
+                            </a>
+                          ) : null}
+                          {selectedListing.virtualTourUrl ? (
+                            <a
+                              href={selectedListing.virtualTourUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full bg-[#f0bf3c] px-4 py-2 text-xs font-black text-[#0d1c38]"
+                            >
+                              Open virtual tour
+                            </a>
+                          ) : null}
+                          {selectedListing.droneVideoUrl ? (
+                            <a
+                              href={selectedListing.droneVideoUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-[#0d1c38]"
+                            >
+                              Watch drone video
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
+
+                    {isJointVentureListing(selectedListing) ? (
+                      <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                        <p className="font-black text-[#0d1c38]">Joint venture project profile</p>
+                        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                          {selectedListing.jvStructure ? <p><span className="font-black">JV structure:</span> {selectedListing.jvStructure}</p> : null}
+                          {selectedListing.jvProjectStage ? <p><span className="font-black">Project stage:</span> {selectedListing.jvProjectStage}</p> : null}
+                          {selectedListing.landSize ? <p><span className="font-black">Land size:</span> {selectedListing.landSize}</p> : null}
+                          {selectedListing.jvExpectedUnits ? <p><span className="font-black">Expected units:</span> {selectedListing.jvExpectedUnits}</p> : null}
+                          {selectedListing.jvEstimatedProjectCost ? <p><span className="font-black">Estimated project cost:</span> {selectedListing.jvEstimatedProjectCost}</p> : null}
+                          {selectedListing.jvCompletionTimeline ? <p><span className="font-black">Timeline:</span> {selectedListing.jvCompletionTimeline}</p> : null}
+                        </div>
+                        {selectedListing.jvLandContribution ? <p className="mt-4 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Landowner contribution:</span> {selectedListing.jvLandContribution}</p> : null}
+                        {selectedListing.jvDeveloperRequirement ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Developer requirement:</span> {selectedListing.jvDeveloperRequirement}</p> : null}
+                        {selectedListing.jvInvestorRequirement ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Investor requirement:</span> {selectedListing.jvInvestorRequirement}</p> : null}
+                        {selectedListing.jvSharingFormula ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Sharing formula:</span> {selectedListing.jvSharingFormula}</p> : null}
+                        {selectedListing.jvTerms ? <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">JV terms:</span> {selectedListing.jvTerms}</p> : null}
+
+                        <div className="mt-4 rounded-2xl bg-white p-4">
+                          <p className="text-sm font-black text-[#0d1c38]">JV due diligence status</p>
+                          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                            <p><span className="font-black">Land title review:</span> {selectedListing.jvLandTitleStatus || "Not Reviewed"}</p>
+                            <p><span className="font-black">Development approval:</span> {selectedListing.jvDevelopmentApprovalStatus || "Not Reviewed"}</p>
+                            <p><span className="font-black">JV deal status:</span> {selectedListing.jvDealStatus || "New JV"}</p>
+                            {selectedListing.jvNextActionDate && (<p><span className="font-black">Next review:</span> {formatDate(selectedListing.jvNextActionDate)}</p>)}
+                          </div>
+                          <p className="mt-3 text-xs leading-5 text-slate-500">Private JV documents are reviewed by INAMAAD staff and are not displayed publicly.</p>
+                        </div>
+                      </div>
+                    ) : (selectedListing.bedrooms || selectedListing.bathrooms || selectedListing.toilets || selectedListing.parkingSpaces || selectedListing.landSize || selectedListing.propertySize || selectedListing.furnishingStatus || selectedListing.propertyCondition || selectedListing.amenities) && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+                        <p className="font-black text-[#0d1c38]">Property specifications</p>
+                        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                          {selectedListing.bedrooms ? <p><span className="font-black">Bedrooms:</span> {selectedListing.bedrooms}</p> : null}
+                          {selectedListing.bathrooms ? <p><span className="font-black">Bathrooms:</span> {selectedListing.bathrooms}</p> : null}
+                          {selectedListing.toilets ? <p><span className="font-black">Toilets:</span> {selectedListing.toilets}</p> : null}
+                          {selectedListing.parkingSpaces ? <p><span className="font-black">Parking:</span> {selectedListing.parkingSpaces} spaces</p> : null}
+                          {selectedListing.landSize ? <p><span className="font-black">Land size:</span> {selectedListing.landSize}</p> : null}
+                          {selectedListing.propertySize ? <p><span className="font-black">Built-up size:</span> {selectedListing.propertySize}</p> : null}
+                          {selectedListing.furnishingStatus && selectedListing.furnishingStatus !== "Not Specified" ? <p><span className="font-black">Furnishing:</span> {selectedListing.furnishingStatus}</p> : null}
+                          {selectedListing.propertyCondition && selectedListing.propertyCondition !== "Not Specified" ? <p><span className="font-black">Condition:</span> {selectedListing.propertyCondition}</p> : null}
+                        </div>
+                        {selectedListing.amenities && (
+                          <p className="mt-4 text-sm leading-6 text-slate-600"><span className="font-black text-[#0d1c38]">Amenities:</span> {selectedListing.amenities}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {(selectedListing.neighborhoodOverview || selectedListing.roadAccess || selectedListing.powerSupply || selectedListing.waterSupply || selectedListing.securityFeatures || selectedListing.nearbySchools || selectedListing.nearbyHospitals || selectedListing.nearbyMalls || selectedListing.nearbyTransport || selectedListing.distanceToMajorRoad || selectedListing.estateFeatures) && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+                        <p className="font-black text-[#0d1c38]">Neighborhood and infrastructure</p>
+                        {selectedListing.neighborhoodOverview && (
+                          <p className="mt-3 text-sm leading-6 text-slate-600">{selectedListing.neighborhoodOverview}</p>
+                        )}
+                        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                          {selectedListing.roadAccess ? <p><span className="font-black">Road access:</span> {selectedListing.roadAccess}</p> : null}
+                          {selectedListing.distanceToMajorRoad ? <p><span className="font-black">Major road:</span> {selectedListing.distanceToMajorRoad}</p> : null}
+                          {selectedListing.powerSupply ? <p><span className="font-black">Power supply:</span> {selectedListing.powerSupply}</p> : null}
+                          {selectedListing.waterSupply ? <p><span className="font-black">Water supply:</span> {selectedListing.waterSupply}</p> : null}
+                          {selectedListing.securityFeatures ? <p><span className="font-black">Security:</span> {selectedListing.securityFeatures}</p> : null}
+                          {selectedListing.estateFeatures ? <p><span className="font-black">Estate features:</span> {selectedListing.estateFeatures}</p> : null}
+                          {selectedListing.nearbySchools ? <p><span className="font-black">Schools:</span> {selectedListing.nearbySchools}</p> : null}
+                          {selectedListing.nearbyHospitals ? <p><span className="font-black">Hospitals:</span> {selectedListing.nearbyHospitals}</p> : null}
+                          {selectedListing.nearbyMalls ? <p><span className="font-black">Malls / markets:</span> {selectedListing.nearbyMalls}</p> : null}
+                          {selectedListing.nearbyTransport ? <p><span className="font-black">Transport:</span> {selectedListing.nearbyTransport}</p> : null}
+                        </div>
+                      </div>
+                    )}
+
+                    {(selectedListing.documentTitle || selectedListing.documentDetails) && (
+                      <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                        <p className="font-black text-[#0d1c38]">Title document</p>
+                        <p className="mt-2">
+                          <span className="font-black">Document:</span>{" "}
+                          {selectedListing.documentTitle || "Not stated"}
+                        </p>
+                        <p>
+                          <span className="font-black">Status:</span>{" "}
+                          {selectedListing.documentStatus || "Pending"}
+                        </p>
+                        {selectedListing.documentDetails && (
+                          <p className="mt-2 text-slate-600">
+                            {selectedListing.documentDetails}
+                          </p>
+                        )}
+                        {selectedListing.documentFileUrl && (
+                          <div className="mt-4 rounded-2xl border border-amber-200 bg-white p-4 text-xs font-bold text-slate-600">
+                            Uploaded title document is securely stored. Public users can see the document type and verification status, but only signed-in staff can open the actual file.
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {(selectedListing.ownerName || selectedListing.companyName || selectedListing.contactRole || selectedListing.contactEmail || selectedListing.ownerPhone || selectedListing.contactWhatsapp) && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-700">
+                        <p className="font-black text-[#0d1c38]">Owner / agent / developer profile</p>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <p><span className="font-black">Role:</span> {selectedListing.contactRole || "Owner"}</p>
+                          <p><span className="font-black">Mandate:</span> {selectedListing.mandateStatus || "Not Confirmed"}</p>
+                          <p><span className="font-black">Profile verification:</span> {selectedListing.contactProfileVerified ? "Verified" : "Not verified yet"}</p>
+                          <p><span className="font-black">Mandate document:</span> {selectedListing.mandateDocumentStatus || "Not Provided"}</p>
+                          <p><span className="font-black">Name:</span> {getListingContactName(selectedListing)}</p>
+                          {selectedListing.companyName ? <p><span className="font-black">Company:</span> {selectedListing.companyName}</p> : null}
+                        </div>
+
+                        {selectedListing.publicContactVisibility === "Hide Phone" || !selectedListing.publicContactVisibility ? (
+                          <div className="mt-4 rounded-2xl bg-[#f7f8fb] p-4 text-xs font-bold text-slate-600">
+                            Direct contact is hidden. Use Request Access, Make Offer, or Book Inspection so INAMAAD can qualify and protect the lead.
+                          </div>
+                        ) : (
+                          <div className="mt-4 flex flex-wrap gap-3">
+                            {canShowPublicPhone(selectedListing) && selectedListing.ownerPhone ? (
+                              <a href={`tel:${cleanPhoneForLink(selectedListing.ownerPhone)}`} className="rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white">
+                                Call contact
+                              </a>
+                            ) : null}
+                            {canShowPublicWhatsapp(selectedListing) && (selectedListing.contactWhatsapp || selectedListing.ownerPhone) ? (
+                              <a
+                                href={`https://wa.me/${normalizeNigeriaWhatsApp(selectedListing.contactWhatsapp || selectedListing.ownerPhone)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                WhatsApp contact
+                              </a>
+                            ) : null}
+                            {canShowPublicEmail(selectedListing) && selectedListing.contactEmail ? (
+                              <a href={`mailto:${selectedListing.contactEmail}`} className="rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-[#0d1c38]">
+                                Email contact
+                              </a>
+                            ) : null}
+                          </div>
+                        )}
+
+                        {selectedListing.publicContactVisibility === "Show All" && selectedListing.contactAddress ? (
+                          <p className="mt-4 text-sm text-slate-600"><span className="font-black text-[#0d1c38]">Office/address:</span> {selectedListing.contactAddress}</p>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-[24px] bg-[#0d1c38] p-5 text-white">
+                    <p className="text-sm font-black text-[#f0bf3c]">
+                      Deal summary
+                    </p>
+
+                    <div className="mt-5 grid gap-4 text-sm">
+                      <div>
+                        <p className="text-slate-400">Reference</p>
+                        <p className="font-black text-[#f0bf3c]">{buildListingReference(selectedListing.id)}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Type</p>
+                        <p className="font-black">{selectedListing.type}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Category</p>
+                        <p className="font-black">
+                          {selectedListing.category}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Contact role</p>
+                        <p className="font-black">
+                          {selectedListing.contactRole || "Owner"}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {selectedListing.mandateStatus || "Not Confirmed"}
+                        </p>
+                      </div>
+
+                      {hasPriceBreakdown(selectedListing) && (
+                        <div>
+                          <p className="text-slate-400">Estimated total cost</p>
+                          <p className="font-black text-[#f0bf3c]">
+                            {selectedListing.totalEstimatedCost || calculateTotalEstimatedCost(selectedListing)}
+                          </p>
+                        </div>
+                      )}
+
+
+                      {(selectedListing.videoUrl || selectedListing.virtualTourUrl || selectedListing.droneVideoUrl) && (
+                        <div>
+                          <p className="text-slate-400">Media</p>
+                          <p className="font-black">
+                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join(" • ")}
+                          </p>
+                        </div>
+                      )}
+
+                      {(selectedListing.bedrooms || selectedListing.bathrooms || selectedListing.landSize) && (
+                        <div>
+                          <p className="text-slate-400">Specs</p>
+                          <p className="font-black">
+                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join(" • ")}
+                          </p>
+                        </div>
+                      )}
+
+                      <div>
+                        <p className="text-slate-400">Document title</p>
+                        <p className="font-black">
+                          {selectedListing.documentTitle || "Not stated"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Document status</p>
+                        <p className="font-black text-[#f0bf3c]">
+                          {selectedListing.documentStatus || "Pending"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Document file</p>
+                        <p className="font-black">
+                          {selectedListing.documentFileUrl ? "Uploaded" : "Not uploaded"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Approval status</p>
+                        <p className="font-black text-emerald-300">
+                          {selectedListing.status}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-slate-400">Availability</p>
+                        <p className="font-black text-[#f0bf3c]">
+                          {selectedListing.availabilityStatus || "Available"}
+                        </p>
+                        {selectedListing.availableFrom && (
+                          <p className="mt-1 text-xs text-slate-400">
+                            Available from {formatDate(selectedListing.availableFrom)}
+                          </p>
+                        )}
+                        {selectedListing.availabilityNote && (
+                          <p className="mt-1 text-xs text-slate-400">
+                            {selectedListing.availabilityNote}
+                          </p>
+                        )}
+                      </div>
+
+
+                      <div>
+                        <p className="text-slate-400">Views</p>
+                        <p className="font-black text-[#f0bf3c]">
+                          {viewCountByListingId[selectedListing.id] || 0}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setModal("investor")}
+                      className="mt-6 w-full rounded-2xl bg-[#f0bf3c] px-5 py-3 text-sm font-black text-[#0d1c38]"
+                    >
+                      Investor Access
+                    </button>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => copyListingShareLink(selectedListing)}
+                        className="rounded-2xl bg-white/10 px-4 py-3 text-xs font-black text-white transition hover:bg-white/20"
+                      >
+                        Copy Link
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => shareListingToWhatsApp(selectedListing)}
+                        className="rounded-2xl bg-emerald-500 px-4 py-3 text-xs font-black text-white transition hover:bg-emerald-600"
+                      >
+                        WhatsApp
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedListing && isJointVentureListing(selectedListing) && (
+                  <form
+                    onSubmit={submitJvApplication}
+                    className="mt-6 grid gap-4 rounded-[24px] border border-purple-200 bg-purple-50 p-6"
+                  >
+                    <div>
+                      <p className="text-xl font-black text-[#0d1c38]">
+                        Apply for JV partnership
+                      </p>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Submit a professional JV interest as a developer, investor, financier, landowner, construction partner, or marketing partner.
+                      </p>
+                    </div>
+
+                    <input
+                      required
+                      value={jvApplicationForm.applicantName}
+                      onChange={(event) =>
+                        setJvApplicationForm({ ...jvApplicationForm, applicantName: event.target.value })
+                      }
+                      placeholder="Applicant name"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <input
+                        value={jvApplicationForm.applicantEmail}
+                        onChange={(event) =>
+                          setJvApplicationForm({ ...jvApplicationForm, applicantEmail: event.target.value })
+                        }
+                        type="email"
+                        placeholder="Email address optional"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <input
+                        required
+                        value={jvApplicationForm.applicantPhone}
+                        onChange={(event) =>
+                          setJvApplicationForm({ ...jvApplicationForm, applicantPhone: event.target.value })
+                        }
+                        placeholder="Phone or WhatsApp number"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <select
+                        value={jvApplicationForm.applicantRole}
+                        onChange={(event) =>
+                          setJvApplicationForm({ ...jvApplicationForm, applicantRole: event.target.value })
+                        }
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      >
+                        <option>Developer</option>
+                        <option>Investor</option>
+                        <option>Landowner</option>
+                        <option>Financier</option>
+                        <option>Construction Partner</option>
+                        <option>Marketing Partner</option>
+                        <option>Other</option>
+                      </select>
+
+                      <input
+                        value={jvApplicationForm.companyName}
+                        onChange={(event) =>
+                          setJvApplicationForm({ ...jvApplicationForm, companyName: event.target.value })
+                        }
+                        placeholder="Company name optional"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <input
+                      value={jvApplicationForm.budgetCapacity}
+                      onChange={(event) =>
+                        setJvApplicationForm({ ...jvApplicationForm, budgetCapacity: formatPriceInput(event.target.value) || event.target.value })
+                      }
+                      placeholder="Budget / funding capacity e.g. ₦500,000,000"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <textarea
+                      value={jvApplicationForm.experienceSummary}
+                      onChange={(event) =>
+                        setJvApplicationForm({ ...jvApplicationForm, experienceSummary: event.target.value })
+                      }
+                      placeholder="Experience summary e.g. Completed 24-unit terrace project in Abuja, handled approvals and construction finance."
+                      rows={3}
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <textarea
+                      value={jvApplicationForm.proposalMessage}
+                      onChange={(event) =>
+                        setJvApplicationForm({ ...jvApplicationForm, proposalMessage: event.target.value })
+                      }
+                      placeholder="Proposal message: what you can contribute, preferred sharing formula, timeline, or partnership terms."
+                      rows={4}
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <div className="rounded-3xl border border-purple-100 bg-purple-50/60 p-5">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-700">
+                        Supporting documents optional
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        Upload documents that help INAMAAD evaluate your JV capacity. Accepted: PDF, JPG, PNG, WEBP. Max 20MB each. These files are private and staff-only.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Company profile</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvCompanyProfileFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">CAC certificate</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvCacCertificateFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Portfolio / past projects</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvPortfolioFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Financial proof</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvFinancialProofFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">JV proposal document</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvProposalDocumentFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+
+                        <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                          <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Other supporting file</span>
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) => setJvOtherDocumentFile(event.target.files?.[0] || null)}
+                            className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-xs file:font-black file:text-purple-700"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    <button className="rounded-2xl bg-purple-700 px-6 py-4 text-sm font-black text-white">
+                      Submit JV partnership application
+                    </button>
+                  </form>
+                )}
+
+                <form
+                  onSubmit={submitPropertyInquiry}
+                  className="mt-6 grid gap-4 rounded-[24px] border border-slate-200 bg-white p-6"
+                >
+                  <div>
+                    <p className="text-xl font-black text-[#0d1c38]">
+                      Ask about this property
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Send your contact details to INAMAAD for this specific listing.
+                    </p>
+                  </div>
+
+                  <input
+                    required
+                    value={inquiryForm.name}
+                    onChange={(event) =>
+                      setInquiryForm({ ...inquiryForm, name: event.target.value })
+                    }
+                    placeholder="Your name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      value={inquiryForm.email}
+                      onChange={(event) =>
+                        setInquiryForm({
+                          ...inquiryForm,
+                          email: event.target.value,
+                        })
+                      }
+                      type="email"
+                      placeholder="Email address optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      required
+                      value={inquiryForm.phone}
+                      onChange={(event) =>
+                        setInquiryForm({
+                          ...inquiryForm,
+                          phone: event.target.value,
+                        })
+                      }
+                      placeholder="Phone or WhatsApp number"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <textarea
+                    value={inquiryForm.message}
+                    onChange={(event) =>
+                      setInquiryForm({
+                        ...inquiryForm,
+                        message: event.target.value,
+                      })
+                    }
+                    placeholder="Message, inspection request, or offer details"
+                    rows={4}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                    Send property inquiry
+                  </button>
+                </form>
+
+                <form
+                  onSubmit={submitInspectionBooking}
+                  className="mt-6 grid gap-4 rounded-[24px] border border-[#f0bf3c]/40 bg-[#fffaf0] p-6"
+                >
+                  <div>
+                    <p className="text-xl font-black text-[#0d1c38]">
+                      Book property inspection
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Choose a preferred date and time. INAMAAD will confirm availability before the appointment.
+                    </p>
+                  </div>
+
+                  <input
+                    required
+                    value={inspectionForm.name}
+                    onChange={(event) =>
+                      setInspectionForm({ ...inspectionForm, name: event.target.value })
+                    }
+                    placeholder="Your name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      value={inspectionForm.email}
+                      onChange={(event) =>
+                        setInspectionForm({ ...inspectionForm, email: event.target.value })
+                      }
+                      type="email"
+                      placeholder="Email address optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      required
+                      value={inspectionForm.phone}
+                      onChange={(event) =>
+                        setInspectionForm({ ...inspectionForm, phone: event.target.value })
+                      }
+                      placeholder="Phone or WhatsApp number"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      value={inspectionForm.preferredDate}
+                      onChange={(event) =>
+                        setInspectionForm({ ...inspectionForm, preferredDate: event.target.value })
+                      }
+                      type="date"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={inspectionForm.preferredTime}
+                      onChange={(event) =>
+                        setInspectionForm({ ...inspectionForm, preferredTime: event.target.value })
+                      }
+                      type="time"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <textarea
+                    value={inspectionForm.message}
+                    onChange={(event) =>
+                      setInspectionForm({ ...inspectionForm, message: event.target.value })
+                    }
+                    placeholder="Message or special inspection request"
+                    rows={3}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <button className="rounded-2xl bg-[#f0bf3c] px-6 py-4 text-sm font-black text-[#0d1c38]">
+                    Book inspection
+                  </button>
+                </form>
+
+                <form
+                  onSubmit={submitPropertyOffer}
+                  className="mt-6 grid gap-4 rounded-[24px] border border-emerald-200 bg-emerald-50 p-6"
+                >
+                  <div>
+                    <p className="text-xl font-black text-[#0d1c38]">
+                      Make offer / reserve property
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Send a serious offer or reservation request for this listing. INAMAAD staff will review it before any commitment.
+                    </p>
+                  </div>
+
+                  <input
+                    required
+                    value={offerForm.buyerName}
+                    onChange={(event) =>
+                      setOfferForm({ ...offerForm, buyerName: event.target.value })
+                    }
+                    placeholder="Buyer name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      value={offerForm.buyerEmail}
+                      onChange={(event) =>
+                        setOfferForm({ ...offerForm, buyerEmail: event.target.value })
+                      }
+                      type="email"
+                      placeholder="Email address optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      required
+                      value={offerForm.buyerPhone}
+                      onChange={(event) =>
+                        setOfferForm({ ...offerForm, buyerPhone: event.target.value })
+                      }
+                      placeholder="Phone or WhatsApp number"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input
+                      value={offerForm.offerAmount}
+                      onChange={(event) =>
+                        setOfferForm({
+                          ...offerForm,
+                          offerAmount: formatPriceInput(event.target.value),
+                        })
+                      }
+                      placeholder="Offer amount e.g. ₦150,000,000"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      value={offerForm.paymentPlan}
+                      onChange={(event) =>
+                        setOfferForm({ ...offerForm, paymentPlan: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    >
+                      <option>Full payment</option>
+                      <option>Installment payment</option>
+                      <option>Reservation deposit</option>
+                      <option>Mortgage / bank finance</option>
+                      <option>Joint venture proposal</option>
+                      <option>Negotiable</option>
+                    </select>
+                  </div>
+
+                  <textarea
+                    value={offerForm.message}
+                    onChange={(event) =>
+                      setOfferForm({ ...offerForm, message: event.target.value })
+                    }
+                    placeholder="Offer terms, reservation timeline, payment plan, or special condition"
+                    rows={3}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <button className="rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-black text-white">
+                    Submit offer / reserve interest
+                  </button>
+                </form>
+              </div>
+            )}
+
             {modal === "admin" && !adminUnlocked && (
-              <form onSubmit={unlockAdmin} className="space-y-4">
-                <p className="text-sm leading-7 text-slate-500">
-                  Enter the admin password to manage listings.
+              <form onSubmit={unlockAdmin} className="grid gap-4">
+                <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm leading-6 text-slate-600">
+                  {usesDatabase
+                    ? "Enter your Supabase staff email and password. Your email must exist in the admin_users table."
+                    : "Database is not connected. Enter the local demo admin password."}
                 </p>
+
+                {usesDatabase && (
+                  <input
+                    required
+                    type="email"
+                    value={adminEmail}
+                    onChange={(event) => setAdminEmail(event.target.value)}
+                    placeholder="Staff email"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+                )}
 
                 <input
                   required
                   type="password"
                   value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  placeholder="Admin password"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                  onChange={(event) => setAdminPassword(event.target.value)}
+                  placeholder={usesDatabase ? "Staff password" : "Admin password"}
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button className="w-full rounded-xl bg-[#0d1c38] py-3 text-sm font-black text-white">
-                  Unlock admin
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                  Unlock staff portal
                 </button>
               </form>
             )}
 
             {modal === "admin" && adminUnlocked && (
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-[#f6f7fb] p-4">
-                  <p className="mb-1 text-sm font-black text-[#0d1c38]">
-                    Total opportunities: {listings.length}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Approve pending opportunities or remove bad listings from the platform.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-green-50 p-4">
-                    <p className="text-2xl font-black text-[#0d1c38]">
-                      {listings.filter((item) => item.status === "Verified").length}
+              <div className="grid gap-8">
+                <div className="flex flex-col justify-between gap-4 rounded-2xl bg-[#f7f8fb] p-5 md:flex-row md:items-center">
+                  <div>
+                    <p className="font-black text-[#0d1c38]">
+                      Staff portal active
                     </p>
-                    <p className="mt-1 text-xs font-black uppercase tracking-wide text-green-700">
-                      Verified
+                    <p className="text-sm text-slate-500">
+                      {usesDatabase
+                        ? user?.email || "Supabase admin"
+                        : "Local demo admin"}
                     </p>
-                  </div>
-
-                  <div className="rounded-2xl bg-yellow-50 p-4">
-                    <p className="text-2xl font-black text-[#0d1c38]">
-                      {listings.filter((item) => item.status !== "Verified").length}
-                    </p>
-                    <p className="mt-1 text-xs font-black uppercase tracking-wide text-yellow-700">
-                      Pending / Review
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Property views analytics
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-orange-700">
-                        Tracks views when users open full modal or property details inside cards.
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {totalListingViews}
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-orange-700">
-                        Total views
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {averageListingViews}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
-                        Avg / listing
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {topViewedListings[0]?.viewCount || 0}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
-                        Top listing
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">
-                      Top viewed listings
-                    </p>
-
-                    {topViewedListings.map((item) => (
-                      <div
-                        key={`view-${item.id}`}
-                        className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-black text-[#0d1c38]">
-                            {item.title}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {item.location} · {item.price}
-                          </p>
-                        </div>
-
-                        <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black text-orange-700">
-                          {item.viewCount} views
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-[#0d1c38]/10 bg-[#0d1c38] p-4 text-white">
-                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-sm font-black text-[#f0bf3c]">
-                        Marketplace launch readiness center
-                      </p>
-                      <p className="mt-1 max-w-2xl text-xs leading-5 text-white/60">
-                        A professional pre-launch score based on verified listings, owner checks, documents, contacts, due diligence, CRM readiness, tasks, and open admin queue.
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white px-5 py-4 text-center text-[#0d1c38]">
-                      <p className="text-3xl font-black">
-                        {marketplaceLaunchReadinessScore}%
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
-                        {launchReadinessLabel}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mb-4 grid gap-3 sm:grid-cols-4">
-                    <div className="rounded-2xl bg-white/10 p-3">
-                      <p className="text-xl font-black text-white">
-                        {verifiedListingsCount}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-white/45">
-                        Verified
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white/10 p-3">
-                      <p className="text-xl font-black text-white">
-                        {ownerVerifiedListingsCount}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-white/45">
-                        Owners checked
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white/10 p-3">
-                      <p className="text-xl font-black text-white">
-                        {listingsWithDocumentsCount}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-white/45">
-                        Documents
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white/10 p-3">
-                      <p className="text-xl font-black text-white">
-                        {failedLaunchReadinessChecks.length}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-white/45">
-                        Fixes needed
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mb-4 rounded-2xl bg-white/10 p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-[#f0bf3c]">
-                      Next recommended move
-                    </p>
-                    <p className="mt-2 text-sm font-bold leading-6 text-white">
-                      {nextLaunchReadinessAction}
-                    </p>
-                  </div>
-
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {launchReadinessChecks.map((check) => (
-                      <div
-                        key={check.label}
-                        className="rounded-2xl bg-white/10 p-3"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-black text-white">
-                              {check.passed ? "✓" : "!"} {check.label}
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-white/55">
-                              {check.detail}
-                            </p>
-                          </div>
-
-                          <span
-                            className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
-                              check.passed
-                                ? "bg-emerald-400 text-[#0d1c38]"
-                                : "bg-[#f0bf3c] text-[#0d1c38]"
-                            }`}
-                          >
-                            {check.value}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
                   </div>
 
                   <button
-                    type="button"
-                    onClick={exportLaunchReadinessReportCsv}
-                    className="mt-4 w-full rounded-xl bg-[#f0bf3c] px-4 py-3 text-sm font-black text-[#0d1c38] hover:bg-[#f7ce62]"
+                    onClick={logoutAdmin}
+                    className="rounded-full bg-slate-900 px-5 py-2 text-xs font-black text-white"
                   >
-                    Export launch readiness report
+                    Sign out
                   </button>
                 </div>
 
-                <div className="rounded-2xl border border-emerald-100 bg-white p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="rounded-[2rem] border border-[#d49613]/30 bg-amber-50 p-5 text-sm text-amber-900">
+                  <p className="font-black text-[#0d1c38]">Current staff role: {currentStaffRole}</p>
+                  <p className="mt-2 leading-6">
+                    Access enabled: {canEditListings ? "edit listings" : "read listings"}, {canApproveListings ? "approve listings" : "no approval"}, {canManageLeads ? "manage leads" : "read-only leads"}, {canOpenDocuments ? "secure documents" : "documents locked"}, {canExportReports ? "reports" : "no report export"}.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-10">
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {unreadNotifications}
+                    </p>
+                    <p className="text-sm text-slate-500">New alerts</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {activeStaffCount}
+                    </p>
+                    <p className="text-sm text-slate-500">Active staff</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {listings.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Total listings</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {pendingListings.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Pending review</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {propertyInquiries.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Property inquiries</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {propertyOffers.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Property offers</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {contactMessages.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Contact messages</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {inspectionBookings.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Inspection bookings</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {totalPropertyViews}
+                    </p>
+                    <p className="text-sm text-slate-500">Property views</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5">
+                    <p className="text-2xl font-black text-[#0d1c38]">
+                      {investorRequests.length}
+                    </p>
+                    <p className="text-sm text-slate-500">Investor requests</p>
+                  </div>
+                </div>
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                     <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Due diligence command center
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Lead command center
                       </p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Scores each listing by verification, documents, contact readiness, media, size details, and valuation notes.
+                      <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                        Follow-up dashboard
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        Track overdue buyers, today’s follow-ups, urgent leads, and unassigned opportunities in one place.
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-center">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {averageDueDiligenceScore}%
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700">
-                        Average
-                      </p>
+                    <div className="rounded-full bg-[#0d1c38] px-5 py-2 text-xs font-black text-white">
+                      {leadFollowUpItems.length} active leads
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl bg-red-50 p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {highRiskDueDiligenceCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-red-700">
-                        High risk
-                      </p>
+                  <div className="mt-5 grid gap-3 md:grid-cols-4">
+                    <div className="rounded-2xl bg-red-50 p-5">
+                      <p className="text-2xl font-black text-red-700">{overdueFollowUps.length}</p>
+                      <p className="text-sm font-bold text-red-600">Overdue follow-ups</p>
                     </div>
-
-                    <div className="rounded-2xl bg-[#fff7df] p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {reviewDueDiligenceCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
-                        Needs review
-                      </p>
+                    <div className="rounded-2xl bg-amber-50 p-5">
+                      <p className="text-2xl font-black text-amber-700">{todayFollowUps.length}</p>
+                      <p className="text-sm font-bold text-amber-600">Due today</p>
                     </div>
-
-                    <div className="rounded-2xl bg-emerald-50 p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {dueDiligenceInsights.filter((entry) => entry.score >= 85).length}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-emerald-700">
-                        Launch ready
-                      </p>
+                    <div className="rounded-2xl bg-orange-50 p-5">
+                      <p className="text-2xl font-black text-orange-700">{urgentFollowUps.length}</p>
+                      <p className="text-sm font-bold text-orange-600">High / urgent</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-100 p-5">
+                      <p className="text-2xl font-black text-[#0d1c38]">{unassignedLeads.length}</p>
+                      <p className="text-sm font-bold text-slate-500">Unassigned</p>
                     </div>
                   </div>
 
-                  <div className="mt-4 space-y-2">
-                    {[...dueDiligenceInsights]
-                      .sort((a, b) => a.score - b.score)
-                      .slice(0, 5)
-                      .map(({ item, score, checks }) => (
-                        <div
-                          key={`due-${item.id}`}
-                          className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-3"
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-black text-[#0d1c38]">
-                                {item.title}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                {checks.filter((check) => check.passed).length}/{checks.length} checks passed
-                              </p>
-                            </div>
-
-                            <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getDueDiligenceBadgeClass(score)}`}>
-                              {score}% · {getDueDiligenceLabel(score)}
-                            </span>
-                          </div>
-
-                          <p className="mt-2 text-xs leading-5 text-slate-500">
-                            Next fix: {checks.find((check) => !check.passed)?.label || "Ready for launch review"}
+                  <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200 p-5">
+                      <h4 className="font-black text-[#0d1c38]">Needs attention now</h4>
+                      <div className="mt-4 grid gap-3">
+                        {[...overdueFollowUps, ...todayFollowUps].slice(0, 8).length === 0 && (
+                          <p className="rounded-2xl bg-[#f7f8fb] p-4 text-sm text-slate-500">
+                            No overdue or due-today follow-ups. Good work.
                           </p>
-                        </div>
-                      ))}
-                  </div>
-                </div>
+                        )}
 
-                <div className="rounded-2xl border border-[#f0bf3c]/30 bg-white p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Property valuation intelligence
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Auto-calculated price guidance from current marketplace data. Use this as a negotiation guide, not final legal valuation.
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-[#fff7df] px-4 py-3 text-center">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {opportunityListingsCount}
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
-                        Opportunities
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl bg-emerald-50 p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {opportunityListingsCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-emerald-700">
-                        Below guide
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-red-50 p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {highPriceListingsCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-red-700">
-                        Premium / High
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {lowConfidenceValuationsCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-500">
-                        Low confidence
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 space-y-2">
-                    {valuationInsights.slice(0, 5).map(({ item, priceIntel }) => (
-                      <div
-                        key={`valuation-${item.id}`}
-                        className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-3"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-[#0d1c38]">
-                              {item.title}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {item.location} · {item.price}
-                            </p>
-                          </div>
-
-                          <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getPriceBadgeClass(priceIntel.label)}`}>
-                            {priceIntel.label}
-                          </span>
-                        </div>
-
-                        <p className="mt-2 text-xs leading-5 text-slate-500">
-                          Avg guide: {formatNairaCompact(priceIntel.stateAverage)} · Difference: {priceIntel.percentVsMarket > 0 ? "+" : ""}{priceIntel.percentVsMarket}% · Confidence: {priceIntel.confidence}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-[#f0bf3c]/30 bg-[#fff7df] p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Admin follow-up command center
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-[#9b6b16]">
-                        One place to handle pending approvals, owner checks, new leads, and inspection requests.
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {adminActionQueueCount}
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
-                        Actions
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {pendingListingsCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
-                        Pending listings
-                      </p>
-                      <button
-                        type="button"
-                        onClick={approveAllPendingListings}
-                        className="mt-3 w-full rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
-                      >
-                        Approve pending
-                      </button>
-                    </div>
-
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {unverifiedOwnersCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
-                        Owner checks
-                      </p>
-                      <button
-                        type="button"
-                        onClick={verifyAllUnverifiedOwners}
-                        className="mt-3 w-full rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-black text-white hover:bg-emerald-700"
-                      >
-                        Verify owners
-                      </button>
-                    </div>
-
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {newLeadsCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
-                        New leads
-                      </p>
-                      <button
-                        type="button"
-                        onClick={markAllNewLeadsContacted}
-                        className="mt-3 w-full rounded-xl border border-blue-200 px-3 py-2.5 text-xs font-black text-blue-700 hover:bg-blue-50"
-                      >
-                        Mark contacted
-                      </button>
-                    </div>
-
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {newInspectionsCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
-                        New inspections
-                      </p>
-                      <button
-                        type="button"
-                        onClick={confirmAllNewInspections}
-                        className="mt-3 w-full rounded-xl border border-purple-200 px-3 py-2.5 text-xs font-black text-purple-700 hover:bg-purple-50"
-                      >
-                        Confirm inspections
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={featureTopViewedFromFollowUp}
-                    className="mt-3 w-full rounded-xl border border-[#f0bf3c] bg-white px-3 py-2.5 text-xs font-black text-[#9b6b16] hover:bg-[#fff7df]"
-                  >
-                    Feature top viewed listings
-                  </button>
-                </div>
-
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Document request center
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-emerald-700">
-                        Find listings with missing documents, copy professional requests, create follow-up tasks, and export a document readiness report.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {averageDocumentReadinessScore}%
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-emerald-700">
-                          Avg
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {documentIncompleteListingsCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-[#9b6b16]">
-                          Incomplete
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {documentCriticalListingsCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-red-600">
-                          Critical
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mb-4 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {documentCompleteListingsCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-emerald-700">
-                        Complete
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {documentIncompleteListingsCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
-                        Needs document work
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {documentCriticalListingsCount}
-                      </p>
-                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-red-600">
-                        Critical
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mb-4 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={exportDocumentReadinessCsv}
-                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
-                    >
-                      Export document readiness
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const firstMissing = documentReadinessInsights.find((entry) => entry.missingItems.length > 0);
-                        if (firstMissing) {
-                          createDocumentFollowUpTask(firstMissing.item);
-                        } else {
-                          showMessage("No missing document task needed.");
-                        }
-                      }}
-                      className="rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-50"
-                    >
-                      Create next task
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    {[...documentReadinessInsights]
-                      .sort((a, b) => a.score - b.score)
-                      .slice(0, 6)
-                      .map(({ item, score, missingItems }) => (
-                        <div
-                          key={`document-${item.id}`}
-                          className="rounded-2xl border border-emerald-100 bg-white p-3"
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-black text-[#0d1c38]">
-                                {item.title}
-                              </p>
-                              <p className="mt-1 text-xs leading-5 text-slate-500">
-                                Missing: {missingItems.length > 0 ? missingItems.map((entry) => entry.label).join(", ") : "No major missing item"}
-                              </p>
+                        {[...overdueFollowUps, ...todayFollowUps].slice(0, 8).map((item) => (
+                          <div key={`${item.kind}-${item.id}`} className="rounded-2xl bg-[#f7f8fb] p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-[#d49613]">
+                                {item.source}
+                              </span>
+                              <span className={`rounded-full px-3 py-1 text-[11px] font-black ${item.priority === "Urgent" ? "bg-red-100 text-red-700" : item.priority === "High" ? "bg-orange-100 text-orange-700" : "bg-slate-200 text-slate-600"}`}>
+                                {item.priority}
+                              </span>
+                              <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-slate-500">
+                                {item.followUpDate < todayKey ? "Overdue" : "Today"}
+                              </span>
                             </div>
-
-                            <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getDocumentReadinessBadgeClass(score)}`}>
-                              {score}% · {getDocumentReadinessLabel(score)}
-                            </span>
-                          </div>
-
-                          <div className="mt-3 grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => copyDocumentRequestMessage(item)}
-                              className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50"
-                            >
-                              Copy request
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => createDocumentFollowUpTask(item)}
-                              className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white hover:bg-[#162b52]"
-                            >
-                              Create task
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Executive report center
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Generate a management-ready marketplace report covering launch readiness, inventory, due diligence, CRM, inspections, tasks, and next recommended action.
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-[#f8fafc] px-4 py-3 text-center">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {marketplaceLaunchReadinessScore}%
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                        Executive score
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-4">
-                    <div className="rounded-2xl bg-[#f8fafc] p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {listings.length}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-slate-400">
-                        Listings
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-emerald-50 p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {averageDueDiligenceScore}%
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-emerald-700">
-                        Due diligence
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-blue-50 p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {leads.length}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-blue-700">
-                        CRM leads
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-[#fff7df] p-4">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {adminActionQueueCount}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
-                        Actions
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-2xl bg-[#f8fafc] p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Report headline
-                    </p>
-                    <p className="mt-2 text-sm font-bold leading-6 text-[#0d1c38]">
-                      INAMAAD is currently marked as {launchReadinessLabel} with {marketplaceLaunchReadinessScore}% launch readiness. Next action: {nextLaunchReadinessAction}.
-                    </p>
-                  </div>
-
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={copyExecutiveMarketplaceReport}
-                      className="rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-black text-white hover:bg-[#162b52]"
-                    >
-                      Copy executive report
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={exportExecutiveMarketplaceReportTxt}
-                      className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-black text-[#0d1c38] hover:bg-slate-50"
-                    >
-                      Export executive TXT
-                    </button>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
-                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Inspection schedule center
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-purple-700">
-                        Manage inspection appointments, overdue follow-ups, confirmation messages, and preparation tasks.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2 text-center">
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {todayInspectionCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-purple-700">
-                          Today
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {upcomingInspectionCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-blue-700">
-                          Upcoming
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {confirmedInspectionCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-emerald-700">
-                          Confirmed
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {overdueInspectionCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-red-600">
-                          Overdue
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mb-4 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={exportInspectionScheduleCsv}
-                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
-                    >
-                      Export schedule CSV
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextInspection = inspectionScheduleInsights.find(
-                          (entry) => !["Completed", "Cancelled"].includes(entry.inspection.status)
-                        );
-
-                        if (nextInspection) {
-                          createInspectionScheduleTask(nextInspection.inspection);
-                        } else {
-                          showMessage("No open inspection to create a task for.");
-                        }
-                      }}
-                      className="rounded-xl border border-purple-200 bg-white px-3 py-2.5 text-xs font-black text-purple-700 hover:bg-purple-50"
-                    >
-                      Create next task
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    {inspectionScheduleInsights.slice(0, 6).map((entry) => (
-                      <div
-                        key={`inspection-schedule-${entry.inspection.id}`}
-                        className="rounded-2xl border border-purple-100 bg-white p-3"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-[#0d1c38]">
-                              {entry.inspection.name}
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                              {entry.inspection.listingTitle || "General inspection"} · {entry.inspection.preferredDate || "Date pending"} · {entry.inspection.preferredTime || "Time pending"}
+                            <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
+                            <p className="mt-1 text-sm text-slate-500">{item.title}</p>
+                            <p className="mt-2 text-xs font-bold text-slate-400">
+                              Follow-up: {formatDate(item.followUpDate)} • Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
-
-                          <span
-                            className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
-                              entry.isOverdue
-                                ? "bg-red-50 text-red-700"
-                                : entry.isToday
-                                  ? "bg-[#fff7df] text-[#9b6b16]"
-                                  : entry.inspection.status === "Confirmed"
-                                    ? "bg-emerald-50 text-emerald-700"
-                                    : "bg-purple-50 text-purple-700"
-                            }`}
-                          >
-                            {entry.isOverdue ? "Overdue" : entry.isToday ? "Today" : entry.inspection.status}
-                          </span>
-                        </div>
-
-                        <p className="mt-2 text-xs leading-5 text-slate-500">
-                          Phone: {entry.inspection.phone} {entry.inspection.note ? `· ${entry.inspection.note}` : ""}
-                        </p>
-
-                        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          <button
-                            type="button"
-                            onClick={() => updateInspectionStatus(entry.inspection.id, "Confirmed")}
-                            className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50"
-                          >
-                            Confirm
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => updateInspectionStatus(entry.inspection.id, "Completed")}
-                            className="rounded-xl border border-blue-200 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50"
-                          >
-                            Complete
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => copyInspectionScheduleMessage(entry.inspection)}
-                            className="rounded-xl border border-purple-200 px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-50"
-                          >
-                            Copy message
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => createInspectionScheduleTask(entry.inspection)}
-                            className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white hover:bg-[#162b52]"
-                          >
-                            Task
-                          </button>
-                        </div>
+                        ))}
                       </div>
-                    ))}
-
-                    {inspectionScheduleInsights.length === 0 ? (
-                      <div className="rounded-2xl bg-white p-4">
-                        <p className="text-sm font-bold leading-6 text-slate-500">
-                          No inspection bookings yet. When buyers book inspections, they will appear here.
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
-                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Revenue forecast center
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-green-700">
-                        Estimate sales pipeline, commission potential, converted lead value, and top revenue opportunities from current marketplace data.
-                      </p>
                     </div>
 
-                    <div className="rounded-2xl bg-white px-5 py-4 text-center">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {formatNairaCompact(totalProjectedRevenue)}
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-green-700">
-                        Projected revenue
-                      </p>
-                    </div>
-                  </div>
+                    <div className="rounded-2xl border border-slate-200 p-5">
+                      <h4 className="font-black text-[#0d1c38]">Next scheduled follow-ups</h4>
+                      <div className="mt-4 grid gap-3">
+                        {nextFollowUps.slice(0, 8).length === 0 && (
+                          <p className="rounded-2xl bg-[#f7f8fb] p-4 text-sm text-slate-500">
+                            No upcoming follow-up dates yet. Set follow-up dates inside each lead.
+                          </p>
+                        )}
 
-                  <div className="mb-4 grid gap-3 sm:grid-cols-2">
-                    <input
-                      value={commissionRate}
-                      onChange={(e) => setCommissionRate(e.target.value)}
-                      placeholder="Commission rate %, e.g. 3"
-                      className="w-full rounded-xl border border-green-100 bg-white px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={expectedConversionRate}
-                      onChange={(e) => setExpectedConversionRate(e.target.value)}
-                      placeholder="Expected conversion %, e.g. 12"
-                      className="w-full rounded-xl border border-green-100 bg-white px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-4">
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-xl font-black text-[#0d1c38]">
-                        {formatNairaCompact(totalInventoryValue)}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-slate-400">
-                        Inventory value
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-xl font-black text-[#0d1c38]">
-                        {formatNairaCompact(campaignReadyInventoryValue)}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-green-700">
-                        Campaign ready
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-xl font-black text-[#0d1c38]">
-                        {formatNairaCompact(leadPipelineBudgetValue)}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-blue-700">
-                        Lead pipeline
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-xl font-black text-[#0d1c38]">
-                        {formatNairaCompact(projectedCommissionFromListings)}
-                      </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
-                        Listing commission
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-2xl bg-white p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-green-700">
-                      Top revenue opportunities
-                    </p>
-
-                    <div className="mt-3 space-y-2">
-                      {topRevenueListings.slice(0, 5).map((entry) => (
-                        <div
-                          key={`revenue-${entry.item.id}`}
-                          className="rounded-xl border border-green-100 bg-green-50 p-3"
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-black text-[#0d1c38]">
-                                {entry.item.title}
-                              </p>
-                              <p className="mt-1 text-xs text-slate-500">
-                                {entry.item.location} · {entry.item.price} · Marketing {entry.marketingScore}%
-                              </p>
+                        {nextFollowUps.slice(0, 8).map((item) => (
+                          <div key={`${item.kind}-${item.id}`} className="rounded-2xl bg-[#f7f8fb] p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-[#d49613]">
+                                {item.source}
+                              </span>
+                              <span className={`rounded-full px-3 py-1 text-[11px] font-black ${item.priority === "Urgent" ? "bg-red-100 text-red-700" : item.priority === "High" ? "bg-orange-100 text-orange-700" : "bg-slate-200 text-slate-600"}`}>
+                                {item.priority}
+                              </span>
                             </div>
-
-                            <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wide text-green-700">
-                              {formatNairaCompact(entry.estimatedCommission)}
-                            </span>
+                            <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
+                            <p className="mt-1 text-sm text-slate-500">{item.title}</p>
+                            <p className="mt-2 text-xs font-bold text-slate-400">
+                              Follow-up: {formatDate(item.followUpDate)} • Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                            </p>
                           </div>
-                        </div>
-                      ))}
-
-                      {topRevenueListings.length === 0 ? (
-                        <p className="text-sm font-bold leading-6 text-slate-500">
-                          Add property prices and marketing-ready listings to activate revenue opportunities.
-                        </p>
-                      ) : null}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={copyRevenueForecastReport}
-                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
-                    >
-                      Copy revenue report
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={exportRevenueForecastCsv}
-                      className="rounded-xl border border-green-200 bg-white px-3 py-2.5 text-xs font-black text-green-700 hover:bg-green-50"
-                    >
-                      Export revenue CSV
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={createRevenueFollowUpTask}
-                      className="col-span-2 rounded-xl border border-[#f0bf3c] bg-white px-3 py-2.5 text-xs font-black text-[#9b6b16] hover:bg-[#fff7df]"
-                    >
-                      Create revenue follow-up task
-                    </button>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
-                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                     <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Marketing campaign center
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Staff notification center
                       </p>
-                      <p className="mt-1 text-xs leading-5 text-pink-700">
-                        Create professional WhatsApp/social copy, marketing tasks, and campaign exports using verified marketplace data.
+                      <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                        New platform activity
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        Alerts for new investor requests, property inquiries, contact messages, inspection bookings, and pending property submissions.
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {campaignReadyListingsCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-pink-700">
-                          Ready
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {featuredMarketingListingsCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-[#9b6b16]">
-                          Featured
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {marketingNeedsWorkCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-red-600">
-                          Fix first
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mb-4 grid grid-cols-2 gap-2">
                     <button
-                      type="button"
-                      onClick={exportMarketingCampaignCsv}
-                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
+                      onClick={markAllNotificationsRead}
+                      className="rounded-full bg-[#0d1c38] px-5 py-2 text-xs font-black text-white"
                     >
-                      Export marketing CSV
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const firstReady = marketingCampaignInsights.find((entry) => entry.marketingScore >= 80);
-                        if (firstReady) {
-                          copyListingMarketingCopy(firstReady.item);
-                        } else {
-                          showMessage("No campaign-ready listing yet. Improve verification, documents, and media first.");
-                        }
-                      }}
-                      className="rounded-xl border border-pink-200 bg-white px-3 py-2.5 text-xs font-black text-pink-700 hover:bg-pink-50"
-                    >
-                      Copy best campaign
+                      Mark all read
                     </button>
                   </div>
 
-                  <div className="space-y-2">
-                    {marketingCampaignInsights.slice(0, 6).map((entry) => (
+                  <div className="mt-5 grid gap-3">
+                    {staffNotifications.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No staff notifications yet. New activity will appear here.
+                      </p>
+                    )}
+
+                    {staffNotifications.slice(0, 12).map((notification) => (
                       <div
-                        key={`marketing-${entry.item.id}`}
-                        className="rounded-2xl border border-pink-100 bg-white p-3"
+                        key={notification.id}
+                        className={`rounded-2xl border p-5 ${
+                          notification.isRead
+                            ? "border-slate-200 bg-white"
+                            : "border-[#f0bf3c] bg-[#fff8e5]"
+                        }`}
                       >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-[#0d1c38]">
-                              {entry.item.title}
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                              {entry.item.location} · {entry.item.price} · {entry.priceIntel.label}
-                            </p>
-                          </div>
-
-                          <span
-                            className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
-                              entry.marketingScore >= 80
-                                ? "bg-emerald-50 text-emerald-700"
-                                : entry.marketingScore >= 60
-                                  ? "bg-[#fff7df] text-[#9b6b16]"
-                                  : "bg-red-50 text-red-700"
-                            }`}
-                          >
-                            {entry.marketingScore}% ready
-                          </span>
-                        </div>
-
-                        <p className="mt-2 text-xs leading-5 text-slate-500">
-                          DD {entry.dueScore}% · Documents {entry.documentScore}% · {entry.item.featured ? "Featured" : "Not featured"}
-                        </p>
-
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => copyListingMarketingCopy(entry.item)}
-                            className="rounded-xl border border-pink-200 px-3 py-2 text-xs font-black text-pink-700 hover:bg-pink-50"
-                          >
-                            Copy campaign
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => createMarketingTask(entry.item)}
-                            className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white hover:bg-[#162b52]"
-                          >
-                            Create task
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Admin communication template center
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-purple-700">
-                        Copy professional WhatsApp/email scripts for buyer follow-up, inspection confirmation, owner verification, documents, JV checks, and launch announcements.
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        6
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-purple-700">
-                        Templates
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {[
-                      {
-                        title: "Buyer follow-up",
-                        audience: "Buyer / investor",
-                        text:
-                          "Hello, thank you for your interest in INAMAAD Real Estate. Please share your preferred location, budget, property type, timeline, and whether you want inspection support so we can match you with verified options.",
-                      },
-                      {
-                        title: "Inspection confirmation",
-                        audience: "Inspection request",
-                        text:
-                          "Hello, your inspection request has been received by INAMAAD Real Estate. Please confirm your preferred date, time, contact number, and the property you want to inspect. We will coordinate the next step before payment or commitment.",
-                      },
-                      {
-                        title: "Owner verification request",
-                        audience: "Owner / agent",
-                        text:
-                          "Hello, INAMAAD requires owner/agent verification before promoting this listing. Kindly provide your full name, role, mandate/authorization, property title details, phone number, and any supporting document needed for admin review.",
-                      },
-                      {
-                        title: "Missing documents request",
-                        audience: "Listing quality",
-                        text:
-                          "Hello, this listing needs stronger document support before full marketplace promotion. Please provide available title evidence such as C of O, deed, allocation letter, survey plan, registered title, or other proof for review.",
-                      },
-                      {
-                        title: "JV due diligence request",
-                        audience: "JV partner",
-                        text:
-                          "Hello, for this JV opportunity, kindly provide land title details, proposed sharing formula, land size, development concept, project stage, expected partner role, approval status, and any legal or technical document available.",
-                      },
-                      {
-                        title: "Launch announcement",
-                        audience: "Public / marketing",
-                        text:
-                          "INAMAAD Real Estate is building a professional marketplace for verified properties, JV opportunities, buyer concierge support, inspection booking, CRM follow-up, and safer real estate decision-making across Nigeria.",
-                      },
-                    ].map((template) => (
-                      <div
-                        key={template.title}
-                        className="rounded-2xl border border-purple-100 bg-white p-4"
-                      >
-                        <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                           <div>
-                            <p className="text-sm font-black text-[#0d1c38]">
-                              {template.title}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-[#0d1c38] px-3 py-1 text-[11px] font-black text-white">
+                                {notification.type}
+                              </span>
+
+                              {!notification.isRead && (
+                                <span className="rounded-full bg-[#f0bf3c] px-3 py-1 text-[11px] font-black text-[#0d1c38]">
+                                  New
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-3 font-black text-[#0d1c38]">
+                              {notification.title}
                             </p>
-                            <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-purple-700">
-                              {template.audience}
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                              {notification.message}
+                            </p>
+                            <p className="mt-2 text-xs font-bold text-slate-400">
+                              {formatDate(notification.createdAt)}
                             </p>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              copyAdminCommunicationTemplate(template.title, template.text)
-                            }
-                            className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white hover:bg-[#162b52]"
-                          >
-                            Copy
-                          </button>
-                        </div>
-
-                        <p className="text-xs leading-5 text-slate-500">
-                          {template.text}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Admin task manager
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-blue-700">
-                        Plan follow-ups for listings, buyer calls, inspections, documents, and team operations.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {openAdminTasksCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-blue-700">
-                          Open
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {urgentAdminTasksCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-red-600">
-                          Urgent
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {dueAdminTasksCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-[#9b6b16]">
-                          Due
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <form onSubmit={addAdminTask} className="mb-4 grid gap-3 rounded-2xl bg-white p-4">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <input
-                        required
-                        value={adminTaskForm.title}
-                        onChange={(e) =>
-                          setAdminTaskForm({ ...adminTaskForm, title: e.target.value })
-                        }
-                        placeholder="Task title, e.g. Call buyer, verify C of O..."
-                        className="w-full rounded-xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-
-                      <input
-                        value={adminTaskForm.assignee}
-                        onChange={(e) =>
-                          setAdminTaskForm({ ...adminTaskForm, assignee: e.target.value })
-                        }
-                        placeholder="Assignee"
-                        className="w-full rounded-xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <input
-                        type="date"
-                        value={adminTaskForm.dueDate}
-                        onChange={(e) =>
-                          setAdminTaskForm({ ...adminTaskForm, dueDate: e.target.value })
-                        }
-                        className="w-full rounded-xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-
-                      <select
-                        value={adminTaskForm.priority}
-                        onChange={(e) =>
-                          setAdminTaskForm({
-                            ...adminTaskForm,
-                            priority: e.target.value as AdminTask["priority"],
-                          })
-                        }
-                        className="w-full rounded-xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                      >
-                        <option value="Low">Low priority</option>
-                        <option value="Medium">Medium priority</option>
-                        <option value="High">High priority</option>
-                        <option value="Urgent">Urgent priority</option>
-                      </select>
-
-                      <button
-                        type="submit"
-                        className="rounded-xl bg-[#0d1c38] px-3 py-3 text-sm font-black text-white hover:bg-[#162b52]"
-                      >
-                        Add task
-                      </button>
-                    </div>
-
-                    <textarea
-                      value={adminTaskForm.note}
-                      onChange={(e) =>
-                        setAdminTaskForm({ ...adminTaskForm, note: e.target.value })
-                      }
-                      rows={3}
-                      placeholder="Task note or follow-up detail..."
-                      className="w-full rounded-xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                  </form>
-
-                  <div className="mb-4 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={exportAdminTasksCsv}
-                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
-                    >
-                      Export tasks CSV
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAdminTaskForm({
-                          title: "",
-                          assignee: "Admin",
-                          dueDate: "",
-                          priority: "Medium",
-                          note: "",
-                        });
-                        showMessage("Task form cleared.");
-                      }}
-                      className="rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-xs font-black text-blue-700 hover:bg-blue-50"
-                    >
-                      Clear form
-                    </button>
-                  </div>
-
-                  {adminTasks.length > 0 ? (
-                    <div className="space-y-2">
-                      {adminTasks.slice(0, 8).map((task) => (
-                        <div
-                          key={task.id}
-                          className="rounded-2xl border border-blue-100 bg-white p-3"
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-sm font-black text-[#0d1c38]">
-                                {task.title}
-                              </p>
-                              <p className="mt-1 text-xs leading-5 text-slate-500">
-                                {task.assignee} {task.dueDate ? `· Due ${task.dueDate}` : ""} {task.note ? `· ${task.note}` : ""}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              <span
-                                className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
-                                  task.priority === "Urgent"
-                                    ? "bg-red-50 text-red-700"
-                                    : task.priority === "High"
-                                      ? "bg-orange-50 text-orange-700"
-                                      : "bg-blue-50 text-blue-700"
-                                }`}
-                              >
-                                {task.priority}
-                              </span>
-
-                              <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600">
-                                {task.status}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            {(["Open", "In Progress", "Done"] as AdminTask["status"][]).map((status) => (
+                          <div className="flex flex-wrap gap-2 md:justify-end">
+                            {!notification.isRead && (
                               <button
-                                key={`${task.id}-${status}`}
-                                type="button"
-                                onClick={() => updateAdminTaskStatus(task.id, status)}
-                                className={`rounded-xl px-3 py-2 text-xs font-black ${
-                                  task.status === status
-                                    ? "bg-[#0d1c38] text-white"
-                                    : "border border-slate-200 text-slate-600 hover:bg-slate-50"
-                                }`}
+                                onClick={() => markNotificationRead(notification.id)}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700"
                               >
-                                {status}
+                                Mark read
                               </button>
-                            ))}
+                            )}
 
                             <button
-                              type="button"
-                              onClick={() => deleteAdminTask(task.id)}
-                              className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600 hover:bg-red-50"
+                              onClick={() => deleteStaffNotification(notification.id)}
+                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white"
                             >
                               Delete
                             </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-sm font-bold leading-6 text-slate-500">
-                        No admin tasks yet. Add tasks for buyer follow-up, title verification, inspection scheduling, owner calls, or backup reminders.
-                      </p>
-                    </div>
-                  )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                     <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Admin activity log
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Admin audit log
                       </p>
-                      <p className="mt-1 text-xs leading-5 text-emerald-700">
-                        Tracks important admin, listing, lead, inspection, and backup actions in this browser.
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
-                      <p className="text-2xl font-black text-[#0d1c38]">
-                        {activityLogs.length}
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700">
-                        Logs
+                      <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                        Staff activity history
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        Track approvals, edits, deletions, lead status changes, and secure document access.
                       </p>
                     </div>
+
+                    <span className="rounded-full bg-[#0d1c38] px-5 py-2 text-xs font-black text-white">
+                      {adminActivityLogs.length} records
+                    </span>
                   </div>
 
-                  <div className="mb-4 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={exportActivityLogsCsv}
-                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
-                    >
-                      Export log CSV
-                    </button>
+                  <div className="mt-5 grid gap-3">
+                    {adminActivityLogs.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No admin activity recorded yet. Staff actions will appear here.
+                      </p>
+                    )}
 
-                    <button
-                      type="button"
-                      onClick={clearActivityLogs}
-                      className="rounded-xl border border-red-200 bg-white px-3 py-2.5 text-xs font-black text-red-600 hover:bg-red-50"
-                    >
-                      Clear log
-                    </button>
-                  </div>
+                    {adminActivityLogs.slice(0, 15).map((log) => (
+                      <div
+                        key={log.id}
+                        className="rounded-2xl border border-slate-200 bg-[#f7f8fb] p-5"
+                      >
+                        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+                          <div>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="rounded-full bg-[#0d1c38] px-3 py-1 text-[11px] font-black text-white">
+                                {log.targetType}
+                              </span>
+                              <span className="rounded-full bg-[#f0bf3c] px-3 py-1 text-[11px] font-black text-[#0d1c38]">
+                                {log.adminEmail}
+                              </span>
+                            </div>
 
-                  {activityLogs.length > 0 ? (
-                    <div className="space-y-2">
-                      {activityLogs.slice(0, 8).map((log) => (
-                        <div
-                          key={log.id}
-                          className="rounded-2xl border border-emerald-100 bg-white p-3"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-sm font-black text-[#0d1c38]">
+                            <p className="mt-3 font-black text-[#0d1c38]">
                               {log.action}
                             </p>
-                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-700">
-                              {log.category}
-                            </span>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                              {log.details || "No extra details."}
+                            </p>
+                            <p className="mt-2 text-xs font-bold text-slate-400">
+                              {formatDate(log.createdAt)}
+                              {log.targetId ? ` • ID: ${log.targetId}` : ""}
+                            </p>
                           </div>
-
-                          <p className="mt-1 text-xs leading-5 text-slate-500">
-                            {log.detail}
-                          </p>
-                          <p className="mt-2 text-[10px] font-black uppercase tracking-wide text-slate-400">
-                            {formatActivityDate(log.createdAt)}
-                          </p>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl bg-white p-4">
-                      <p className="text-sm font-bold leading-6 text-slate-500">
-                        No activity yet. New admin actions, leads, inspections, and backup events will appear here.
-                      </p>
-                    </div>
-                  )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="mb-4">
-                    <p className="text-sm font-black text-[#0d1c38]">
-                      Data backup and exports
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Export listings, leads, inspections, or a full JSON backup before major edits or deployment.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={exportListingsCsv}
-                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-black text-[#0d1c38] hover:bg-slate-50"
-                    >
-                      Export listings CSV
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={exportLeadsCsv}
-                      className="rounded-xl border border-blue-200 px-3 py-2.5 text-xs font-black text-blue-700 hover:bg-blue-50"
-                    >
-                      Export leads CSV
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportCrmPipelineCsv}
-                      className="rounded-xl border border-indigo-200 px-3 py-2.5 text-xs font-black text-indigo-700 hover:bg-indigo-50"
-                    >
-                      Export CRM CSV
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportLaunchReadinessReportCsv}
-                      className="rounded-xl border border-[#f0bf3c] px-3 py-2.5 text-xs font-black text-[#9b6b16] hover:bg-[#fff7df]"
-                    >
-                      Export launch report
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportExecutiveMarketplaceReportTxt}
-                      className="rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-black text-[#0d1c38] hover:bg-slate-50"
-                    >
-                      Export executive TXT
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportDocumentReadinessCsv}
-                      className="rounded-xl border border-emerald-200 px-3 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-50"
-                    >
-                      Export document readiness
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportMarketingCampaignCsv}
-                      className="rounded-xl border border-pink-200 px-3 py-2.5 text-xs font-black text-pink-700 hover:bg-pink-50"
-                    >
-                      Export marketing CSV
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportRevenueForecastCsv}
-                      className="rounded-xl border border-green-200 px-3 py-2.5 text-xs font-black text-green-700 hover:bg-green-50"
-                    >
-                      Export revenue forecast
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportInspectionScheduleCsv}
-                      className="rounded-xl border border-purple-200 px-3 py-2.5 text-xs font-black text-purple-700 hover:bg-purple-50"
-                    >
-                      Export inspection schedule
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={exportInspectionsCsv}
-                      className="rounded-xl border border-purple-200 px-3 py-2.5 text-xs font-black text-purple-700 hover:bg-purple-50"
-                    >
-                      Export inspections CSV
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={exportActivityLogsCsv}
-                      className="rounded-xl border border-emerald-200 px-3 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-50"
-                    >
-                      Export activity CSV
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={exportFullBackupJson}
-                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
-                    >
-                      Full JSON backup
-                    </button>
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3">
-                    <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">
-                      Restore full JSON backup
-                    </label>
-                    <input
-                      type="file"
-                      accept="application/json,.json"
-                      onChange={handleRestoreBackup}
-                      className="w-full rounded-xl bg-white px-3 py-2 text-xs"
-                    />
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Only restore backups exported from this INAMAAD admin panel.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={clearDemoDataConfirm}
-                    className="mt-3 w-full rounded-xl border border-red-200 px-3 py-2.5 text-xs font-black text-red-600 hover:bg-red-50"
-                  >
-                    Reset local demo data
-                  </button>
-                </div>
-
-                <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                     <div>
-                      <p className="text-sm font-black text-[#0d1c38]">
-                        Admin CRM pipeline
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Staff management
                       </p>
-                      <p className="mt-1 text-xs leading-5 text-indigo-700">
-                        Track lead stage, priority, source, follow-up date, and internal notes.
+                      <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                        Admin users and roles
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                        Add staff emails, assign roles, deactivate access, and keep your INAMAAD operations controlled. New staff must also exist in Supabase Authentication so they can log in with a password.
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-center">
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {hotLeadsCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-red-600">
-                          Hot
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-2">
-                        <p className="text-lg font-black text-[#0d1c38]">
-                          {dueLeadFollowUpsCount}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-wide text-[#9b6b16]">
-                          Due
-                        </p>
-                      </div>
-                    </div>
+                    <span className="rounded-full bg-[#0d1c38] px-5 py-2 text-xs font-black text-white">
+                      {staffMembers.length} staff
+                    </span>
                   </div>
 
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {leadPipelineCounts.map((item) => (
-                      <div key={item.stage} className="rounded-2xl bg-white p-3">
-                        <p className="text-xl font-black text-[#0d1c38]">
-                          {item.count}
-                        </p>
-                        <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-indigo-700">
-                          {item.stage}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={exportCrmPipelineCsv}
-                    className="mt-3 w-full rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
-                  >
-                    Export CRM pipeline CSV
-                  </button>
-                </div>
-
-                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                  <p className="mb-1 text-sm font-black text-[#0d1c38]">
-                    Investor leads: {leads.length}
-                  </p>
-                  <p className="text-xs text-blue-700">
-                    Track enquiries from property details, JV deals, and investor request forms.
-                  </p>
-                </div>
-
-                {leads.length > 0 && (
-                  <div className="space-y-3">
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                      Recent enquiries
+                  {!isSuperAdmin && (
+                    <p className="mt-5 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-700">
+                      Your current role is {currentStaffMember?.role || "Staff"}. Only Super Admin can add, remove, activate, or change staff roles.
                     </p>
+                  )}
 
-                    {leads.slice(0, 5).map((lead) => (
-                      <div key={lead.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <div className="mb-3 flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-black text-[#0d1c38]">{lead.name}</p>
-                            <p className="text-xs text-slate-500">
-                              {lead.email} · {lead.phone}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-black ${
-                                getLeadStage(lead) === "New"
-                                  ? "bg-blue-50 text-blue-700"
-                                  : getLeadStage(lead) === "Closed"
-                                    ? "bg-green-50 text-green-700"
-                                    : "bg-yellow-50 text-yellow-700"
-                              }`}
-                            >
-                              {getLeadStage(lead)}
-                            </span>
-
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-black ${
-                                getLeadPriority(lead) === "Hot"
-                                  ? "bg-red-50 text-red-700"
-                                  : getLeadPriority(lead) === "High"
-                                    ? "bg-orange-50 text-orange-700"
-                                    : "bg-slate-100 text-slate-600"
-                              }`}
-                            >
-                              {getLeadPriority(lead)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {lead.listingTitle ? (
-                          <p className="mb-2 text-xs font-black text-[#9b6b16]">
-                            Property: {lead.listingTitle}
-                          </p>
-                        ) : null}
-
-                        <p className="mb-2 text-xs font-black text-slate-500">
-                          Budget: {lead.budget} · Source: {getLeadSource(lead)}
-                        </p>
-
-                        <div className="mb-3 grid gap-2 sm:grid-cols-3">
-                          <select
-                            value={getLeadStage(lead)}
-                            onChange={(e) =>
-                              updateLeadCrmStage(lead.id, e.target.value as LeadStage)
-                            }
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#0d1c38]"
-                          >
-                            {LEAD_PIPELINE_STAGES.map((stage) => (
-                              <option key={stage} value={stage}>
-                                {stage}
-                              </option>
-                            ))}
-                          </select>
-
-                          <select
-                            value={getLeadPriority(lead)}
-                            onChange={(e) =>
-                              updateLeadPriority(lead.id, e.target.value as LeadPriority)
-                            }
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#0d1c38]"
-                          >
-                            {LEAD_PRIORITIES.map((priority) => (
-                              <option key={priority} value={priority}>
-                                {priority}
-                              </option>
-                            ))}
-                          </select>
-
-                          <input
-                            type="date"
-                            value={lead.followUpDate || ""}
-                            onChange={(e) =>
-                              updateLeadFollowUpDate(lead.id, e.target.value)
-                            }
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#0d1c38]"
-                          />
-                        </div>
-
-                        <textarea
-                          value={lead.notes || ""}
-                          onChange={(e) => updateLeadNotes(lead.id, e.target.value)}
-                          placeholder="Internal CRM note, follow-up plan, inspection status..."
-                          rows={2}
-                          className="mb-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold outline-none focus:border-[#0d1c38]"
-                        />
-
-                        <p className="mb-3 text-sm leading-6 text-slate-600">{lead.message}</p>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <a
-                            href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, "")}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-xl bg-green-500 px-3 py-2 text-center text-xs font-black text-white"
-                          >
-                            WhatsApp
-                          </a>
-
-                          <button
-                            type="button"
-                            onClick={() => updateLeadStatus(lead.id, "Contacted")}
-                            className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white"
-                          >
-                            Mark contacted
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => updateLeadStatus(lead.id, "Closed")}
-                            className="rounded-xl border border-green-200 px-3 py-2 text-xs font-black text-green-700"
-                          >
-                            Close
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => deleteLead(lead.id)}
-                            className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
-                  <p className="mb-1 text-sm font-black text-[#0d1c38]">
-                    Inspection requests: {inspections.length}
-                  </p>
-                  <p className="text-xs text-purple-700">
-                    Confirm, complete, cancel, or remove property inspection requests.
-                  </p>
-                </div>
-
-                {inspections.length > 0 && (
-                  <div className="space-y-3">
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                      Property inspections
-                    </p>
-
-                    {inspections.slice(0, 5).map((inspection) => (
-                      <div
-                        key={inspection.id}
-                        className="rounded-2xl border border-slate-200 bg-white p-4"
-                      >
-                        <div className="mb-3 flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-black text-[#0d1c38]">
-                              {inspection.name}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {inspection.email} · {inspection.phone}
-                            </p>
-                          </div>
-
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-black ${
-                              inspection.status === "New"
-                                ? "bg-purple-50 text-purple-700"
-                                : inspection.status === "Confirmed"
-                                  ? "bg-blue-50 text-blue-700"
-                                  : inspection.status === "Completed"
-                                    ? "bg-green-50 text-green-700"
-                                    : "bg-red-50 text-red-700"
-                            }`}
-                          >
-                            {inspection.status}
-                          </span>
-                        </div>
-
-                        {inspection.listingTitle ? (
-                          <p className="mb-2 text-xs font-black text-[#9b6b16]">
-                            Property: {inspection.listingTitle}
-                          </p>
-                        ) : null}
-
-                        <p className="mb-2 text-xs font-black text-slate-500">
-                          Preferred: {inspection.preferredDate} at {inspection.preferredTime}
-                        </p>
-
-                        {inspection.note ? (
-                          <p className="mb-3 text-sm leading-6 text-slate-600">
-                            {inspection.note}
-                          </p>
-                        ) : null}
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <a
-                            href={`https://wa.me/${inspection.phone.replace(/[^0-9]/g, "")}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-xl bg-green-500 px-3 py-2 text-center text-xs font-black text-white"
-                          >
-                            WhatsApp
-                          </a>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateInspectionStatus(inspection.id, "Confirmed")
-                            }
-                            className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white"
-                          >
-                            Confirm
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateInspectionStatus(inspection.id, "Completed")
-                            }
-                            className="rounded-xl border border-green-200 px-3 py-2 text-xs font-black text-green-700"
-                          >
-                            Complete
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateInspectionStatus(inspection.id, "Cancelled")
-                            }
-                            className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600"
-                          >
-                            Cancel
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => deleteInspection(inspection.id)}
-                            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 sm:col-span-2"
-                          >
-                            Delete inspection
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <p className="mb-3 text-sm font-black text-[#0d1c38]">
-                    Admin listing search
-                  </p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
+                  <form onSubmit={addStaffMember} className="mt-5 grid gap-3 rounded-2xl bg-[#f7f8fb] p-5 md:grid-cols-4">
                     <input
-                      value={adminListingSearch}
-                      onChange={(e) => setAdminListingSearch(e.target.value)}
-                      placeholder="Search title, owner, state, status..."
-                      className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                      type="text"
+                      value={staffForm.fullName}
+                      onChange={(event) =>
+                        setStaffForm({ ...staffForm, fullName: event.target.value })
+                      }
+                      placeholder="Full name, e.g. Aisha Bello"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      disabled={!isSuperAdmin}
+                    />
+
+                    <input
+                      type="email"
+                      value={staffForm.email}
+                      onChange={(event) =>
+                        setStaffForm({ ...staffForm, email: event.target.value })
+                      }
+                      placeholder="staff@email.com"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      disabled={!isSuperAdmin}
                     />
 
                     <select
-                      value={adminListingStatusFilter}
-                      onChange={(e) => setAdminListingStatusFilter(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                      value={staffForm.role}
+                      onChange={(event) =>
+                        setStaffForm({
+                          ...staffForm,
+                          role: event.target.value as StaffRole,
+                        })
+                      }
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      disabled={!isSuperAdmin}
                     >
-                      <option value="all">All status</option>
-                      <option value="Verified">Verified</option>
-                      <option value="Pending review">Pending review</option>
+                      {staffRoleOptions.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
                     </select>
+
+                    <button
+                      type="submit"
+                      disabled={!isSuperAdmin}
+                      className="rounded-2xl bg-[#0d1c38] px-5 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                    >
+                      Add staff
+                    </button>
+                  </form>
+
+                  <div className="mt-5 grid gap-3">
+                    {staffMembers.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No staff members loaded yet. Make sure the staff management SQL policies were run.
+                      </p>
+                    )}
+
+                    {staffMembers.map((member) => (
+                      <div
+                        key={member.email}
+                        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                      >
+                        <div className="grid gap-4 md:grid-cols-[1.3fr_0.9fr_1.2fr] md:items-center">
+                          <div>
+                            <p className="font-black text-[#0d1c38]">
+                              {member.fullName || member.email}
+                            </p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              {member.email}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <span className="rounded-full bg-[#f0bf3c] px-3 py-1 text-[11px] font-black text-[#0d1c38]">
+                                {member.role}
+                              </span>
+                              <span
+                                className={`rounded-full px-3 py-1 text-[11px] font-black ${
+                                  member.isActive
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {member.isActive ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <select
+                            value={member.role}
+                            onChange={(event) =>
+                              updateStaffMemberRole(
+                                member.email,
+                                event.target.value as StaffRole
+                              )
+                            }
+                            className="rounded-2xl border border-slate-200 px-5 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                            disabled={!isSuperAdmin}
+                          >
+                            {staffRoleOptions.map((role) => (
+                              <option key={role} value={role}>
+                                {role}
+                              </option>
+                            ))}
+                          </select>
+
+                          <div className="flex flex-wrap gap-2 md:justify-end">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleStaffMemberActive(member.email, !member.isActive)
+                              }
+                              disabled={!isSuperAdmin || member.email === user?.email}
+                              className={`rounded-full px-4 py-2 text-xs font-black disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 ${
+                                member.isActive
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-emerald-100 text-emerald-700"
+                              }`}
+                            >
+                              {member.isActive ? "Deactivate" : "Activate"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => deleteStaffMember(member.email)}
+                              disabled={!isSuperAdmin || member.email === user?.email}
+                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <p className="mt-2 text-xs font-semibold text-slate-500">
-                    Showing {adminFilteredListings.length} of {listings.length} listings.
-                  </p>
                 </div>
 
-                {adminFilteredListings.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-slate-200 p-4">
-                    {editingListingId === item.id ? (
-                      <form onSubmit={handleEditListingSubmit} className="space-y-3">
-                        <div className="rounded-2xl bg-[#fff7df] p-3">
-                          <p className="text-xs font-black uppercase tracking-wide text-[#9b6b16]">
-                            Editing listing
+
+                <div className="rounded-[2rem] bg-[#0d1c38] p-6 text-white shadow-2xl shadow-slate-900/10">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.3em] text-[#f5c542]">
+                        Business analytics
+                      </p>
+                      <h3 className="mt-2 text-2xl font-black">
+                        INAMAAD performance dashboard
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                        Track property inventory, verified asset value, lead flow,
+                        and the strongest property categories from your staff portal.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 px-5 py-4">
+                      <p className="text-xs uppercase tracking-[0.25em] text-slate-300">
+                        Total pipeline value
+                      </p>
+                      <p className="mt-1 text-3xl font-black text-[#f5c542]">
+                        {formatNairaCompact(totalPropertyValue)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Verified listings</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {verifiedListings.length}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Approved and visible publicly
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Verified value</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {formatNairaCompact(verifiedPropertyValue)}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Approved property inventory value
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Total leads</p>
+                      <p className="mt-2 text-3xl font-black">{totalLeads}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Investor requests + property inquiries + offers + contact messages + inspection bookings
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Property inquiries</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {conversionReadyLeads}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Buyer leads from listing pages
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Property offers</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {propertyOffers.length}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Serious offer and reservation requests
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Contact messages</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {contactMessages.length}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Direct messages from contact section
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Inspection bookings</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {inspectionBookings.length}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Property viewing appointment requests
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Property views</p>
+                      <p className="mt-2 text-3xl font-black">
+                        {totalPropertyViews}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Total listing detail page opens
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Most viewed property</p>
+                      <p className="mt-2 text-2xl font-black">{mostViewedProperty}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {mostViewedPropertyCount} view{mostViewedPropertyCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Top location</p>
+                      <p className="mt-2 text-2xl font-black">{topLocation}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {topLocationCount} listing{topLocationCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-5">
+                      <p className="text-sm text-slate-300">Top asset type</p>
+                      <p className="mt-2 text-2xl font-black">{topType}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {topTypeCount} listing{topTypeCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Property views
+                      </p>
+                      <h3 className="mt-2 text-2xl font-black text-[#0d1c38]">
+                        Most viewed listings
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                        See which properties buyers and investors open the most. Use this to know which assets deserve stronger follow-up or promotion.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-4">
+                    {topViewedListings.map((listing, index) => (
+                      <div
+                        key={listing.id}
+                        className="flex flex-col justify-between gap-3 rounded-2xl bg-[#f7f8fb] p-5 md:flex-row md:items-center"
+                      >
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                            #{index + 1} viewed property
                           </p>
-                          <p className="mt-1 text-sm font-black text-[#0d1c38]">
-                            {item.title}
+                          <p className="mt-1 text-xs font-black uppercase tracking-[0.16em] text-[#d49613]">
+                            {buildListingReference(listing.id)}
+                          </p>
+                          <p className="mt-1 font-black text-[#0d1c38]">
+                            {listing.title}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {listing.location} • {listing.price}
                           </p>
                         </div>
 
-                        <input
-                          required
-                          value={editListingForm.title}
-                          onChange={(e) =>
-                            setEditListingForm({
-                              ...editListingForm,
-                              title: e.target.value,
-                            })
-                          }
-                          placeholder="Listing title"
-                          className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                        />
-
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <input
-                            required
-                            value={editListingForm.location}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                location: e.target.value,
-                              })
-                            }
-                            placeholder="Location"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-
-                          <input
-                            required
-                            value={editListingForm.state}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                state: e.target.value,
-                              })
-                            }
-                            placeholder="State"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <input
-                            required
-                            value={editListingForm.price}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                price: e.target.value,
-                              })
-                            }
-                            placeholder="Price / value"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-
-                          <input
-                            value={editListingForm.roi}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                roi: e.target.value,
-                              })
-                            }
-                            placeholder="ROI"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <select
-                            value={editListingForm.typeValue}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                typeValue: e.target.value,
-                              })
-                            }
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          >
-                            <option value="residential">Residential</option>
-                            <option value="commercial">Commercial</option>
-                            <option value="land">Land</option>
-                            <option value="joint_venture">Joint Venture</option>
-                          </select>
-
-                          <select
-                            value={editListingForm.status}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                status: e.target.value,
-                              })
-                            }
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          >
-                            <option value="Verified">Verified</option>
-                            <option value="Pending review">Pending review</option>
-                          </select>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <input
-                            value={editListingForm.bedrooms}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                bedrooms: e.target.value,
-                              })
-                            }
-                            placeholder="Bedrooms"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-
-                          <input
-                            value={editListingForm.bathrooms}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                bathrooms: e.target.value,
-                              })
-                            }
-                            placeholder="Bathrooms"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <input
-                            value={editListingForm.landSize}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                landSize: e.target.value,
-                              })
-                            }
-                            placeholder="Land size"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-
-                          <input
-                            value={editListingForm.documentTitle}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                documentTitle: e.target.value,
-                              })
-                            }
-                            placeholder="Document title"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <input
-                            value={editListingForm.ownerPhone}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                ownerPhone: e.target.value,
-                              })
-                            }
-                            placeholder="Owner phone"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-
-                          <input
-                            value={editListingForm.whatsapp}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                whatsapp: e.target.value,
-                              })
-                            }
-                            placeholder="WhatsApp"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-                        </div>
-
-                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                          <label className="flex items-center gap-3 text-sm font-black text-[#0d1c38]">
-                            <input
-                              type="checkbox"
-                              checked={editListingForm.ownerVerified}
-                              onChange={(e) =>
-                                setEditListingForm({
-                                  ...editListingForm,
-                                  ownerVerified: e.target.checked,
-                                })
-                              }
-                              className="h-4 w-4"
-                            />
-                            Owner / agent verified by admin
-                          </label>
-
-                          <textarea
-                            value={editListingForm.ownerVerificationNote}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                ownerVerificationNote: e.target.value,
-                              })
-                            }
-                            placeholder="Verification note"
-                            rows={3}
-                            className="mt-3 w-full rounded-xl border border-emerald-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
-                        </div>
-
-                        <div className="rounded-2xl border border-[#f0bf3c]/30 bg-[#fff7df] p-4">
-                          <p className="mb-2 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
-                            Admin valuation note
+                        <div className="rounded-2xl bg-white px-5 py-3 text-right shadow-sm">
+                          <p className="text-2xl font-black text-[#0d1c38]">
+                            {listing.views}
                           </p>
-                          <textarea
-                            value={editListingForm.valuationNote}
-                            onChange={(e) =>
-                              setEditListingForm({
-                                ...editListingForm,
-                                valuationNote: e.target.value,
-                              })
-                            }
-                            placeholder="Example: Price is fair because of road access, document title, corner piece, commercial potential..."
-                            rows={3}
-                            className="w-full rounded-xl border border-[#f0bf3c]/30 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                          />
+                          <p className="text-xs font-bold text-slate-500">
+                            view{listing.views === 1 ? "" : "s"}
+                          </p>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-                        <textarea
-                          required
-                          rows={4}
-                          value={editListingForm.summary}
-                          onChange={(e) =>
-                            setEditListingForm({
-                              ...editListingForm,
-                              summary: e.target.value,
-                            })
-                          }
-                          placeholder="Summary"
-                          className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
-                        />
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            className="rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-black text-white"
-                          >
-                            Save changes
-                          </button>
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Reports
+                      </p>
+                      <h3 className="mt-2 text-2xl font-black text-[#0d1c38]">
+                        Export business data
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                        Download listings, leads, and performance numbers as CSV files for Excel, Google Sheets, accounting, or investor reporting.
+                      </p>
+                    </div>
+                  </div>
 
-                          <button
-                            type="button"
-                            onClick={cancelEditingListing}
-                            className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <>
-                        <div className="mb-3 flex items-start justify-between gap-4">
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={exportBusinessReportCsv}
+                      className="rounded-full bg-[#0d1c38] px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export business report
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportListingsCsv}
+                      className="rounded-full bg-slate-900 px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export listings
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportInvestorRequestsCsv}
+                      className="rounded-full bg-[#d49613] px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export investor requests
+                    </button>
+
+
+                    <button
+                      type="button"
+                      onClick={exportPropertyViewsCsv}
+                      className="rounded-full bg-slate-700 px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export property views
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportPropertyInquiriesCsv}
+                      className="rounded-full bg-emerald-600 px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export property inquiries
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportContactMessagesCsv}
+                      className="rounded-full bg-blue-700 px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export contact messages
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportInspectionBookingsCsv}
+                      className="rounded-full bg-purple-700 px-5 py-3 text-xs font-black text-white"
+                    >
+                      Export inspection bookings
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    Pending listings
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {pendingListings.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No pending listings right now.
+                      </p>
+                    )}
+
+                    {pendingListings.map((listing) => (
+                      <div
+                        key={listing.id}
+                        className="rounded-2xl border border-slate-200 p-5"
+                      >
+                        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                           <div>
-                            <p className="mb-1 text-xs font-black text-[#9b6b16]">
-                              {item.type}
+                            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d49613]">
+                              {buildListingReference(listing.id)}
                             </p>
-                            <h3 className="font-black text-[#0d1c38]">{item.title}</h3>
-                            <p className="mt-1 text-xs text-slate-500">
-                              {item.location} · {item.price}
+
+                            <p className="mt-1 font-black text-[#0d1c38]">
+                              {listing.title}
+                            </p>
+
+                            <p className="mt-1 text-sm text-slate-500">
+                              {listing.location} • {listing.price}
+                            </p>
+
+                            <p className="mt-2 text-sm text-slate-500">
+                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"} •{" "}
+                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"} • {listing.mandateStatus || "Not Confirmed"}
                             </p>
                           </div>
 
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-black ${
-                              item.status === "Verified"
-                                ? "bg-green-50 text-green-700"
-                                : "bg-yellow-50 text-yellow-700"
-                            }`}
-                          >
-                            {item.status}
-                          </span>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => openEditListing(listing)}
+                              disabled={!canEditListings}
+                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() => approveListing(listing.id)}
+                              disabled={!canApproveListings || !isListingVerificationComplete(listing)}
+                              title={!canApproveListings ? "Your role cannot approve listings" : !isListingVerificationComplete(listing) ? "Complete verification checklist first" : "Approve listing"}
+                              className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                            >
+                              {!canApproveListings ? "No approve access" : isListingVerificationComplete(listing) ? "Approve" : "Verify first"}
+                            </button>
+
+                            <button
+                              onClick={() => deleteListing(listing.id)}
+                              disabled={!canDeleteListings}
+                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-                        <div className="mb-3 rounded-2xl bg-[#fff7df] p-3">
-                          {(() => {
-                            const adminPriceIntel = getPriceIntelligence(item, listings);
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    Property inquiries
+                  </h3>
 
-                            return (
-                              <div>
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <p className="text-xs font-black uppercase tracking-wide text-[#9b6b16]">
-                                    {adminPriceIntel.label} · {adminPriceIntel.confidence}
-                                  </p>
-                                  <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getPriceBadgeClass(adminPriceIntel.label)}`}>
-                                    {adminPriceIntel.percentVsMarket > 0 ? "+" : ""}{adminPriceIntel.percentVsMarket}%
+                  <div className="mt-4 grid gap-4">
+                    {propertyInquiries.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No property inquiries yet.
+                      </p>
+                    )}
+
+                    {propertyInquiries.map((inquiry) => {
+                      const inquiryStatus = inquiry.status || "New";
+                      const inquiryWhatsAppMessage = `Hello ${inquiry.name}, this is INAMAAD Real Estate. We received your request about ${inquiry.listingTitle}.`;
+
+                      return (
+                        <div
+                          key={inquiry.id}
+                          className="rounded-2xl border border-slate-200 p-5"
+                        >
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                                  {inquiry.listingTitle}
+                                </p>
+
+                                <span
+                                  className={`rounded-full px-3 py-1 text-[11px] font-black ${leadStatusClass(
+                                    inquiryStatus
+                                  )}`}
+                                >
+                                  {inquiryStatus}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 font-black text-[#0d1c38]">
+                                {inquiry.name}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {inquiry.email || "No email"} • {inquiry.phone}
+                              </p>
+
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {inquiry.message || "No extra message."}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(inquiry.createdAt)}
+                              </p>
+
+                              {renderLeadAssignmentControls(
+                                "property_inquiries",
+                                inquiry.id,
+                                inquiry.assignedToEmail,
+                                inquiry.staffNotes,
+                                inquiry.priority || "Normal",
+                                inquiry.followUpDate || "",
+                                inquiry.lastContactedAt || ""
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <a
+                                href={createWhatsAppLeadLink(
+                                  inquiry.phone,
+                                  inquiryWhatsAppMessage
+                                )}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                WhatsApp
+                              </a>
+
+                              <a
+                                href={createCallLeadLink(inquiry.phone)}
+                                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Call
+                              </a>
+
+                              {inquiry.email && (
+                                <a
+                                  href={createEmailLeadLink(
+                                    inquiry.email,
+                                    `INAMAAD inquiry: ${inquiry.listingTitle}`
+                                  )}
+                                  className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white"
+                                >
+                                  Email
+                                </a>
+                              )}
+
+                              <button
+                                onClick={() =>
+                                  updatePropertyInquiryStatus(inquiry.id, "New")
+                                }
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                New
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updatePropertyInquiryStatus(
+                                    inquiry.id,
+                                    "Contacted"
+                                  )
+                                }
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                Contacted
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updatePropertyInquiryStatus(inquiry.id, "Closed")
+                                }
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                Closed
+                              </button>
+
+                              <button
+                                onClick={() => deletePropertyInquiry(inquiry.id)}
+                                disabled={!canDeleteLeads}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    JV partnership applications
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {jvApplications.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No JV partnership applications yet.
+                      </p>
+                    )}
+
+                    {jvApplications.map((application) => {
+                      const applicationStatus = application.status || "New";
+                      const jvWhatsAppMessage = `Hello ${application.applicantName}, this is INAMAAD Real Estate. We received your JV partnership application for ${application.listingTitle}.`;
+
+                      return (
+                        <div key={application.id} className="rounded-2xl border border-purple-200 bg-purple-50/40 p-5">
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-700">
+                                  {application.listingTitle}
+                                </p>
+
+                                <span className={`rounded-full px-3 py-1 text-[11px] font-black ${jvApplicationStatusClass(applicationStatus)}`}>
+                                  {applicationStatus}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 font-black text-[#0d1c38]">
+                                {application.applicantName} • {application.applicantRole}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {application.companyName || "No company stated"} • {application.applicantEmail || "No email"} • {application.applicantPhone}
+                              </p>
+
+                              {application.budgetCapacity && (
+                                <p className="mt-1 text-sm font-bold text-slate-600">
+                                  Budget / capacity: {application.budgetCapacity}
+                                </p>
+                              )}
+
+                              {application.experienceSummary && (
+                                <p className="mt-3 text-sm leading-6 text-slate-600">
+                                  <span className="font-black text-[#0d1c38]">Experience:</span> {application.experienceSummary}
+                                </p>
+                              )}
+
+                              {application.proposalMessage && (
+                                <p className="mt-2 text-sm leading-6 text-slate-600">
+                                  <span className="font-black text-[#0d1c38]">Proposal:</span> {application.proposalMessage}
+                                </p>
+                              )}
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(application.createdAt)}
+                              </p>
+
+                              <div className="mt-4 rounded-2xl border border-purple-100 bg-white p-4">
+                                <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">
+                                  JV applicant supporting documents
+                                </p>
+                                <p className="mt-1 text-xs font-bold text-slate-500">
+                                  Private staff-only files uploaded by the applicant. Use them for due diligence before shortlisting.
+                                </p>
+
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.companyProfileUrl, "company profile")}
+                                    disabled={!application.companyProfileUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    Company profile
+                                  </button>
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.cacCertificateUrl, "CAC certificate")}
+                                    disabled={!application.cacCertificateUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    CAC certificate
+                                  </button>
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.portfolioUrl, "portfolio / past projects")}
+                                    disabled={!application.portfolioUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    Portfolio
+                                  </button>
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.financialProofUrl, "financial proof")}
+                                    disabled={!application.financialProofUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    Financial proof
+                                  </button>
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.proposalDocumentUrl, "JV proposal document")}
+                                    disabled={!application.proposalDocumentUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    JV proposal
+                                  </button>
+                                  <button
+                                    onClick={() => openSecureJvApplicationDocument(application.otherDocumentUrl, "other supporting document")}
+                                    disabled={!application.otherDocumentUrl || !canManageLeads}
+                                    className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                  >
+                                    Other file
+                                  </button>
+                                </div>
+
+                                {!application.companyProfileUrl &&
+                                  !application.cacCertificateUrl &&
+                                  !application.portfolioUrl &&
+                                  !application.financialProofUrl &&
+                                  !application.proposalDocumentUrl &&
+                                  !application.otherDocumentUrl && (
+                                    <p className="mt-3 text-xs font-bold text-slate-400">
+                                      No applicant documents uploaded.
+                                    </p>
+                                  )}
+                              </div>
+
+                              {renderLeadAssignmentControls(
+                                "jv_applications",
+                                application.id,
+                                application.assignedToEmail,
+                                application.staffNotes,
+                                application.priority || "Normal",
+                                application.followUpDate || "",
+                                application.lastContactedAt || ""
+                              )}
+
+                              <div className="mt-4 rounded-2xl border border-purple-200 bg-white p-4">
+                                <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+                                  <div>
+                                    <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">
+                                      JV partner evaluation scorecard
+                                    </p>
+                                    <p className="mt-1 text-sm font-bold text-slate-500">
+                                      Score applicants before shortlisting or accepting JV partners.
+                                    </p>
+                                  </div>
+
+                                  <span className={`w-fit rounded-full px-4 py-2 text-xs font-black ${jvEvaluationScoreClass(jvEvaluationScore(application))}`}>
+                                    Score {jvEvaluationScore(application)}/15
                                   </span>
                                 </div>
-                                {item.valuationNote ? (
-                                  <p className="mt-2 text-xs leading-5 text-slate-600">
-                                    {item.valuationNote}
-                                  </p>
-                                ) : null}
+
+                                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                                  <label className="block">
+                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                      Experience rating
+                                    </span>
+                                    <select
+                                      value={application.experienceRating || 0}
+                                      onChange={(event) =>
+                                        updateLocalLeadDraft("jv_applications", application.id, {
+                                          experienceRating: Number(event.target.value),
+                                        })
+                                      }
+                                      disabled={!canManageLeads}
+                                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                      {[0, 1, 2, 3, 4, 5].map((rating) => (
+                                        <option key={rating} value={rating}>
+                                          {rating}/5
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <label className="block">
+                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                      Financial capacity
+                                    </span>
+                                    <select
+                                      value={application.financialCapacityRating || 0}
+                                      onChange={(event) =>
+                                        updateLocalLeadDraft("jv_applications", application.id, {
+                                          financialCapacityRating: Number(event.target.value),
+                                        })
+                                      }
+                                      disabled={!canManageLeads}
+                                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                      {[0, 1, 2, 3, 4, 5].map((rating) => (
+                                        <option key={rating} value={rating}>
+                                          {rating}/5
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <label className="block">
+                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                      Track record
+                                    </span>
+                                    <select
+                                      value={application.trackRecordRating || 0}
+                                      onChange={(event) =>
+                                        updateLocalLeadDraft("jv_applications", application.id, {
+                                          trackRecordRating: Number(event.target.value),
+                                        })
+                                      }
+                                      disabled={!canManageLeads}
+                                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                      {[0, 1, 2, 3, 4, 5].map((rating) => (
+                                        <option key={rating} value={rating}>
+                                          {rating}/5
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                  <label className="block">
+                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                      Document review status
+                                    </span>
+                                    <select
+                                      value={application.documentReviewStatus || "Not Reviewed"}
+                                      onChange={(event) =>
+                                        updateLocalLeadDraft("jv_applications", application.id, {
+                                          documentReviewStatus: event.target.value as JVDocumentReviewStatus,
+                                        })
+                                      }
+                                      disabled={!canManageLeads}
+                                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                      <option value="Not Reviewed">Not Reviewed</option>
+                                      <option value="Under Review">Under Review</option>
+                                      <option value="Verified">Verified</option>
+                                      <option value="Rejected">Rejected</option>
+                                    </select>
+                                  </label>
+
+                                  <label className="block">
+                                    <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                      Risk level
+                                    </span>
+                                    <select
+                                      value={application.riskLevel || "Normal"}
+                                      onChange={(event) =>
+                                        updateLocalLeadDraft("jv_applications", application.id, {
+                                          riskLevel: event.target.value as JVRiskLevel,
+                                        })
+                                      }
+                                      disabled={!canManageLeads}
+                                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                      <option value="Low">Low</option>
+                                      <option value="Normal">Normal</option>
+                                      <option value="High">High</option>
+                                      <option value="Critical">Critical</option>
+                                    </select>
+                                  </label>
+                                </div>
+
+                                <label className="mt-4 block">
+                                  <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                                    Evaluation notes
+                                  </span>
+                                  <textarea
+                                    value={application.evaluationNotes || ""}
+                                    onChange={(event) =>
+                                      updateLocalLeadDraft("jv_applications", application.id, {
+                                        evaluationNotes: event.target.value,
+                                      })
+                                    }
+                                    disabled={!canManageLeads}
+                                    rows={3}
+                                    placeholder="Example: Developer has 3 completed estates, strong financing evidence, but mandate letter still needs legal review."
+                                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-purple-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                  />
+                                </label>
+
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                  <button
+                                    onClick={() => saveJvApplicationEvaluation(application)}
+                                    disabled={!canManageLeads}
+                                    className="rounded-full bg-purple-700 px-5 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                  >
+                                    Save JV evaluation
+                                  </button>
+
+                                  {(application.evaluatedByEmail || application.evaluatedAt) && (
+                                    <p className="text-xs font-bold text-slate-500">
+                                      Last evaluated by {application.evaluatedByEmail || "staff"}
+                                      {application.evaluatedAt ? ` on ${formatDate(application.evaluatedAt)}` : ""}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                            );
-                          })()}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <a href={createWhatsAppLeadLink(application.applicantPhone, jvWhatsAppMessage)} target="_blank" rel="noreferrer" className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white">
+                                WhatsApp
+                              </a>
+
+                              <a href={createCallLeadLink(application.applicantPhone)} className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white">
+                                Call
+                              </a>
+
+                              {application.applicantEmail && (
+                                <a href={createEmailLeadLink(application.applicantEmail, `INAMAAD JV application: ${application.listingTitle}`)} className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white">
+                                  Email
+                                </a>
+                              )}
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "New")} disabled={!canManageLeads} className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                New
+                              </button>
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "Reviewing")} disabled={!canManageLeads} className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Reviewing
+                              </button>
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "Shortlisted")} disabled={!canManageLeads} className="rounded-full bg-purple-100 px-4 py-2 text-xs font-black text-purple-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Shortlisted
+                              </button>
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "Accepted")} disabled={!canManageLeads} className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Accepted
+                              </button>
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "Rejected")} disabled={!canManageLeads} className="rounded-full bg-red-100 px-4 py-2 text-xs font-black text-red-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Rejected
+                              </button>
+
+                              <button onClick={() => updateJvApplicationStatus(application.id, "Closed")} disabled={!canManageLeads} className="rounded-full bg-slate-200 px-4 py-2 text-xs font-black text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Closed
+                              </button>
+
+                              <button onClick={() => deleteJvApplication(application.id)} disabled={!canDeleteLeads} className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+                                Delete
+                              </button>
+                            </div>
+                          </div>
                         </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                        <p className="mb-4 text-sm leading-6 text-slate-500">
-                          {item.summary}
-                        </p>
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    Property offers / reservations
+                  </h3>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => approveListing(item.id)}
-                            className="rounded-xl bg-[#0d1c38] py-2.5 text-sm font-black text-white hover:bg-[#162b52]"
-                          >
-                            Approve
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => startEditingListing(item)}
-                            className="rounded-xl border border-blue-200 py-2.5 text-sm font-black text-blue-700 hover:bg-blue-50"
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => toggleFeaturedListing(item.id)}
-                            className={`rounded-xl border py-2.5 text-sm font-black ${
-                              item.featured
-                                ? "border-orange-200 text-orange-700 hover:bg-orange-50"
-                                : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                            }`}
-                          >
-                            {item.featured ? "Unfeature" : "Feature"}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              item.ownerVerified
-                                ? unverifyListingOwner(item.id)
-                                : verifyListingOwner(item.id)
-                            }
-                            className={`rounded-xl border py-2.5 text-sm font-black ${
-                              item.ownerVerified
-                                ? "border-yellow-200 text-yellow-700 hover:bg-yellow-50"
-                                : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                            }`}
-                          >
-                            {item.ownerVerified ? "Unverify owner" : "Verify owner"}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => duplicateListing(item)}
-                            className="rounded-xl border border-[#f0bf3c] py-2.5 text-sm font-black text-[#9b6b16] hover:bg-[#fff7df]"
-                          >
-                            Duplicate
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => deleteListing(item.id)}
-                            className="rounded-xl border border-red-200 py-2.5 text-sm font-black text-red-600 hover:bg-red-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </>
+                  <div className="mt-4 grid gap-4">
+                    {propertyOffers.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No property offers yet.
+                      </p>
                     )}
-                  </div>
-                ))}
 
-                {listings.length === 0 && (
-                  <div className="rounded-2xl border border-slate-200 p-6 text-center">
-                    <p className="text-sm text-slate-500">
-                      No opportunities available yet.
-                    </p>
+                    {propertyOffers.map((offer) => {
+                      const offerStatus = offer.status || "New";
+                      const offerWhatsAppMessage = `Hello ${offer.buyerName}, this is INAMAAD Real Estate. We received your offer/reservation request for ${offer.listingTitle}.`;
+
+                      return (
+                        <div key={offer.id} className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5">
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                                  {offer.listingTitle}
+                                </p>
+
+                                <span className={`rounded-full px-3 py-1 text-[11px] font-black ${offerStatusClass(offerStatus)}`}>
+                                  {offerStatus}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 font-black text-[#0d1c38]">
+                                {offer.buyerName}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {offer.buyerEmail || "No email"} • {offer.buyerPhone}
+                              </p>
+
+                              <p className="mt-2 text-sm font-black text-emerald-700">
+                                Offer: {offer.offerAmount || "Not stated"} • {offer.paymentPlan || "No payment plan"}
+                              </p>
+
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {offer.message || "No extra offer terms."}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(offer.createdAt)}
+                              </p>
+
+                              {renderLeadAssignmentControls(
+                                "property_offers",
+                                offer.id,
+                                offer.assignedToEmail,
+                                offer.staffNotes,
+                                offer.priority || "High",
+                                offer.followUpDate || "",
+                                offer.lastContactedAt || ""
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <a
+                                href={createWhatsAppLeadLink(offer.buyerPhone, offerWhatsAppMessage)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                WhatsApp
+                              </a>
+
+                              <a
+                                href={createCallLeadLink(offer.buyerPhone)}
+                                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Call
+                              </a>
+
+                              {offer.buyerEmail && (
+                                <a
+                                  href={createEmailLeadLink(offer.buyerEmail, `INAMAAD offer: ${offer.listingTitle}`)}
+                                  className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white"
+                                >
+                                  Email
+                                </a>
+                              )}
+
+                              <button onClick={() => updatePropertyOfferStatus(offer.id, "New")} disabled={!canManageLeads} className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                New
+                              </button>
+
+                              <button onClick={() => updatePropertyOfferStatus(offer.id, "Reviewing")} disabled={!canManageLeads} className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Reviewing
+                              </button>
+
+                              <button onClick={() => updatePropertyOfferStatus(offer.id, "Accepted")} disabled={!canManageLeads} className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Accepted
+                              </button>
+
+                              <button onClick={() => updatePropertyOfferStatus(offer.id, "Rejected")} disabled={!canManageLeads} className="rounded-full bg-red-100 px-4 py-2 text-xs font-black text-red-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Rejected
+                              </button>
+
+                              <button onClick={() => updatePropertyOfferStatus(offer.id, "Closed")} disabled={!canManageLeads} className="rounded-full bg-slate-200 px-4 py-2 text-xs font-black text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                                Closed
+                              </button>
+
+                              <button onClick={() => deletePropertyOffer(offer.id)} disabled={!canDeleteLeads} className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    Inspection bookings
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {inspectionBookings.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No inspection bookings yet.
+                      </p>
+                    )}
+
+                    {inspectionBookings.map((booking) => {
+                      const bookingStatus = booking.status || "New";
+                      const inspectionWhatsAppMessage = `Hello ${booking.name}, this is INAMAAD Real Estate. We received your inspection booking for ${booking.listingTitle}.`;
+
+                      return (
+                        <div
+                          key={booking.id}
+                          className="rounded-2xl border border-slate-200 p-5"
+                        >
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                                  {booking.listingTitle}
+                                </p>
+
+                                <span
+                                  className={`rounded-full px-3 py-1 text-[11px] font-black ${inspectionStatusClass(
+                                    bookingStatus
+                                  )}`}
+                                >
+                                  {bookingStatus}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 font-black text-[#0d1c38]">
+                                {booking.name}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {booking.email || "No email"} • {booking.phone}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                Preferred: {booking.preferredDate || "No date"} • {booking.preferredTime || "No time"}
+                              </p>
+
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {booking.message || "No message."}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(booking.createdAt)}
+                              </p>
+
+                              {renderLeadAssignmentControls(
+                                "inspection_bookings",
+                                booking.id,
+                                booking.assignedToEmail,
+                                booking.staffNotes,
+                                booking.priority || "Normal",
+                                booking.followUpDate || "",
+                                booking.lastContactedAt || ""
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <a
+                                href={createWhatsAppLeadLink(
+                                  booking.phone,
+                                  inspectionWhatsAppMessage
+                                )}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                WhatsApp
+                              </a>
+
+                              <a
+                                href={createCallLeadLink(booking.phone)}
+                                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Call
+                              </a>
+
+                              {booking.email && (
+                                <a
+                                  href={createEmailLeadLink(
+                                    booking.email,
+                                    `INAMAAD inspection booking: ${booking.listingTitle}`
+                                  )}
+                                  className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white"
+                                >
+                                  Email
+                                </a>
+                              )}
+
+                              <button
+                                onClick={() => updateInspectionBookingStatus(booking.id, "New")}
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                New
+                              </button>
+
+                              <button
+                                onClick={() => updateInspectionBookingStatus(booking.id, "Scheduled")}
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                Scheduled
+                              </button>
+
+                              <button
+                                onClick={() => updateInspectionBookingStatus(booking.id, "Completed")}
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                Completed
+                              </button>
+
+                              <button
+                                onClick={() => updateInspectionBookingStatus(booking.id, "Cancelled")}
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-red-100 px-4 py-2 text-xs font-black text-red-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                Cancelled
+                              </button>
+
+                              <button
+                                onClick={() => deleteInspectionBooking(booking.id)}
+                                disabled={!canDeleteLeads}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    Contact messages
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {contactMessages.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No contact messages yet.
+                      </p>
+                    )}
+
+                    {contactMessages.map((message) => {
+                      const messageStatus = message.status || "New";
+                      const contactWhatsAppMessage = `Hello ${message.name}, this is INAMAAD Real Estate. We received your message: ${message.subject || "General enquiry"}.`;
+
+                      return (
+                        <div
+                          key={message.id}
+                          className="rounded-2xl border border-slate-200 p-5"
+                        >
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d49613]">
+                                  {message.subject || "General enquiry"}
+                                </p>
+
+                                <span
+                                  className={`rounded-full px-3 py-1 text-[11px] font-black ${leadStatusClass(
+                                    messageStatus
+                                  )}`}
+                                >
+                                  {messageStatus}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 font-black text-[#0d1c38]">
+                                {message.name}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {message.email || "No email"} • {message.phone || "No phone"}
+                              </p>
+
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {message.message || "No message."}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(message.createdAt)}
+                              </p>
+
+                              {renderLeadAssignmentControls(
+                                "contact_messages",
+                                message.id,
+                                message.assignedToEmail,
+                                message.staffNotes,
+                                message.priority || "Normal",
+                                message.followUpDate || "",
+                                message.lastContactedAt || ""
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              {message.phone && (
+                                <>
+                                  <a
+                                    href={createWhatsAppLeadLink(
+                                      message.phone,
+                                      contactWhatsAppMessage
+                                    )}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                                  >
+                                    WhatsApp
+                                  </a>
+
+                                  <a
+                                    href={createCallLeadLink(message.phone)}
+                                    className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                                  >
+                                    Call
+                                  </a>
+                                </>
+                              )}
+
+                              {message.email && (
+                                <a
+                                  href={createEmailLeadLink(
+                                    message.email,
+                                    `INAMAAD contact message: ${message.subject || "General enquiry"}`
+                                  )}
+                                  className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white"
+                                >
+                                  Email
+                                </a>
+                              )}
+
+                              <button
+                                onClick={() => updateContactMessageStatus(message.id, "New")}
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                New
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updateContactMessageStatus(message.id, "Contacted")
+                                }
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                Contacted
+                              </button>
+
+                              <button
+                                onClick={() => updateContactMessageStatus(message.id, "Closed")}
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                Closed
+                              </button>
+
+                              <button
+                                onClick={() => deleteContactMessage(message.id)}
+                                disabled={!canDeleteLeads}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    Investor requests
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {investorRequests.length === 0 && (
+                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                        No investor requests yet.
+                      </p>
+                    )}
+
+                    {investorRequests.map((request) => {
+                      const requestStatus = request.status || "New";
+                      const investorWhatsAppMessage = `Hello ${request.name}, this is INAMAAD Real Estate. We received your investment request for ${request.interest} with budget ${request.budget}.`;
+
+                      return (
+                        <div
+                          key={request.id}
+                          className="rounded-2xl border border-slate-200 p-5"
+                        >
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-black text-[#0d1c38]">
+                                  {request.name}
+                                </p>
+
+                                <span
+                                  className={`rounded-full px-3 py-1 text-[11px] font-black ${leadStatusClass(
+                                    requestStatus
+                                  )}`}
+                                >
+                                  {requestStatus}
+                                </span>
+                              </div>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {request.email} • {request.phone}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                Budget: {request.budget} • Interest: {request.interest}
+                              </p>
+
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {request.message || "No extra message."}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-400">
+                                Submitted {formatDate(request.createdAt)}
+                              </p>
+
+                              {renderLeadAssignmentControls(
+                                "investor_requests",
+                                request.id,
+                                request.assignedToEmail,
+                                request.staffNotes,
+                                request.priority || "Normal",
+                                request.followUpDate || "",
+                                request.lastContactedAt || ""
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <a
+                                href={createWhatsAppLeadLink(
+                                  request.phone,
+                                  investorWhatsAppMessage
+                                )}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white"
+                              >
+                                WhatsApp
+                              </a>
+
+                              <a
+                                href={createCallLeadLink(request.phone)}
+                                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white"
+                              >
+                                Call
+                              </a>
+
+                              <a
+                                href={createEmailLeadLink(
+                                  request.email,
+                                  `INAMAAD investor request: ${request.interest}`
+                                )}
+                                className="rounded-full bg-[#d49613] px-4 py-2 text-xs font-black text-white"
+                              >
+                                Email
+                              </a>
+
+                              <button
+                                onClick={() =>
+                                  updateInvestorRequestStatus(request.id, "New")
+                                }
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                New
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updateInvestorRequestStatus(
+                                    request.id,
+                                    "Contacted"
+                                  )
+                                }
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-blue-100 px-4 py-2 text-xs font-black text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                Contacted
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updateInvestorRequestStatus(request.id, "Closed")
+                                }
+                                disabled={!canManageLeads}
+                                className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-black text-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                              >
+                                Closed
+                              </button>
+
+                              <button
+                                onClick={() => deleteInvestorRequest(request.id)}
+                                disabled={!canDeleteLeads}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-[#0d1c38]">
+                    All listings
+                  </h3>
+
+                  <div className="mt-4 grid gap-4">
+                    {listings.map((listing) => (
+                      <div
+                        key={listing.id}
+                        className="rounded-2xl border border-slate-200 p-5"
+                      >
+                        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d49613]">
+                              {buildListingReference(listing.id)}
+                            </p>
+
+                            <p className="mt-1 font-black text-[#0d1c38]">
+                              {listing.title}
+                            </p>
+
+                            <p className="mt-1 text-sm text-slate-500">
+                              {listing.location} • {listing.price}
+                            </p>
+
+                            {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
+                              <p className="mt-1 text-xs font-bold text-slate-500">
+                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join(" • ")}
+                              </p>
+                            )}
+
+                            <p className="mt-1 text-xs font-black text-slate-400">
+                              {listing.status} • {listing.availabilityStatus || "Available"}
+                              {listing.featured ? ` • Featured rank ${listing.featuredRank || 0}` : ""}
+                            </p>
+
+                            {listing.availabilityNote && (
+                              <p className="mt-1 text-xs font-bold text-slate-500">
+                                Availability note: {listing.availabilityNote}
+                              </p>
+                            )}
+
+
+                            <p className="mt-1 text-xs font-bold text-slate-500">
+                              Views: {viewCountByListingId[listing.id] || 0}
+                            </p>
+                          </div>
+
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => openEditListing(listing)}
+                              disabled={!canEditListings}
+                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() => deleteListing(listing.id)}
+                              disabled={!canDeleteListings}
+                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
       )}
-
-      <div className="fixed bottom-6 right-6 z-[75] hidden flex-col gap-3 md:flex">
-        <button
-          type="button"
-          onClick={() => scrollToSection("properties")}
-          className="rounded-full bg-white px-5 py-3 text-sm font-black text-[#0d1c38] shadow-2xl hover:bg-slate-50"
-        >
-          Properties
-        </button>
-
-        <button
-          type="button"
-          onClick={() => scrollToSection("jv")}
-          className="rounded-full bg-white px-5 py-3 text-sm font-black text-[#0d1c38] shadow-2xl hover:bg-slate-50"
-        >
-          JV Deals
-        </button>
-
-        <button
-          type="button"
-          onClick={shareMarketplace}
-          className="rounded-full bg-[#f0bf3c] px-5 py-3 text-sm font-black text-[#0d1c38] shadow-2xl hover:bg-[#f7ce62]"
-        >
-          Share
-        </button>
-
-        <a
-          href={`https://wa.me/${WHATSAPP_NUMBER}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-full bg-green-500 px-5 py-3 text-center text-sm font-black text-white shadow-2xl hover:bg-green-600"
-        >
-          WhatsApp
-        </a>
-      </div>
-
-      <div className="mobile-bottom-nav md:hidden">
-        <button type="button" onClick={() => scrollToSection("properties")}>
-          Properties
-        </button>
-        <button type="button" onClick={() => scrollToSection("jv")}>
-          JV Deals
-        </button>
-        <button type="button" className="gold" onClick={() => setModal("post")}>
-          Post
-        </button>
-        <button
-          type="button"
-          className="primary"
-          onClick={() => setModal(authUser ? "admin" : "login")}
-        >
-          {authUser ? "Admin" : "Login"}
-        </button>
-      </div>
     </div>
   );
-}
-
-type InamaadErrorBoundaryState = {
-  hasError: boolean;
-  errorMessage: string;
-};
-
-class InamaadErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  InamaadErrorBoundaryState
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = {
-      hasError: false,
-      errorMessage: "",
-    };
-  }
-
-  static getDerivedStateFromError(error: Error): InamaadErrorBoundaryState {
-    return {
-      hasError: true,
-      errorMessage: error?.message || "The page failed to load.",
-    };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("INAMAAD frontend crash guard:", error, errorInfo);
-  }
-
-  resetLocalDataAndReload() {
-    [
-      "inamaad_listings",
-      "inamaad_auth_user",
-      "inamaad_saved_listing_ids",
-      "inamaad_saved_listing_notes",
-      "inamaad_leads",
-      "inamaad_inspections",
-      "inamaad_activity_logs",
-      "inamaad_admin_tasks",
-      "inamaad_listing_views",
-      "inamaad_recent_listing_ids",
-      "inamaad_compare_listing_ids",
-    ].forEach((key) => localStorage.removeItem(key));
-
-    window.location.reload();
-  }
-
-  render() {
-    if (!this.state.hasError) {
-      return this.props.children;
-    }
-
-    return (
-      <div className="min-h-screen bg-[#f6f7fb] px-4 py-10 text-slate-950">
-        <div className="mx-auto max-w-2xl rounded-[2rem] border border-red-100 bg-white p-6 shadow-2xl">
-          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-2xl">
-            ⚠️
-          </div>
-
-          <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-red-600">
-            INAMAAD safety guard
-          </p>
-
-          <h1 className="text-3xl font-black tracking-tight text-[#0d1c38]">
-            The website was protected from a blank screen.
-          </h1>
-
-          <p className="mt-4 text-sm leading-7 text-slate-600">
-            A frontend error happened, but the safety guard stopped the app from staying blank.
-            Refresh the page first. If it still shows this screen, reset local browser data below.
-          </p>
-
-          {this.state.errorMessage ? (
-            <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                Technical message
-              </p>
-              <p className="mt-1 text-sm font-bold text-[#0d1c38]">
-                {this.state.errorMessage}
-              </p>
-            </div>
-          ) : null}
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#162b52]"
-            >
-              Refresh website
-            </button>
-
-            <button
-              type="button"
-              onClick={() => this.resetLocalDataAndReload()}
-              className="rounded-xl border border-red-200 px-5 py-3 text-sm font-black text-red-600 hover:bg-red-50"
-            >
-              Reset local data
-            </button>
-          </div>
-
-          <p className="mt-5 text-xs leading-5 text-slate-500">
-            Reset local data only clears data saved in this browser. It does not delete your deployed code.
-          </p>
-        </div>
-      </div>
-    );
-  }
 }
 
 export default function App() {
   return (
     <InamaadErrorBoundary>
-      <InamaadApp />
+      <InamaadMainApp />
     </InamaadErrorBoundary>
   );
 }
 
+// Lead command center upgrade: follow-up dashboard for overdue, due-today, urgent, and unassigned leads.
+
+// Property reference upgrade: public and staff listing references use stable INM-000001 style IDs.
+
+// Availability status upgrade: listings now support Available, Reserved, Sold, Rented, Leased, and Off Market badges plus staff controls.
+
+// Property specifications upgrade: bedrooms, bathrooms, toilets, parking, sizes, furnishing, condition, and amenities are now supported.
+
+// Neighborhood and infrastructure upgrade: road access, power, water, security, nearby schools/hospitals/malls/transport, estate features, and neighborhood overview are now supported.
+
+// Owner/agent/developer contact profile upgrade: contact role, company, email, WhatsApp, visibility, address, and mandate status are now supported.
+
+// JV upgrade: JV listings now use project structure, landowner/developer/investor requirements, sharing formula, stage, expected units, project cost, and timeline instead of bedroom/bathroom fields.
+
+// Final property/JV separation repair: normal properties no longer store/display JV-only fields, and JV deals no longer store/display bedroom/bathroom/furnishing fields.

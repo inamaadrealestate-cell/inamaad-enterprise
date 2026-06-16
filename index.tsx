@@ -288,6 +288,33 @@ function parseNairaValue(price: string) {
   return numericValue;
 }
 
+function parseBudgetRangeValue(value: string) {
+  const cleanValue = String(value || "").toLowerCase().replace(/,/g, "");
+  const matches = cleanValue.match(/[0-9]+(?:\.[0-9]+)?\s*[bmk]?/g);
+
+  if (!matches || matches.length === 0) {
+    return parseNairaValue(cleanValue);
+  }
+
+  const values = matches
+    .map((match) => {
+      const token = match.trim();
+      const amount = Number(token.replace(/[^0-9.]/g, ""));
+
+      if (!Number.isFinite(amount)) return 0;
+      if (token.includes("b")) return amount * 1_000_000_000;
+      if (token.includes("m")) return amount * 1_000_000;
+      if (token.includes("k")) return amount * 1_000;
+
+      return amount;
+    })
+    .filter((amount) => amount > 0);
+
+  if (values.length === 0) return 0;
+
+  return Math.round(values.reduce((total, amount) => total + amount, 0) / values.length);
+}
+
 function parseRoiValue(roi: string) {
   const numericValue = Number(roi.replace(/[^0-9.]/g, ""));
 
@@ -982,6 +1009,20 @@ function InamaadApp() {
     priority: "Medium" as AdminTask["priority"],
     note: "",
   });
+  const [commissionRate, setCommissionRate] = useState(() => {
+    try {
+      return localStorage.getItem("inamaad_commission_rate") || "3";
+    } catch {
+      return "3";
+    }
+  });
+  const [expectedConversionRate, setExpectedConversionRate] = useState(() => {
+    try {
+      return localStorage.getItem("inamaad_expected_conversion_rate") || "12";
+    } catch {
+      return "12";
+    }
+  });
   const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState(() => {
     try {
       return localStorage.getItem("inamaad_privacy_notice_accepted") === "yes";
@@ -1122,6 +1163,14 @@ function InamaadApp() {
   useEffect(() => {
     localStorage.setItem("inamaad_admin_tasks", JSON.stringify(adminTasks));
   }, [adminTasks]);
+
+  useEffect(() => {
+    localStorage.setItem("inamaad_commission_rate", commissionRate);
+  }, [commissionRate]);
+
+  useEffect(() => {
+    localStorage.setItem("inamaad_expected_conversion_rate", expectedConversionRate);
+  }, [expectedConversionRate]);
 
   useEffect(() => {
     if (authUser) {
@@ -1490,6 +1539,51 @@ function InamaadApp() {
   const confirmedInspectionCount = inspections.filter(
     (inspection) => inspection.status === "Confirmed"
   ).length;
+
+  const commissionRateValue =
+    Math.max(0, Number(String(commissionRate).replace(/[^0-9.]/g, "")) || 0) / 100;
+  const expectedConversionRateValue =
+    Math.max(0, Number(String(expectedConversionRate).replace(/[^0-9.]/g, "")) || 0) /
+    100;
+
+  const totalInventoryValue = listings.reduce(
+    (total, item) => total + parseNairaValue(item.price),
+    0
+  );
+  const verifiedInventoryValue = listings
+    .filter((item) => item.status === "Verified")
+    .reduce((total, item) => total + parseNairaValue(item.price), 0);
+  const launchReadyInventoryValue = dueDiligenceInsights
+    .filter((entry) => entry.score >= 85)
+    .reduce((total, entry) => total + parseNairaValue(entry.item.price), 0);
+  const campaignReadyInventoryValue = marketingCampaignInsights
+    .filter((entry) => entry.marketingScore >= 80)
+    .reduce((total, entry) => total + parseNairaValue(entry.item.price), 0);
+  const leadPipelineBudgetValue = leads.reduce(
+    (total, lead) => total + parseBudgetRangeValue(lead.budget),
+    0
+  );
+  const expectedConvertedPipelineValue =
+    leadPipelineBudgetValue * expectedConversionRateValue;
+  const projectedCommissionFromListings =
+    campaignReadyInventoryValue * commissionRateValue;
+  const projectedCommissionFromLeads =
+    expectedConvertedPipelineValue * commissionRateValue;
+  const totalProjectedRevenue =
+    projectedCommissionFromListings + projectedCommissionFromLeads;
+
+  const topRevenueListings = marketingCampaignInsights
+    .map((entry) => {
+      const listingValue = parseNairaValue(entry.item.price);
+
+      return {
+        ...entry,
+        listingValue,
+        estimatedCommission: listingValue * commissionRateValue,
+      };
+    })
+    .filter((entry) => entry.listingValue > 0)
+    .sort((a, b) => b.estimatedCommission - a.estimatedCommission);
 
   const filteredProperties = useMemo(() => {
     const searchTerm = keyword.trim().toLowerCase();
@@ -1962,6 +2056,134 @@ function InamaadApp() {
       "Admin"
     );
     showMessage("Marketing campaign CSV exported.");
+  }
+
+  function buildRevenueForecastReport() {
+    return [
+      "INAMAAD REAL ESTATE - REVENUE FORECAST REPORT",
+      `Generated: ${new Date().toLocaleString()}`,
+      "",
+      "1. SETTINGS",
+      `Commission rate: ${commissionRate || "0"}%`,
+      `Expected lead conversion: ${expectedConversionRate || "0"}%`,
+      "",
+      "2. INVENTORY VALUE",
+      `Total inventory value: ${formatNairaCompact(totalInventoryValue)}`,
+      `Verified inventory value: ${formatNairaCompact(verifiedInventoryValue)}`,
+      `Launch-ready inventory value: ${formatNairaCompact(launchReadyInventoryValue)}`,
+      `Campaign-ready inventory value: ${formatNairaCompact(campaignReadyInventoryValue)}`,
+      "",
+      "3. PIPELINE AND PROJECTED REVENUE",
+      `Lead budget pipeline: ${formatNairaCompact(leadPipelineBudgetValue)}`,
+      `Expected converted lead value: ${formatNairaCompact(expectedConvertedPipelineValue)}`,
+      `Projected commission from campaign-ready listings: ${formatNairaCompact(projectedCommissionFromListings)}`,
+      `Projected commission from lead pipeline: ${formatNairaCompact(projectedCommissionFromLeads)}`,
+      `Total projected revenue: ${formatNairaCompact(totalProjectedRevenue)}`,
+      "",
+      "4. TOP REVENUE OPPORTUNITIES",
+      ...topRevenueListings.slice(0, 5).map(
+        (entry, index) =>
+          `${index + 1}. ${entry.item.title} - ${formatNairaCompact(entry.listingValue)} value - ${formatNairaCompact(entry.estimatedCommission)} estimated commission`
+      ),
+      "",
+      "This forecast is based on current browser-saved INAMAAD marketplace data and does not guarantee actual revenue.",
+    ].join("\\n");
+  }
+
+  function copyRevenueForecastReport() {
+    const report = buildRevenueForecastReport();
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(report);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = report;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+
+      addActivityLog(
+        "Revenue forecast copied",
+        "Admin copied the revenue forecast report.",
+        "Admin"
+      );
+      showMessage("Revenue forecast report copied.");
+    } catch {
+      showMessage("Unable to copy revenue forecast.");
+    }
+  }
+
+  function exportRevenueForecastCsv() {
+    const rows = [
+      ["Metric", "Value"],
+      ["Commission rate", `${commissionRate || "0"}%`],
+      ["Expected lead conversion", `${expectedConversionRate || "0"}%`],
+      ["Total inventory value", formatNairaCompact(totalInventoryValue)],
+      ["Verified inventory value", formatNairaCompact(verifiedInventoryValue)],
+      ["Launch-ready inventory value", formatNairaCompact(launchReadyInventoryValue)],
+      ["Campaign-ready inventory value", formatNairaCompact(campaignReadyInventoryValue)],
+      ["Lead budget pipeline", formatNairaCompact(leadPipelineBudgetValue)],
+      ["Expected converted lead value", formatNairaCompact(expectedConvertedPipelineValue)],
+      ["Projected listing commission", formatNairaCompact(projectedCommissionFromListings)],
+      ["Projected lead commission", formatNairaCompact(projectedCommissionFromLeads)],
+      ["Total projected revenue", formatNairaCompact(totalProjectedRevenue)],
+      [],
+      ["Top Revenue Listings", "Listing Value", "Estimated Commission", "Marketing Readiness"],
+      ...topRevenueListings.slice(0, 10).map((entry) => [
+        entry.item.title,
+        formatNairaCompact(entry.listingValue),
+        formatNairaCompact(entry.estimatedCommission),
+        `${entry.marketingScore}%`,
+      ]),
+    ];
+
+    downloadTextFile(
+      `inamaad-revenue-forecast-${new Date().toISOString().slice(0, 10)}.csv`,
+      createCsv(rows),
+      "text/csv;charset=utf-8"
+    );
+
+    addActivityLog(
+      "Revenue forecast exported",
+      "Admin exported the revenue forecast report as CSV.",
+      "Admin"
+    );
+    showMessage("Revenue forecast CSV exported.");
+  }
+
+  function createRevenueFollowUpTask() {
+    const topOpportunity = topRevenueListings[0];
+
+    if (!topOpportunity) {
+      showMessage("No revenue opportunity found yet.");
+      return;
+    }
+
+    const createdTask: AdminTask = {
+      id: Date.now(),
+      title: `Revenue follow-up: ${topOpportunity.item.title}`,
+      assignee: "Sales",
+      dueDate: "",
+      priority: "High",
+      status: "Open",
+      note: `Estimated commission ${formatNairaCompact(topOpportunity.estimatedCommission)} at ${commissionRate || "0"}%. Prepare buyer follow-up, owner confirmation, and inspection path.`,
+      createdAt: new Date().toISOString(),
+    };
+
+    setAdminTasks((currentTasks) => [createdTask, ...currentTasks]);
+
+    addActivityLog(
+      "Revenue follow-up task created",
+      `Revenue task created for ${topOpportunity.item.title}.`,
+      "Admin"
+    );
+    showMessage("Revenue follow-up task created.");
   }
 
   function buildInspectionScheduleMessage(inspection: Inspection) {
@@ -4031,6 +4253,7 @@ function InamaadApp() {
                   ["Due diligence", `${dueScore}% · ${dueLabel}`],
                   ["Document readiness", `${getDocumentReadinessScore(item)}% · ${getDocumentReadinessLabel(getDocumentReadinessScore(item))}`],
                   ["Marketing readiness", `${marketingCampaignInsights.find((entry) => entry.item.id === item.id)?.marketingScore || 0}%`],
+                  ["Est. commission", formatNairaCompact(parseNairaValue(item.price) * commissionRateValue)],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-xl bg-white p-3">
                     <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
@@ -6968,6 +7191,144 @@ function InamaadApp() {
                   </div>
                 </div>
 
+                <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
+                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Revenue forecast center
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-green-700">
+                        Estimate sales pipeline, commission potential, converted lead value, and top revenue opportunities from current marketplace data.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white px-5 py-4 text-center">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {formatNairaCompact(totalProjectedRevenue)}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-green-700">
+                        Projected revenue
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                    <input
+                      value={commissionRate}
+                      onChange={(e) => setCommissionRate(e.target.value)}
+                      placeholder="Commission rate %, e.g. 3"
+                      className="w-full rounded-xl border border-green-100 bg-white px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={expectedConversionRate}
+                      onChange={(e) => setExpectedConversionRate(e.target.value)}
+                      placeholder="Expected conversion %, e.g. 12"
+                      className="w-full rounded-xl border border-green-100 bg-white px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-4">
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-xl font-black text-[#0d1c38]">
+                        {formatNairaCompact(totalInventoryValue)}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-slate-400">
+                        Inventory value
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-xl font-black text-[#0d1c38]">
+                        {formatNairaCompact(campaignReadyInventoryValue)}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-green-700">
+                        Campaign ready
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-xl font-black text-[#0d1c38]">
+                        {formatNairaCompact(leadPipelineBudgetValue)}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-blue-700">
+                        Lead pipeline
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-xl font-black text-[#0d1c38]">
+                        {formatNairaCompact(projectedCommissionFromListings)}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
+                        Listing commission
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-white p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-green-700">
+                      Top revenue opportunities
+                    </p>
+
+                    <div className="mt-3 space-y-2">
+                      {topRevenueListings.slice(0, 5).map((entry) => (
+                        <div
+                          key={`revenue-${entry.item.id}`}
+                          className="rounded-xl border border-green-100 bg-green-50 p-3"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-black text-[#0d1c38]">
+                                {entry.item.title}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {entry.item.location} · {entry.item.price} · Marketing {entry.marketingScore}%
+                              </p>
+                            </div>
+
+                            <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wide text-green-700">
+                              {formatNairaCompact(entry.estimatedCommission)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {topRevenueListings.length === 0 ? (
+                        <p className="text-sm font-bold leading-6 text-slate-500">
+                          Add property prices and marketing-ready listings to activate revenue opportunities.
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={copyRevenueForecastReport}
+                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
+                    >
+                      Copy revenue report
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportRevenueForecastCsv}
+                      className="rounded-xl border border-green-200 bg-white px-3 py-2.5 text-xs font-black text-green-700 hover:bg-green-50"
+                    >
+                      Export revenue CSV
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={createRevenueFollowUpTask}
+                      className="col-span-2 rounded-xl border border-[#f0bf3c] bg-white px-3 py-2.5 text-xs font-black text-[#9b6b16] hover:bg-[#fff7df]"
+                    >
+                      Create revenue follow-up task
+                    </button>
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
                   <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
@@ -7522,6 +7883,13 @@ function InamaadApp() {
                       className="rounded-xl border border-pink-200 px-3 py-2.5 text-xs font-black text-pink-700 hover:bg-pink-50"
                     >
                       Export marketing CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportRevenueForecastCsv}
+                      className="rounded-xl border border-green-200 px-3 py-2.5 text-xs font-black text-green-700 hover:bg-green-50"
+                    >
+                      Export revenue forecast
                     </button>
                     <button
                       type="button"

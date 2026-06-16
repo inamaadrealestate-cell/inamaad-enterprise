@@ -9,7 +9,8 @@ type ModalType =
   | "investor"
   | "admin"
   | "details"
-  | "edit";
+  | "edit"
+  | "guide";
 
 type ListingStatus = "Verified" | "Pending Review";
 type AvailabilityStatus = "Available" | "Reserved" | "Sold" | "Rented" | "Leased" | "Off Market";
@@ -1642,6 +1643,13 @@ function InamaadMainApp() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showNewUserGuideNotice, setShowNewUserGuideNotice] = useState(() => {
+    try {
+      return localStorage.getItem("inamaad_user_guide_seen") !== "true";
+    } catch {
+      return true;
+    }
+  });
   const [query, setQuery] = useState("");
   const [propertyType, setPropertyType] = useState("All");
   const [listingPurpose, setListingPurpose] = useState("All Purposes");
@@ -2570,6 +2578,22 @@ function InamaadMainApp() {
     if (supabase) {
       scheduleAutoRefresh(1100);
     }
+  }
+
+  function markUserGuideSeen() {
+    try {
+      localStorage.setItem("inamaad_user_guide_seen", "true");
+    } catch {
+      // Ignore storage errors so the guide never breaks browsing.
+    }
+
+    setShowNewUserGuideNotice(false);
+  }
+
+  function openUserGuide() {
+    markUserGuideSeen();
+    setMobileOpen(false);
+    setModal("guide");
   }
 
   function loadLocalData() {
@@ -6271,6 +6295,38 @@ function InamaadMainApp() {
         ))}
       </datalist>
 
+      {showNewUserGuideNotice && (
+        <div
+          data-inamaad-no-refresh="true"
+          className="sticky top-0 z-[60] border-b border-[#f0bf3c]/30 bg-[#0d1c38] px-4 py-2 text-white shadow-sm"
+        >
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-2 text-center text-xs sm:justify-between sm:text-left">
+            <p className="font-semibold">
+              New here? See how to browse, inspect, contact, and post property on INAMAAD.
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={openUserGuide}
+                className="rounded-full bg-[#f0bf3c] px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-[#0d1c38]"
+              >
+                Quick guide
+              </button>
+
+              <button
+                type="button"
+                onClick={markUserGuideSeen}
+                aria-label="Hide new user guide notice"
+                className="rounded-full border border-white/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-white/90 hover:bg-white/10"
+              >
+                Hide
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
           <a href="#" className="flex items-center gap-3">
@@ -6306,6 +6362,14 @@ function InamaadMainApp() {
 
           <div className="hidden items-center gap-4 lg:flex">
             <button
+              type="button"
+              onClick={openUserGuide}
+              className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
+            >
+              Guide
+            </button>
+
+            <button
               onClick={() => setModal("signin")}
               className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
             >
@@ -6340,6 +6404,14 @@ function InamaadMainApp() {
                   {item.label}
                 </a>
               ))}
+
+              <button
+                type="button"
+                onClick={openUserGuide}
+                className="rounded-xl border border-slate-200 px-5 py-3 text-left font-black text-[#0d1c38]"
+              >
+                How to use
+              </button>
 
               <button
                 onClick={() => {
@@ -7430,6 +7502,14 @@ function InamaadMainApp() {
 
             <div className="mt-4 grid gap-3 text-sm text-slate-600">
               <button
+                type="button"
+                onClick={openUserGuide}
+                className="w-fit text-left"
+              >
+                How to use INAMAAD
+              </button>
+
+              <button
                 onClick={() => setModal("signin")}
                 className="w-fit text-left"
               >
@@ -7485,7 +7565,11 @@ function InamaadMainApp() {
           data-inamaad-no-refresh="true"
           className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm"
         >
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[30px] bg-white p-6 shadow-2xl md:p-8">
+          <div
+            className={`max-h-[90vh] w-full overflow-y-auto rounded-[30px] bg-white p-6 shadow-2xl md:p-8 ${
+              modal === "guide" ? "max-w-5xl" : "max-w-3xl"
+            }`}
+          >
             <div className="mb-6 flex items-start justify-between gap-5">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-[#d39b19]">
@@ -7499,6 +7583,7 @@ function InamaadMainApp() {
                   {modal === "investor" && "Request investor access"}
                   {modal === "admin" && "Staff portal"}
                   {modal === "edit" && "Edit listing"}
+                  {modal === "guide" && "How to use INAMAAD"}
                   {modal === "details" && selectedListing?.title}
                 </h2>
               </div>
@@ -7514,6 +7599,153 @@ function InamaadMainApp() {
                 Close
               </button>
             </div>
+
+            {modal === "guide" && (
+              <div className="grid gap-6">
+                <div className="rounded-[26px] bg-[#0d1c38] p-5 text-white">
+                  <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
+                        User guidance
+                      </p>
+                      <h3 className="mt-3 text-3xl font-black tracking-tight">
+                        Find property, inspect safely, contact INAMAAD, or submit your own listing.
+                      </h3>
+                      <p className="mt-4 text-sm leading-7 text-white/75">
+                        This quick guide helps first-time buyers, investors, agents, landlords, and JV partners understand the main actions on the website.
+                      </p>
+                    </div>
+
+                    <div className="rounded-[24px] border border-white/10 bg-white/10 p-4">
+                      <div className="rounded-2xl bg-white p-4 text-[#0d1c38]">
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                            Example listing
+                          </span>
+                          <span className="text-xs font-black text-[#9b6b16]">Verified</span>
+                        </div>
+                        <div className="mb-3 h-24 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-100 to-[#f0bf3c]/30" />
+                        <div className="h-3 w-3/4 rounded-full bg-slate-200" />
+                        <div className="mt-2 h-3 w-1/2 rounded-full bg-slate-100" />
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <div className="h-9 rounded-xl bg-[#0d1c38]" />
+                          <div className="h-9 rounded-xl border border-slate-200" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  {[
+                    {
+                      title: "1. Browse properties",
+                      text: "Use Properties, JV Deals, search, location, price, purpose, and availability filters to find suitable opportunities.",
+                      badge: "Browse",
+                    },
+                    {
+                      title: "2. Open details",
+                      text: "Click any property or JV card to see price, location, documents, contact options, inspection form, offer form, and more details.",
+                      badge: "Details",
+                    },
+                    {
+                      title: "3. Contact safely",
+                      text: "Use WhatsApp, enquiry, inspection, or offer buttons. Request inspection before payment and confirm important documents first.",
+                      badge: "Safety",
+                    },
+                  ].map((step) => (
+                    <div key={step.title} className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4">
+                      <div className="mb-4 rounded-2xl bg-white p-3 shadow-sm">
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="rounded-full bg-[#fff7df] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
+                            {step.badge}
+                          </span>
+                          <div className="flex gap-1">
+                            <span className="h-2 w-2 rounded-full bg-red-300" />
+                            <span className="h-2 w-2 rounded-full bg-yellow-300" />
+                            <span className="h-2 w-2 rounded-full bg-green-300" />
+                          </div>
+                        </div>
+                        <div className="h-16 rounded-xl bg-gradient-to-br from-slate-200 to-slate-50" />
+                        <div className="mt-3 h-2.5 w-5/6 rounded-full bg-slate-200" />
+                        <div className="mt-2 h-2.5 w-2/3 rounded-full bg-slate-100" />
+                      </div>
+
+                      <h4 className="text-base font-black text-[#0d1c38]">{step.title}</h4>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{step.text}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                      For buyers and investors
+                    </p>
+                    <div className="mt-4 grid gap-3 text-sm leading-6 text-slate-600">
+                      <p><strong className="text-[#0d1c38]">Browse:</strong> Start from Properties or JV Deals.</p>
+                      <p><strong className="text-[#0d1c38]">Review:</strong> Open the detail page and check price, status, location, and documents.</p>
+                      <p><strong className="text-[#0d1c38]">Inspect:</strong> Use Request Inspection before making payment or commitment.</p>
+                      <p><strong className="text-[#0d1c38]">Contact:</strong> Use WhatsApp/contact buttons for quick guidance from INAMAAD.</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                      For agents, owners and JV partners
+                    </p>
+                    <div className="mt-4 grid gap-3 text-sm leading-6 text-slate-600">
+                      <p><strong className="text-[#0d1c38]">Submit:</strong> Use Post Property or Submit Opportunity.</p>
+                      <p><strong className="text-[#0d1c38]">Choose type:</strong> Select Property for normal listings or JV for partnership deals.</p>
+                      <p><strong className="text-[#0d1c38]">Upload:</strong> Add clear images and supporting documents where available.</p>
+                      <p><strong className="text-[#0d1c38]">Wait review:</strong> Pending listings are checked before showing as verified.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-emerald-100 bg-emerald-50 p-5">
+                  <p className="text-sm font-black text-emerald-800">
+                    Safety reminder
+                  </p>
+                  <p className="mt-2 text-sm leading-7 text-emerald-700">
+                    Always inspect property, verify ownership/documents, and communicate through trusted INAMAAD contact channels before payment.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModal(null);
+                      window.location.hash = "properties";
+                    }}
+                    className="rounded-2xl bg-[#0d1c38] px-5 py-4 text-sm font-black text-white hover:bg-[#13284f]"
+                  >
+                    Browse properties
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModal(null);
+                      openPostModal("property");
+                    }}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-[#0d1c38] hover:border-[#0d1c38]"
+                  >
+                    Post property
+                  </button>
+
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%20INAMAAD%2C%20I%20need%20help%20using%20the%20website.`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-center text-sm font-black text-green-700 hover:bg-green-100"
+                  >
+                    Ask on WhatsApp
+                  </a>
+                </div>
+              </div>
+            )}
 
             {modal === "signin" && (
               <form onSubmit={handleSignIn} className="grid gap-4">

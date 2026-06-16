@@ -21,6 +21,7 @@ type Listing = {
   whatsapp?: string;
   ownerVerified?: boolean;
   ownerVerificationNote?: string;
+  valuationNote?: string;
   featured?: boolean;
   imageUrl?: string;
   galleryUrls?: string[];
@@ -291,6 +292,132 @@ function parseRoiValue(roi: string) {
   const numericValue = Number(roi.replace(/[^0-9.]/g, ""));
 
   return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function formatNairaCompact(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "Not enough data";
+
+  if (value >= 1_000_000_000) {
+    return `₦${(value / 1_000_000_000).toFixed(2)}B`;
+  }
+
+  if (value >= 1_000_000) {
+    return `₦${(value / 1_000_000).toFixed(2)}M`;
+  }
+
+  if (value >= 1_000) {
+    return `₦${Math.round(value / 1_000).toLocaleString()}K`;
+  }
+
+  return `₦${Math.round(value).toLocaleString()}`;
+}
+
+type PriceIntelligence = {
+  label: "Opportunity" | "Fair" | "Premium" | "High" | "Review" | "JV review";
+  confidence: "Low" | "Medium" | "High" | "Special";
+  stateAverage: number;
+  comparableCount: number;
+  percentVsMarket: number;
+  guidance: string;
+};
+
+function getPriceIntelligence(item: Listing, allListings: Listing[]): PriceIntelligence {
+  const priceValue = parseNairaValue(item.price);
+
+  if (isJVListing(item)) {
+    return {
+      label: "JV review",
+      confidence: "Special",
+      stateAverage: 0,
+      comparableCount: 0,
+      percentVsMarket: 0,
+      guidance:
+        "JV pricing should be reviewed by land value, title strength, sharing formula, construction cost, and developer capacity.",
+    };
+  }
+
+  const comparablePrices = allListings
+    .filter(
+      (listing) =>
+        !isJVListing(listing) &&
+        listing.id !== item.id &&
+        listing.state === item.state &&
+        parseNairaValue(listing.price) > 0
+    )
+    .map((listing) => parseNairaValue(listing.price));
+
+  const fallbackPrices = allListings
+    .filter((listing) => !isJVListing(listing) && parseNairaValue(listing.price) > 0)
+    .map((listing) => parseNairaValue(listing.price));
+
+  const comparisonPrices =
+    comparablePrices.length >= 1 ? comparablePrices : fallbackPrices.filter(Boolean);
+
+  const stateAverage =
+    comparisonPrices.length > 0
+      ? comparisonPrices.reduce((total, value) => total + value, 0) / comparisonPrices.length
+      : 0;
+
+  if (!priceValue || !stateAverage) {
+    return {
+      label: "Review",
+      confidence: "Low",
+      stateAverage,
+      comparableCount: comparisonPrices.length,
+      percentVsMarket: 0,
+      guidance:
+        "Price guidance needs a clearer price value and more comparable listings before a strong decision can be made.",
+    };
+  }
+
+  const ratio = priceValue / stateAverage;
+  const percentVsMarket = Math.round((ratio - 1) * 100);
+
+  let label: PriceIntelligence["label"] = "Fair";
+  let guidance =
+    "This listing is close to the current marketplace comparison range. Still verify documents, location, and inspection results.";
+
+  if (ratio <= 0.9) {
+    label = "Opportunity";
+    guidance =
+      "This listing appears below nearby marketplace comparison range. Treat it as a possible opportunity, but verify ownership and documents carefully.";
+  } else if (ratio <= 1.15) {
+    label = "Fair";
+  } else if (ratio <= 1.45) {
+    label = "Premium";
+    guidance =
+      "This listing is above the current marketplace comparison range. Confirm location quality, title strength, and special features before negotiation.";
+  } else {
+    label = "High";
+    guidance =
+      "This listing is significantly above the current marketplace comparison range. Review valuation, documents, and negotiation room before proceeding.";
+  }
+
+  const confidence: PriceIntelligence["confidence"] =
+    comparisonPrices.length >= 3 && item.ownerVerified && Boolean(item.documentTitle || item.documentName)
+      ? "High"
+      : comparisonPrices.length >= 2 || item.ownerVerified
+        ? "Medium"
+        : "Low";
+
+  return {
+    label,
+    confidence,
+    stateAverage,
+    comparableCount: comparisonPrices.length,
+    percentVsMarket,
+    guidance,
+  };
+}
+
+function getPriceBadgeClass(label: PriceIntelligence["label"]) {
+  if (label === "Opportunity") return "bg-emerald-50 text-emerald-700";
+  if (label === "Fair") return "bg-blue-50 text-blue-700";
+  if (label === "Premium") return "bg-[#fff7df] text-[#9b6b16]";
+  if (label === "High") return "bg-red-50 text-red-700";
+  if (label === "JV review") return "bg-purple-50 text-purple-700";
+
+  return "bg-slate-100 text-slate-600";
 }
 
 function SiteStyles() {
@@ -703,6 +830,7 @@ function InamaadApp() {
     whatsapp: "",
     ownerVerified: false,
     ownerVerificationNote: "",
+    valuationNote: "",
   });
 
   useEffect(() => {
@@ -860,6 +988,25 @@ function InamaadApp() {
     const stage = getLeadStage(lead);
     return stage !== "Closed" && Boolean(lead.followUpDate) && String(lead.followUpDate) <= todayDate;
   }).length;
+  const valuationInsights = useMemo(
+    () =>
+      propertyListings.map((item) => ({
+        item,
+        priceIntel: getPriceIntelligence(item, listings),
+      })),
+    [propertyListings, listings]
+  );
+
+  const opportunityListingsCount = valuationInsights.filter(
+    (entry) => entry.priceIntel.label === "Opportunity"
+  ).length;
+  const highPriceListingsCount = valuationInsights.filter(
+    (entry) => entry.priceIntel.label === "High" || entry.priceIntel.label === "Premium"
+  ).length;
+  const lowConfidenceValuationsCount = valuationInsights.filter(
+    (entry) => entry.priceIntel.confidence === "Low"
+  ).length;
+
   const adminActionQueueCount =
     pendingListingsCount +
     unverifiedOwnersCount +
@@ -1579,6 +1726,7 @@ function InamaadApp() {
       whatsapp: item.whatsapp || "",
       ownerVerified: Boolean(item.ownerVerified),
       ownerVerificationNote: item.ownerVerificationNote || "",
+      valuationNote: item.valuationNote || "",
     });
   }
 
@@ -1637,6 +1785,7 @@ function InamaadApp() {
               whatsapp: editListingForm.whatsapp.trim(),
               ownerVerified: editListingForm.ownerVerified,
               ownerVerificationNote: editListingForm.ownerVerificationNote.trim(),
+              valuationNote: editListingForm.valuationNote.trim(),
             }
           : item
       )
@@ -2130,6 +2279,11 @@ function InamaadApp() {
         "Owner Role",
         "Owner Verified",
         "Featured",
+        "Price Guidance",
+        "Price Confidence",
+        "Comparable Count",
+        "Market Difference",
+        "Admin Valuation Note",
         "Owner Verification Note",
         "Owner Phone",
         "WhatsApp",
@@ -2152,6 +2306,11 @@ function InamaadApp() {
         item.ownerRole || "",
         item.ownerVerified ? "Yes" : "No",
         item.featured ? "Yes" : "No",
+        getPriceIntelligence(item, listings).label,
+        getPriceIntelligence(item, listings).confidence,
+        getPriceIntelligence(item, listings).comparableCount,
+        `${getPriceIntelligence(item, listings).percentVsMarket}%`,
+        item.valuationNote || "",
         item.ownerVerificationNote || "",
         item.ownerPhone || "",
         item.whatsapp || "",
@@ -2549,6 +2708,7 @@ function InamaadApp() {
     const isJV = variant === "jv" || isJVListing(item);
     const isSaved = savedListingIds.includes(item.id);
     const isCompared = compareListingIds.includes(item.id);
+    const priceIntel = getPriceIntelligence(item, listings);
 
     return (
       <article
@@ -2588,6 +2748,10 @@ function InamaadApp() {
                     Featured
                   </span>
                 ) : null}
+
+                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${getPriceBadgeClass(priceIntel.label)}`}>
+                  {priceIntel.label}
+                </span>
               </div>
               <p className="mt-2 text-xl font-black text-white">{item.price}</p>
             </div>
@@ -2649,6 +2813,58 @@ function InamaadApp() {
               </p>
               <p className="mt-1 text-xs font-black text-[#0d1c38]">{item.state}</p>
             </div>
+          </div>
+
+          <div className="mt-3 rounded-2xl border border-[#f0bf3c]/30 bg-[#fff7df] p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
+                  Price intelligence
+                </p>
+                <p className="mt-1 text-sm font-black text-[#0d1c38]">
+                  {priceIntel.guidance}
+                </p>
+              </div>
+
+              <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getPriceBadgeClass(priceIntel.label)}`}>
+                {priceIntel.confidence}
+              </span>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="rounded-xl bg-white p-2">
+                <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                  Avg guide
+                </p>
+                <p className="mt-1 text-xs font-black text-[#0d1c38]">
+                  {formatNairaCompact(priceIntel.stateAverage)}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-white p-2">
+                <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                  Market diff
+                </p>
+                <p className="mt-1 text-xs font-black text-[#0d1c38]">
+                  {priceIntel.percentVsMarket > 0 ? "+" : ""}{priceIntel.percentVsMarket}%
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-white p-2">
+                <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                  Comps
+                </p>
+                <p className="mt-1 text-xs font-black text-[#0d1c38]">
+                  {priceIntel.comparableCount}
+                </p>
+              </div>
+            </div>
+
+            {item.valuationNote ? (
+              <p className="mt-3 rounded-xl bg-white p-3 text-xs font-semibold leading-5 text-slate-600">
+                Admin note: {item.valuationNote}
+              </p>
+            ) : null}
           </div>
 
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-[#f8fafc] p-2">
@@ -2776,6 +2992,9 @@ function InamaadApp() {
                   ["Owner", item.ownerName || "INAMAAD contact"],
                   ["Owner role", item.ownerRole || "Owner / Agent"],
                   ["Verification", item.ownerVerified ? "Verified owner" : "Pending review"],
+                  ["Price guide", priceIntel.label],
+                  ["Confidence", priceIntel.confidence],
+                  ["Market average", formatNairaCompact(priceIntel.stateAverage)],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-xl bg-white p-3">
                     <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
@@ -4225,6 +4444,68 @@ function InamaadApp() {
               ))}
             </div>
 
+            {(() => {
+              const modalPriceIntel = getPriceIntelligence(selectedListing, listings);
+
+              return (
+                <div className="mb-6 rounded-2xl border border-[#f0bf3c]/30 bg-[#fff7df] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-[#9b6b16]">
+                        Price guidance
+                      </p>
+                      <p className="mt-1 text-lg font-black text-[#0d1c38]">
+                        {modalPriceIntel.label} · {modalPriceIntel.confidence} confidence
+                      </p>
+                    </div>
+
+                    <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${getPriceBadgeClass(modalPriceIntel.label)}`}>
+                      {modalPriceIntel.percentVsMarket > 0 ? "+" : ""}{modalPriceIntel.percentVsMarket}% vs guide
+                    </span>
+                  </div>
+
+                  <p className="mt-3 text-sm leading-7 text-slate-600">
+                    {modalPriceIntel.guidance}
+                  </p>
+
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="rounded-xl bg-white p-3">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                        Avg guide
+                      </p>
+                      <p className="mt-1 text-xs font-black text-[#0d1c38]">
+                        {formatNairaCompact(modalPriceIntel.stateAverage)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white p-3">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                        Comps
+                      </p>
+                      <p className="mt-1 text-xs font-black text-[#0d1c38]">
+                        {modalPriceIntel.comparableCount}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white p-3">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                        Buyer action
+                      </p>
+                      <p className="mt-1 text-xs font-black text-[#0d1c38]">
+                        Verify first
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedListing.valuationNote ? (
+                    <p className="mt-3 rounded-xl bg-white p-3 text-xs font-semibold leading-5 text-slate-600">
+                      Admin valuation note: {selectedListing.valuationNote}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })()}
+
             <div className="grid gap-3 sm:grid-cols-2">
               <a
                 href={getWhatsappUrl(selectedListing)}
@@ -4855,6 +5136,85 @@ function InamaadApp() {
                         <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black text-orange-700">
                           {item.viewCount} views
                         </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[#f0bf3c]/30 bg-white p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Property valuation intelligence
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Auto-calculated price guidance from current marketplace data. Use this as a negotiation guide, not final legal valuation.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-[#fff7df] px-4 py-3 text-center">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {opportunityListingsCount}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
+                        Opportunities
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl bg-emerald-50 p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {opportunityListingsCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-emerald-700">
+                        Below guide
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-red-50 p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {highPriceListingsCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-red-700">
+                        Premium / High
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {lowConfidenceValuationsCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-500">
+                        Low confidence
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {valuationInsights.slice(0, 5).map(({ item, priceIntel }) => (
+                      <div
+                        key={`valuation-${item.id}`}
+                        className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-3"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-[#0d1c38]">
+                              {item.title}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {item.location} · {item.price}
+                            </p>
+                          </div>
+
+                          <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getPriceBadgeClass(priceIntel.label)}`}>
+                            {priceIntel.label}
+                          </span>
+                        </div>
+
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          Avg guide: {formatNairaCompact(priceIntel.stateAverage)} · Difference: {priceIntel.percentVsMarket > 0 ? "+" : ""}{priceIntel.percentVsMarket}% · Confidence: {priceIntel.confidence}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -5885,6 +6245,24 @@ function InamaadApp() {
                           />
                         </div>
 
+                        <div className="rounded-2xl border border-[#f0bf3c]/30 bg-[#fff7df] p-4">
+                          <p className="mb-2 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
+                            Admin valuation note
+                          </p>
+                          <textarea
+                            value={editListingForm.valuationNote}
+                            onChange={(e) =>
+                              setEditListingForm({
+                                ...editListingForm,
+                                valuationNote: e.target.value,
+                              })
+                            }
+                            placeholder="Example: Price is fair because of road access, document title, corner piece, commercial potential..."
+                            rows={3}
+                            className="w-full rounded-xl border border-[#f0bf3c]/30 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+                        </div>
+
                         <textarea
                           required
                           rows={4}
@@ -5937,6 +6315,30 @@ function InamaadApp() {
                           >
                             {item.status}
                           </span>
+                        </div>
+
+                        <div className="mb-3 rounded-2xl bg-[#fff7df] p-3">
+                          {(() => {
+                            const adminPriceIntel = getPriceIntelligence(item, listings);
+
+                            return (
+                              <div>
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <p className="text-xs font-black uppercase tracking-wide text-[#9b6b16]">
+                                    {adminPriceIntel.label} · {adminPriceIntel.confidence}
+                                  </p>
+                                  <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getPriceBadgeClass(adminPriceIntel.label)}`}>
+                                    {adminPriceIntel.percentVsMarket > 0 ? "+" : ""}{adminPriceIntel.percentVsMarket}%
+                                  </span>
+                                </div>
+                                {item.valuationNote ? (
+                                  <p className="mt-2 text-xs leading-5 text-slate-600">
+                                    {item.valuationNote}
+                                  </p>
+                                ) : null}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <p className="mb-4 text-sm leading-6 text-slate-500">

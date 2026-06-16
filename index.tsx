@@ -58,6 +58,14 @@ type Inspection = {
   status: "New" | "Confirmed" | "Completed" | "Cancelled";
 };
 
+type ActivityLog = {
+  id: number;
+  action: string;
+  detail: string;
+  category: "Listing" | "Lead" | "Inspection" | "Admin" | "Backup" | "System";
+  createdAt: string;
+};
+
 type ModalType =
   | "login"
   | "register"
@@ -471,6 +479,15 @@ function InamaadApp() {
     }
   });
 
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
+    try {
+      const savedLogs = localStorage.getItem("inamaad_activity_logs");
+      return savedLogs ? JSON.parse(savedLogs) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [keyword, setKeyword] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [type, setType] = useState("");
@@ -652,6 +669,10 @@ function InamaadApp() {
   }, [inspections]);
 
   useEffect(() => {
+    localStorage.setItem("inamaad_activity_logs", JSON.stringify(activityLogs));
+  }, [activityLogs]);
+
+  useEffect(() => {
     if (authUser) {
       localStorage.setItem("inamaad_auth_user", JSON.stringify(authUser));
     } else {
@@ -803,6 +824,41 @@ function InamaadApp() {
 
     setPrivacyNoticeAccepted(true);
     showMessage("Privacy and local data notice accepted.");
+  }
+
+  function addActivityLog(
+    action: string,
+    detail: string,
+    category: ActivityLog["category"] = "System"
+  ) {
+    const logItem: ActivityLog = {
+      id: Date.now() + Math.random(),
+      action,
+      detail,
+      category,
+      createdAt: new Date().toISOString(),
+    };
+
+    setActivityLogs((currentLogs) => [logItem, ...currentLogs].slice(0, 250));
+  }
+
+  function formatActivityDate(value: string) {
+    try {
+      return new Date(value).toLocaleString();
+    } catch {
+      return value;
+    }
+  }
+
+  function clearActivityLogs() {
+    const confirmed = window.confirm(
+      "Clear the admin activity log from this browser?"
+    );
+
+    if (!confirmed) return;
+
+    setActivityLogs([]);
+    showMessage("Activity log cleared.");
   }
 
   function scrollToSection(id: string) {
@@ -1013,6 +1069,11 @@ function InamaadApp() {
     };
 
     setListings([createdListing, ...listings]);
+    addActivityLog(
+      "Listing posted",
+      `${createdListing.title} was submitted as Pending review.`,
+      "Listing"
+    );
 
     setNewListing({
       title: "",
@@ -1256,17 +1317,31 @@ function InamaadApp() {
   }
 
   function approveListing(id: number) {
+    const listing = listings.find((item) => item.id === id);
+
     setListings(
       listings.map((item) =>
         item.id === id ? { ...item, status: "Verified" } : item
       )
     );
 
+    addActivityLog(
+      "Listing approved",
+      `${listing?.title || "Listing"} was approved by admin.`,
+      "Listing"
+    );
     showMessage("Listing approved successfully.");
   }
 
   function deleteListing(id: number) {
+    const listing = listings.find((item) => item.id === id);
+
     setListings(listings.filter((item) => item.id !== id));
+    addActivityLog(
+      "Listing deleted",
+      `${listing?.title || "Listing"} was deleted by admin.`,
+      "Listing"
+    );
     showMessage("Listing deleted successfully.");
   }
 
@@ -1323,6 +1398,8 @@ function InamaadApp() {
 
     if (!editingListingId) return;
 
+    const listingBeingEdited = listings.find((item) => item.id === editingListingId);
+
     setListings((currentListings) =>
       currentListings.map((item) =>
         item.id === editingListingId
@@ -1352,6 +1429,11 @@ function InamaadApp() {
       )
     );
 
+    addActivityLog(
+      "Listing edited",
+      `${editListingForm.title.trim() || listingBeingEdited?.title || "Listing"} was updated by admin.`,
+      "Listing"
+    );
     cancelEditingListing();
     showMessage("Listing updated successfully.");
   }
@@ -1365,6 +1447,11 @@ function InamaadApp() {
     };
 
     setListings((currentListings) => [duplicatedListing, ...currentListings]);
+    addActivityLog(
+      "Listing duplicated",
+      `${item.title} was duplicated as ${duplicatedListing.title}.`,
+      "Listing"
+    );
     showMessage("Listing duplicated as Pending review.");
   }
 
@@ -1382,6 +1469,12 @@ function InamaadApp() {
       )
     );
 
+    const listing = listings.find((item) => item.id === id);
+    addActivityLog(
+      "Owner verified",
+      `${listing?.ownerName || listing?.title || "Owner / agent"} was verified by admin.`,
+      "Listing"
+    );
     showMessage("Owner / agent verified.");
   }
 
@@ -1399,6 +1492,12 @@ function InamaadApp() {
       )
     );
 
+    const listing = listings.find((item) => item.id === id);
+    addActivityLog(
+      "Owner unverified",
+      `${listing?.ownerName || listing?.title || "Owner / agent"} verification was removed.`,
+      "Listing"
+    );
     showMessage("Owner / agent verification removed.");
   }
 
@@ -1410,6 +1509,12 @@ function InamaadApp() {
       )
     );
 
+    const listing = listings.find((item) => item.id === id);
+    addActivityLog(
+      "Featured listing updated",
+      `${listing?.title || "Listing"} featured status was changed.`,
+      "Listing"
+    );
     showMessage("Featured listing status updated.");
   }
 
@@ -1483,6 +1588,11 @@ function InamaadApp() {
     };
 
     setLeads((currentLeads) => [createdLead, ...currentLeads]);
+    addActivityLog(
+      "Investor lead submitted",
+      `${createdLead.name} submitted an enquiry${createdLead.listingTitle ? ` for ${createdLead.listingTitle}` : ""}.`,
+      "Lead"
+    );
 
     setLeadForm({
       listingId: 0,
@@ -1499,14 +1609,28 @@ function InamaadApp() {
   }
 
   function updateLeadStatus(id: number, status: Lead["status"]) {
+    const lead = leads.find((item) => item.id === id);
+
     setLeads((currentLeads) =>
       currentLeads.map((lead) => (lead.id === id ? { ...lead, status } : lead))
+    );
+    addActivityLog(
+      "Lead status updated",
+      `${lead?.name || "Lead"} was marked as ${status}.`,
+      "Lead"
     );
     showMessage(`Lead marked as ${status}.`);
   }
 
   function deleteLead(id: number) {
+    const lead = leads.find((item) => item.id === id);
+
     setLeads((currentLeads) => currentLeads.filter((lead) => lead.id !== id));
+    addActivityLog(
+      "Lead deleted",
+      `${lead?.name || "Lead"} was deleted from admin.`,
+      "Lead"
+    );
     showMessage("Lead deleted.");
   }
 
@@ -1547,6 +1671,11 @@ function InamaadApp() {
     };
 
     setInspections((currentInspections) => [createdInspection, ...currentInspections]);
+    addActivityLog(
+      "Inspection booked",
+      `${createdInspection.name} requested inspection${createdInspection.listingTitle ? ` for ${createdInspection.listingTitle}` : ""}.`,
+      "Inspection"
+    );
 
     setInspectionForm({
       listingId: 0,
@@ -1564,17 +1693,31 @@ function InamaadApp() {
   }
 
   function updateInspectionStatus(id: number, status: Inspection["status"]) {
+    const inspectionRecord = inspections.find((item) => item.id === id);
+
     setInspections((currentInspections) =>
       currentInspections.map((inspection) =>
         inspection.id === id ? { ...inspection, status } : inspection
       )
     );
+    addActivityLog(
+      "Inspection status updated",
+      `${inspectionRecord?.name || "Inspection"} was marked as ${status}.`,
+      "Inspection"
+    );
     showMessage(`Inspection marked as ${status}.`);
   }
 
   function deleteInspection(id: number) {
+    const inspectionRecord = inspections.find((item) => item.id === id);
+
     setInspections((currentInspections) =>
       currentInspections.filter((inspection) => inspection.id !== id)
+    );
+    addActivityLog(
+      "Inspection deleted",
+      `${inspectionRecord?.name || "Inspection request"} was deleted from admin.`,
+      "Inspection"
     );
     showMessage("Inspection request deleted.");
   }
@@ -1606,6 +1749,26 @@ function InamaadApp() {
 
   function createCsv(rows: unknown[][]) {
     return rows.map((row) => row.map(escapeCsvValue).join(",")).join("\n");
+  }
+
+  function exportActivityLogsCsv() {
+    const rows = [
+      ["Date", "Category", "Action", "Detail"],
+      ...activityLogs.map((log) => [
+        formatActivityDate(log.createdAt),
+        log.category,
+        log.action,
+        log.detail,
+      ]),
+    ];
+
+    downloadTextFile(
+      `inamaad-activity-log-${new Date().toISOString().slice(0, 10)}.csv`,
+      createCsv(rows),
+      "text/csv;charset=utf-8"
+    );
+
+    showMessage("Activity log CSV exported.");
   }
 
   function exportListingsCsv() {
@@ -1734,6 +1897,7 @@ function InamaadApp() {
       listings,
       leads,
       inspections,
+      activityLogs,
       savedListingIds,
       listingViews,
       recentListingIds,
@@ -1746,6 +1910,11 @@ function InamaadApp() {
       "application/json;charset=utf-8"
     );
 
+    addActivityLog(
+      "Full backup exported",
+      "Admin exported a full JSON backup.",
+      "Backup"
+    );
     showMessage("Full INAMAAD backup exported.");
   }
 
@@ -1793,6 +1962,15 @@ function InamaadApp() {
           setCompareListingIds(parsedBackup.compareListingIds);
         }
 
+        if (Array.isArray(parsedBackup.activityLogs)) {
+          setActivityLogs(parsedBackup.activityLogs);
+        }
+
+        addActivityLog(
+          "Backup restored",
+          "Admin restored an INAMAAD JSON backup.",
+          "Backup"
+        );
         showMessage("Backup restored successfully.");
       } catch {
         showMessage("Backup restore failed. Upload a valid INAMAAD JSON backup.");
@@ -1825,6 +2003,15 @@ function InamaadApp() {
     setCompareListingIds([]);
     setExpandedListingId(null);
     setSelectedListing(null);
+    setActivityLogs([
+      {
+        id: Date.now(),
+        action: "Local data reset",
+        detail: "Admin reset local demo data to starter listings.",
+        category: "Admin",
+        createdAt: new Date().toISOString(),
+      },
+    ]);
     showMessage("Local data reset to starter listings.");
   }
 
@@ -1849,6 +2036,11 @@ function InamaadApp() {
     };
 
     setLeads((currentLeads) => [createdLead, ...currentLeads]);
+    addActivityLog(
+      "Buyer brief submitted",
+      `${createdLead.name} submitted a buyer concierge brief.`,
+      "Lead"
+    );
 
     setConciergeForm({
       name: "",
@@ -4180,6 +4372,79 @@ function InamaadApp() {
                   </div>
                 </div>
 
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Admin activity log
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-emerald-700">
+                        Tracks important admin, listing, lead, inspection, and backup actions in this browser.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {activityLogs.length}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                        Logs
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={exportActivityLogsCsv}
+                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
+                    >
+                      Export log CSV
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={clearActivityLogs}
+                      className="rounded-xl border border-red-200 bg-white px-3 py-2.5 text-xs font-black text-red-600 hover:bg-red-50"
+                    >
+                      Clear log
+                    </button>
+                  </div>
+
+                  {activityLogs.length > 0 ? (
+                    <div className="space-y-2">
+                      {activityLogs.slice(0, 8).map((log) => (
+                        <div
+                          key={log.id}
+                          className="rounded-2xl border border-emerald-100 bg-white p-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-black text-[#0d1c38]">
+                              {log.action}
+                            </p>
+                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                              {log.category}
+                            </span>
+                          </div>
+
+                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                            {log.detail}
+                          </p>
+                          <p className="mt-2 text-[10px] font-black uppercase tracking-wide text-slate-400">
+                            {formatActivityDate(log.createdAt)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-sm font-bold leading-6 text-slate-500">
+                        No activity yet. New admin actions, leads, inspections, and backup events will appear here.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="mb-4">
                     <p className="text-sm font-black text-[#0d1c38]">
@@ -4213,6 +4478,14 @@ function InamaadApp() {
                       className="rounded-xl border border-purple-200 px-3 py-2.5 text-xs font-black text-purple-700 hover:bg-purple-50"
                     >
                       Export inspections CSV
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportActivityLogsCsv}
+                      className="rounded-xl border border-emerald-200 px-3 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-50"
+                    >
+                      Export activity CSV
                     </button>
 
                     <button
@@ -4928,6 +5201,7 @@ class InamaadErrorBoundary extends React.Component<
       "inamaad_saved_listing_notes",
       "inamaad_leads",
       "inamaad_inspections",
+      "inamaad_activity_logs",
       "inamaad_listing_views",
       "inamaad_recent_listing_ids",
       "inamaad_compare_listing_ids",

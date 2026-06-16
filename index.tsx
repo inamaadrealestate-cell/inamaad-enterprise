@@ -557,6 +557,119 @@ function getDueDiligenceBadgeClass(score: number) {
   return "bg-red-50 text-red-700";
 }
 
+type DocumentReadinessItem = {
+  label: string;
+  passed: boolean;
+  detail: string;
+};
+
+function getDocumentReadinessItems(item: Listing): DocumentReadinessItem[] {
+  const hasDocument = Boolean(item.documentTitle || item.documentName);
+  const hasOwner = Boolean(item.ownerName);
+  const hasContact = Boolean(item.ownerPhone || item.whatsapp);
+  const hasMedia = Boolean(item.imageUrl || (item.galleryUrls && item.galleryUrls.length > 0));
+  const hasVerificationNote = Boolean(item.ownerVerificationNote);
+  const hasValuationNote = Boolean(item.valuationNote);
+
+  if (isJVListing(item)) {
+    return [
+      {
+        label: "JV title evidence",
+        passed: hasDocument,
+        detail: "Provide title evidence, survey plan, allocation letter, deed, C of O, or other legal basis.",
+      },
+      {
+        label: "Landowner / mandate holder",
+        passed: hasOwner,
+        detail: "Provide the landowner, mandate holder, developer, or authorized representative name.",
+      },
+      {
+        label: "Direct contact",
+        passed: hasContact,
+        detail: "Provide a traceable phone or WhatsApp contact for JV negotiation and inspection planning.",
+      },
+      {
+        label: "Owner / agent verification",
+        passed: Boolean(item.ownerVerified),
+        detail: "Admin should confirm the owner, agent, developer, or mandate holder before serious negotiation.",
+      },
+      {
+        label: "JV valuation note",
+        passed: hasValuationNote,
+        detail: "Add admin note explaining land value, sharing formula, development potential, and key risk.",
+      },
+      {
+        label: "Site media",
+        passed: hasMedia,
+        detail: "Add photos or gallery images for location review before inspection.",
+      },
+    ];
+  }
+
+  return [
+    {
+      label: "Title / document evidence",
+      passed: hasDocument,
+      detail: "Add title, survey, deed, allocation, C of O, or document preview for buyer confidence.",
+    },
+    {
+      label: "Owner / agent name",
+      passed: hasOwner,
+      detail: "Add the owner, agent, developer, or authorized company representative name.",
+    },
+    {
+      label: "Direct contact",
+      passed: hasContact,
+      detail: "Add phone or WhatsApp contact for buyer enquiry and inspection follow-up.",
+    },
+    {
+      label: "Owner verification",
+      passed: Boolean(item.ownerVerified),
+      detail: "Verify the owner or agent profile from Admin before pushing the listing strongly.",
+    },
+    {
+      label: "Admin verification note",
+      passed: hasVerificationNote,
+      detail: "Add a short verification note explaining what was checked.",
+    },
+    {
+      label: "Valuation note",
+      passed: hasValuationNote,
+      detail: "Add admin price/valuation note for negotiation context.",
+    },
+    {
+      label: "Images / gallery",
+      passed: hasMedia,
+      detail: "Add a main image or gallery to improve buyer confidence.",
+    },
+  ];
+}
+
+function getDocumentReadinessScore(item: Listing) {
+  const items = getDocumentReadinessItems(item);
+  const passed = items.filter((entry) => entry.passed).length;
+
+  return items.length > 0 ? Math.round((passed / items.length) * 100) : 0;
+}
+
+function getMissingDocumentItems(item: Listing) {
+  return getDocumentReadinessItems(item).filter((entry) => !entry.passed);
+}
+
+function getDocumentReadinessLabel(score: number) {
+  if (score >= 90) return "Complete";
+  if (score >= 70) return "Strong";
+  if (score >= 45) return "Incomplete";
+  return "Critical";
+}
+
+function getDocumentReadinessBadgeClass(score: number) {
+  if (score >= 90) return "bg-emerald-50 text-emerald-700";
+  if (score >= 70) return "bg-blue-50 text-blue-700";
+  if (score >= 45) return "bg-[#fff7df] text-[#9b6b16]";
+  return "bg-red-50 text-red-700";
+}
+
 function SiteStyles() {
   return (
     <style>{`
@@ -1281,6 +1394,34 @@ function InamaadApp() {
   const nextLaunchReadinessAction =
     failedLaunchReadinessChecks[0]?.label || "Maintain backups, monitor leads, and continue quality review.";
 
+  const documentReadinessInsights = useMemo(
+    () =>
+      listings.map((item) => ({
+        item,
+        score: getDocumentReadinessScore(item),
+        missingItems: getMissingDocumentItems(item),
+      })),
+    [listings]
+  );
+
+  const documentCompleteListingsCount = documentReadinessInsights.filter(
+    (entry) => entry.score >= 90
+  ).length;
+  const documentIncompleteListingsCount = documentReadinessInsights.filter(
+    (entry) => entry.score < 70
+  ).length;
+  const documentCriticalListingsCount = documentReadinessInsights.filter(
+    (entry) => entry.score < 45
+  ).length;
+
+  const averageDocumentReadinessScore =
+    documentReadinessInsights.length > 0
+      ? Math.round(
+          documentReadinessInsights.reduce((total, entry) => total + entry.score, 0) /
+            documentReadinessInsights.length
+        )
+      : 0;
+
   const filteredProperties = useMemo(() => {
     const searchTerm = keyword.trim().toLowerCase();
     const stateTerm = selectedState.trim().toLowerCase();
@@ -1498,6 +1639,129 @@ function InamaadApp() {
       "Admin"
     );
     showMessage("Executive marketplace report exported.");
+  }
+
+  function buildDocumentRequestMessage(item: Listing) {
+    const missingItems = getMissingDocumentItems(item);
+    const missingText =
+      missingItems.length > 0
+        ? missingItems.map((entry, index) => `${index + 1}. ${entry.label}: ${entry.detail}`).join("\\n")
+        : "No major missing document item detected. Please confirm all records are still current.";
+
+    return [
+      `Hello, this is INAMAAD Real Estate regarding: ${item.title}.`,
+      "",
+      "To complete verification and improve buyer confidence, please provide/update the following:",
+      missingText,
+      "",
+      "Kindly send the documents/details as clear images, PDFs, or written confirmation where applicable.",
+      "Thank you.",
+    ].join("\\n");
+  }
+
+  function copyDocumentRequestMessage(item: Listing) {
+    const message = buildDocumentRequestMessage(item);
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(message);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = message;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+
+      addActivityLog(
+        "Document request copied",
+        `Document request copied for ${item.title}.`,
+        "Admin"
+      );
+      showMessage("Document request message copied.");
+    } catch {
+      showMessage("Unable to copy document request.");
+    }
+  }
+
+  function createDocumentFollowUpTask(item: Listing) {
+    const missingItems = getMissingDocumentItems(item);
+
+    const taskTitle =
+      missingItems.length > 0
+        ? `Request missing documents for ${item.title}`
+        : `Confirm documents for ${item.title}`;
+
+    const createdTask: AdminTask = {
+      id: Date.now(),
+      title: taskTitle,
+      assignee: "Admin",
+      dueDate: "",
+      priority: missingItems.length >= 3 ? "High" : "Medium",
+      status: "Open",
+      note:
+        missingItems.length > 0
+          ? missingItems.map((entry) => entry.label).join(", ")
+          : "Document readiness looks good. Confirm records are still current.",
+      createdAt: new Date().toISOString(),
+    };
+
+    setAdminTasks((currentTasks) => [createdTask, ...currentTasks]);
+
+    addActivityLog(
+      "Document follow-up task created",
+      `${taskTitle}.`,
+      "Admin"
+    );
+    showMessage("Document follow-up task created.");
+  }
+
+  function exportDocumentReadinessCsv() {
+    const rows = [
+      [
+        "Reference",
+        "Title",
+        "Type",
+        "State",
+        "Document Readiness Score",
+        "Document Readiness Label",
+        "Missing Items",
+        "Owner / Agent",
+        "Owner Verified",
+        "Document",
+        "Contact",
+      ],
+      ...listings.map((item) => [
+        getListingReference(item.id),
+        item.title,
+        item.type,
+        item.state,
+        `${getDocumentReadinessScore(item)}%`,
+        getDocumentReadinessLabel(getDocumentReadinessScore(item)),
+        getMissingDocumentItems(item).map((entry) => entry.label).join("; "),
+        item.ownerName || "",
+        item.ownerVerified ? "Yes" : "No",
+        item.documentTitle || item.documentName || "",
+        item.ownerPhone || item.whatsapp || "",
+      ]),
+    ];
+
+    downloadTextFile(
+      `inamaad-document-readiness-${new Date().toISOString().slice(0, 10)}.csv`,
+      createCsv(rows),
+      "text/csv;charset=utf-8"
+    );
+
+    addActivityLog(
+      "Document readiness exported",
+      "Admin exported document readiness report as CSV.",
+      "Admin"
+    );
+    showMessage("Document readiness CSV exported.");
   }
 
   function addAdminTask(e: React.FormEvent) {
@@ -2710,6 +2974,9 @@ function InamaadApp() {
         "Due Diligence Score",
         "Due Diligence Label",
         "Due Diligence Passed Checks",
+        "Document Readiness Score",
+        "Document Readiness Label",
+        "Missing Document Items",
         "Owner Verification Note",
         "Owner Phone",
         "WhatsApp",
@@ -2740,6 +3007,9 @@ function InamaadApp() {
         `${getDueDiligenceScore(item)}%`,
         getDueDiligenceLabel(getDueDiligenceScore(item)),
         `${getDueDiligenceChecks(item).filter((check) => check.passed).length}/${getDueDiligenceChecks(item).length}`,
+        `${getDocumentReadinessScore(item)}%`,
+        getDocumentReadinessLabel(getDocumentReadinessScore(item)),
+        getMissingDocumentItems(item).map((entry) => entry.label).join("; "),
         item.ownerVerificationNote || "",
         item.ownerPhone || "",
         item.whatsapp || "",
@@ -3448,6 +3718,7 @@ function InamaadApp() {
                   ["Confidence", priceIntel.confidence],
                   ["Market average", formatNairaCompact(priceIntel.stateAverage)],
                   ["Due diligence", `${dueScore}% · ${dueLabel}`],
+                  ["Document readiness", `${getDocumentReadinessScore(item)}% · ${getDocumentReadinessLabel(getDocumentReadinessScore(item))}`],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-xl bg-white p-3">
                     <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
@@ -5998,6 +6269,147 @@ function InamaadApp() {
                   </button>
                 </div>
 
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Document request center
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-emerald-700">
+                        Find listings with missing documents, copy professional requests, create follow-up tasks, and export a document readiness report.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {averageDocumentReadinessScore}%
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-emerald-700">
+                          Avg
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {documentIncompleteListingsCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-[#9b6b16]">
+                          Incomplete
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {documentCriticalListingsCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-red-600">
+                          Critical
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {documentCompleteListingsCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-emerald-700">
+                        Complete
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {documentIncompleteListingsCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
+                        Needs document work
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {documentCriticalListingsCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-red-600">
+                        Critical
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={exportDocumentReadinessCsv}
+                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
+                    >
+                      Export document readiness
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const firstMissing = documentReadinessInsights.find((entry) => entry.missingItems.length > 0);
+                        if (firstMissing) {
+                          createDocumentFollowUpTask(firstMissing.item);
+                        } else {
+                          showMessage("No missing document task needed.");
+                        }
+                      }}
+                      className="rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-50"
+                    >
+                      Create next task
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {[...documentReadinessInsights]
+                      .sort((a, b) => a.score - b.score)
+                      .slice(0, 6)
+                      .map(({ item, score, missingItems }) => (
+                        <div
+                          key={`document-${item.id}`}
+                          className="rounded-2xl border border-emerald-100 bg-white p-3"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-black text-[#0d1c38]">
+                                {item.title}
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-slate-500">
+                                Missing: {missingItems.length > 0 ? missingItems.map((entry) => entry.label).join(", ") : "No major missing item"}
+                              </p>
+                            </div>
+
+                            <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getDocumentReadinessBadgeClass(score)}`}>
+                              {score}% · {getDocumentReadinessLabel(score)}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => copyDocumentRequestMessage(item)}
+                              className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50"
+                            >
+                              Copy request
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => createDocumentFollowUpTask(item)}
+                              className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white hover:bg-[#162b52]"
+                            >
+                              Create task
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
@@ -6504,6 +6916,13 @@ function InamaadApp() {
                       className="rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-black text-[#0d1c38] hover:bg-slate-50"
                     >
                       Export executive TXT
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportDocumentReadinessCsv}
+                      className="rounded-xl border border-emerald-200 px-3 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-50"
+                    >
+                      Export document readiness
                     </button>
 
                     <button

@@ -420,6 +420,143 @@ function getPriceBadgeClass(label: PriceIntelligence["label"]) {
   return "bg-slate-100 text-slate-600";
 }
 
+type DueDiligenceCheck = {
+  label: string;
+  passed: boolean;
+  detail: string;
+  weight: number;
+};
+
+function getDueDiligenceChecks(item: Listing): DueDiligenceCheck[] {
+  const hasDocument = Boolean(item.documentTitle || item.documentName);
+  const hasOwnerContact = Boolean(item.ownerPhone || item.whatsapp);
+  const hasSizeDetail = Boolean(item.landSize || item.bedrooms || item.bathrooms);
+  const hasMedia = Boolean(item.imageUrl || (item.galleryUrls && item.galleryUrls.length > 0));
+
+  if (isJVListing(item)) {
+    return [
+      {
+        label: "JV structure described",
+        passed: Boolean(item.summary && item.summary.length > 80),
+        detail: "JV deals need a clear project structure, partner role, sharing formula, and execution path.",
+        weight: 18,
+      },
+      {
+        label: "Location stated",
+        passed: Boolean(item.location && item.state),
+        detail: "Location and state help buyers verify land demand, access, and development potential.",
+        weight: 12,
+      },
+      {
+        label: "Owner / agent verified",
+        passed: Boolean(item.ownerVerified),
+        detail: "A verified owner or mandate holder improves JV trust before negotiation.",
+        weight: 22,
+      },
+      {
+        label: "Document evidence",
+        passed: hasDocument,
+        detail: "JV should have title evidence, survey details, allocation proof, or legal basis.",
+        weight: 20,
+      },
+      {
+        label: "Direct contact available",
+        passed: hasOwnerContact,
+        detail: "Admin should have a reachable owner, agent, developer, or landowner contact.",
+        weight: 12,
+      },
+      {
+        label: "Media / site context",
+        passed: hasMedia,
+        detail: "Images or site context help early review before inspection.",
+        weight: 8,
+      },
+      {
+        label: "Admin valuation note",
+        passed: Boolean(item.valuationNote),
+        detail: "Admin valuation notes help explain why the JV may be attractive or risky.",
+        weight: 8,
+      },
+    ];
+  }
+
+  return [
+    {
+      label: "Listing verified",
+      passed: item.status === "Verified",
+      detail: "Admin has marked the listing as verified.",
+      weight: 15,
+    },
+    {
+      label: "Owner / agent verified",
+      passed: Boolean(item.ownerVerified),
+      detail: "Owner or agent identity has been reviewed by admin.",
+      weight: 20,
+    },
+    {
+      label: "Document evidence",
+      passed: hasDocument,
+      detail: "Title, survey, allocation, deed, C of O, or document preview is provided.",
+      weight: 18,
+    },
+    {
+      label: "Direct contact available",
+      passed: hasOwnerContact,
+      detail: "Phone or WhatsApp contact is available for traceable follow-up.",
+      weight: 12,
+    },
+    {
+      label: "Location and state clear",
+      passed: Boolean(item.location && item.state),
+      detail: "Clear location makes inspection and market checks easier.",
+      weight: 10,
+    },
+    {
+      label: "Property detail complete",
+      passed: hasSizeDetail,
+      detail: "Land size, bedrooms, bathrooms, or other size details are included.",
+      weight: 10,
+    },
+    {
+      label: "Images / gallery available",
+      passed: hasMedia,
+      detail: "Images help buyer screening before inspection.",
+      weight: 8,
+    },
+    {
+      label: "Admin valuation note",
+      passed: Boolean(item.valuationNote),
+      detail: "Admin note explains price, title, negotiation, or risk context.",
+      weight: 7,
+    },
+  ];
+}
+
+function getDueDiligenceScore(item: Listing) {
+  const checks = getDueDiligenceChecks(item);
+  const possibleScore = checks.reduce((total, check) => total + check.weight, 0);
+  const passedScore = checks.reduce(
+    (total, check) => total + (check.passed ? check.weight : 0),
+    0
+  );
+
+  return possibleScore > 0 ? Math.round((passedScore / possibleScore) * 100) : 0;
+}
+
+function getDueDiligenceLabel(score: number) {
+  if (score >= 85) return "Launch ready";
+  if (score >= 70) return "Strong";
+  if (score >= 50) return "Needs review";
+  return "High risk";
+}
+
+function getDueDiligenceBadgeClass(score: number) {
+  if (score >= 85) return "bg-emerald-50 text-emerald-700";
+  if (score >= 70) return "bg-blue-50 text-blue-700";
+  if (score >= 50) return "bg-[#fff7df] text-[#9b6b16]";
+  return "bg-red-50 text-red-700";
+}
+
 function SiteStyles() {
   return (
     <style>{`
@@ -1005,6 +1142,32 @@ function InamaadApp() {
   ).length;
   const lowConfidenceValuationsCount = valuationInsights.filter(
     (entry) => entry.priceIntel.confidence === "Low"
+  ).length;
+
+  const dueDiligenceInsights = useMemo(
+    () =>
+      listings.map((item) => ({
+        item,
+        score: getDueDiligenceScore(item),
+        checks: getDueDiligenceChecks(item),
+      })),
+    [listings]
+  );
+
+  const averageDueDiligenceScore =
+    dueDiligenceInsights.length > 0
+      ? Math.round(
+          dueDiligenceInsights.reduce((total, entry) => total + entry.score, 0) /
+            dueDiligenceInsights.length
+        )
+      : 0;
+
+  const highRiskDueDiligenceCount = dueDiligenceInsights.filter(
+    (entry) => entry.score < 50
+  ).length;
+
+  const reviewDueDiligenceCount = dueDiligenceInsights.filter(
+    (entry) => entry.score >= 50 && entry.score < 70
   ).length;
 
   const adminActionQueueCount =
@@ -2284,6 +2447,9 @@ function InamaadApp() {
         "Comparable Count",
         "Market Difference",
         "Admin Valuation Note",
+        "Due Diligence Score",
+        "Due Diligence Label",
+        "Due Diligence Passed Checks",
         "Owner Verification Note",
         "Owner Phone",
         "WhatsApp",
@@ -2311,6 +2477,9 @@ function InamaadApp() {
         getPriceIntelligence(item, listings).comparableCount,
         `${getPriceIntelligence(item, listings).percentVsMarket}%`,
         item.valuationNote || "",
+        `${getDueDiligenceScore(item)}%`,
+        getDueDiligenceLabel(getDueDiligenceScore(item)),
+        `${getDueDiligenceChecks(item).filter((check) => check.passed).length}/${getDueDiligenceChecks(item).length}`,
         item.ownerVerificationNote || "",
         item.ownerPhone || "",
         item.whatsapp || "",
@@ -2709,6 +2878,8 @@ function InamaadApp() {
     const isSaved = savedListingIds.includes(item.id);
     const isCompared = compareListingIds.includes(item.id);
     const priceIntel = getPriceIntelligence(item, listings);
+    const dueScore = getDueDiligenceScore(item);
+    const dueLabel = getDueDiligenceLabel(dueScore);
 
     return (
       <article
@@ -2751,6 +2922,10 @@ function InamaadApp() {
 
                 <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${getPriceBadgeClass(priceIntel.label)}`}>
                   {priceIntel.label}
+                </span>
+
+                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${getDueDiligenceBadgeClass(dueScore)}`}>
+                  DD {dueScore}%
                 </span>
               </div>
               <p className="mt-2 text-xl font-black text-white">{item.price}</p>
@@ -2865,6 +3040,23 @@ function InamaadApp() {
                 Admin note: {item.valuationNote}
               </p>
             ) : null}
+          </div>
+
+          <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                  Due diligence score
+                </p>
+                <p className="mt-1 text-sm font-black text-[#0d1c38]">
+                  {dueLabel}. {getDueDiligenceChecks(item).filter((check) => check.passed).length}/{getDueDiligenceChecks(item).length} checks passed.
+                </p>
+              </div>
+
+              <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getDueDiligenceBadgeClass(dueScore)}`}>
+                {dueScore}%
+              </span>
+            </div>
           </div>
 
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-[#f8fafc] p-2">
@@ -2995,6 +3187,7 @@ function InamaadApp() {
                   ["Price guide", priceIntel.label],
                   ["Confidence", priceIntel.confidence],
                   ["Market average", formatNairaCompact(priceIntel.stateAverage)],
+                  ["Due diligence", `${dueScore}% · ${dueLabel}`],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-xl bg-white p-3">
                     <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
@@ -4506,6 +4699,46 @@ function InamaadApp() {
               );
             })()}
 
+            {(() => {
+              const modalDueScore = getDueDiligenceScore(selectedListing);
+              const modalChecks = getDueDiligenceChecks(selectedListing);
+
+              return (
+                <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                  <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                        Verification checklist
+                      </p>
+                      <p className="mt-1 text-lg font-black text-[#0d1c38]">
+                        {getDueDiligenceLabel(modalDueScore)} · {modalDueScore}% due diligence
+                      </p>
+                    </div>
+
+                    <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${getDueDiligenceBadgeClass(modalDueScore)}`}>
+                      {modalChecks.filter((check) => check.passed).length}/{modalChecks.length} passed
+                    </span>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {modalChecks.map((check) => (
+                      <div
+                        key={check.label}
+                        className="rounded-xl bg-white p-3"
+                      >
+                        <p className={`text-xs font-black ${check.passed ? "text-emerald-700" : "text-red-600"}`}>
+                          {check.passed ? "✓" : "!"} {check.label}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          {check.detail}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="grid gap-3 sm:grid-cols-2">
               <a
                 href={getWhatsappUrl(selectedListing)}
@@ -5138,6 +5371,88 @@ function InamaadApp() {
                         </span>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-100 bg-white p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Due diligence command center
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Scores each listing by verification, documents, contact readiness, media, size details, and valuation notes.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-center">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {averageDueDiligenceScore}%
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                        Average
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl bg-red-50 p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {highRiskDueDiligenceCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-red-700">
+                        High risk
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-[#fff7df] p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {reviewDueDiligenceCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-[#9b6b16]">
+                        Needs review
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-emerald-50 p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {dueDiligenceInsights.filter((entry) => entry.score >= 85).length}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-emerald-700">
+                        Launch ready
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {[...dueDiligenceInsights]
+                      .sort((a, b) => a.score - b.score)
+                      .slice(0, 5)
+                      .map(({ item, score, checks }) => (
+                        <div
+                          key={`due-${item.id}`}
+                          className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-3"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-black text-[#0d1c38]">
+                                {item.title}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {checks.filter((check) => check.passed).length}/{checks.length} checks passed
+                              </p>
+                            </div>
+
+                            <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${getDueDiligenceBadgeClass(score)}`}>
+                              {score}% · {getDueDiligenceLabel(score)}
+                            </span>
+                          </div>
+
+                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                            Next fix: {checks.find((check) => !check.passed)?.label || "Ready for launch review"}
+                          </p>
+                        </div>
+                      ))}
                   </div>
                 </div>
 

@@ -519,6 +519,13 @@ function InamaadApp() {
   const [successMessage, setSuccessMessage] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState(() => {
+    try {
+      return localStorage.getItem("inamaad_privacy_notice_accepted") === "yes";
+    } catch {
+      return false;
+    }
+  });
 
   const [loginForm, setLoginForm] = useState({
     email: "",
@@ -785,6 +792,17 @@ function InamaadApp() {
   function showMessage(message: string) {
     setSuccessMessage(message);
     window.setTimeout(() => setSuccessMessage(""), 4000);
+  }
+
+  function acceptPrivacyNotice() {
+    try {
+      localStorage.setItem("inamaad_privacy_notice_accepted", "yes");
+    } catch {
+      // Ignore storage errors and still hide the notice for this session.
+    }
+
+    setPrivacyNoticeAccepted(true);
+    showMessage("Privacy and local data notice accepted.");
   }
 
   function scrollToSection(id: string) {
@@ -3303,6 +3321,66 @@ function InamaadApp() {
         </div>
       </section>
 
+      <section id="legal" className="mx-auto max-w-7xl px-4 py-14 lg:px-10">
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
+          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+            <div className="rounded-[1.5rem] bg-[#0d1c38] p-6 text-white">
+              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
+                Legal and privacy center
+              </p>
+              <h2 className="text-3xl font-black tracking-tight">
+                Clear rules for safer real estate use.
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-white/65">
+                This marketplace stores demo listings, saved properties, leads, inspections, comparison items, and admin activity in the user’s browser local storage until a backend database is connected.
+              </p>
+
+              <button
+                type="button"
+                onClick={acceptPrivacyNotice}
+                className="mt-6 rounded-xl bg-[#f0bf3c] px-5 py-3 text-sm font-black text-[#0d1c38] hover:bg-[#f7ce62]"
+              >
+                Accept privacy notice
+              </button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                [
+                  "Privacy notice",
+                  "Buyer briefs, leads, inspections, saved notes, and admin records are currently saved in this browser for demo/business testing.",
+                ],
+                [
+                  "Terms of use",
+                  "Users should verify title, ownership, inspection access, and legal documents before payment or agreement.",
+                ],
+                [
+                  "No payment guarantee",
+                  "Do not treat listed prices, ROI, or JV offers as final legal advice or guaranteed investment return.",
+                ],
+                [
+                  "Data responsibility",
+                  "Admins should export backups regularly and move production data to a secure backend before public launch.",
+                ],
+                [
+                  "Professional checks",
+                  "Use lawyers, surveyors, valuers, and qualified real estate professionals for final verification.",
+                ],
+                [
+                  "Local data control",
+                  "Browser-stored demo data can be reset from the safety guard or admin backup tools when needed.",
+                ],
+              ].map(([title, body]) => (
+                <div key={title} className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-4">
+                  <p className="text-sm font-black text-[#0d1c38]">{title}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <footer className="border-t border-slate-200 bg-white px-4 py-10 lg:px-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
@@ -3335,6 +3413,13 @@ function InamaadApp() {
               className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-[#0d1c38]"
             >
               Compliance
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("legal")}
+              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-[#0d1c38]"
+            >
+              Legal
             </button>
             <a
               href={`https://wa.me/${WHATSAPP_NUMBER}`}

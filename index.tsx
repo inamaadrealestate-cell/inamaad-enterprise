@@ -1409,6 +1409,97 @@ function InamaadApp() {
     }
   }
 
+  function buildExecutiveMarketplaceReport() {
+    const reportLines = [
+      "INAMAAD REAL ESTATE - EXECUTIVE MARKETPLACE REPORT",
+      `Generated: ${new Date().toLocaleString()}`,
+      "",
+      "1. LAUNCH READINESS",
+      `Launch readiness score: ${marketplaceLaunchReadinessScore}%`,
+      `Launch status: ${launchReadinessLabel}`,
+      `Next recommended move: ${nextLaunchReadinessAction}`,
+      "",
+      "2. MARKETPLACE INVENTORY",
+      `Total listings: ${listings.length}`,
+      `Properties: ${propertyListings.length}`,
+      `JV deals: ${jvListings.length}`,
+      `Verified listings: ${verifiedListingsCount}`,
+      `Owner / agent verified listings: ${ownerVerifiedListingsCount}`,
+      `Listings with documents: ${listingsWithDocumentsCount}`,
+      `Listings with contacts: ${listingsWithContactsCount}`,
+      "",
+      "3. QUALITY AND DUE DILIGENCE",
+      `Average due diligence score: ${averageDueDiligenceScore}%`,
+      `High-risk listings: ${highRiskDueDiligenceCount}`,
+      `Needs-review listings: ${reviewDueDiligenceCount}`,
+      `Opportunity price listings: ${opportunityListingsCount}`,
+      `Premium / high price listings: ${highPriceListingsCount}`,
+      "",
+      "4. CRM AND OPERATIONS",
+      `Total leads: ${leads.length}`,
+      `Hot / high priority leads: ${hotLeadsCount}`,
+      `Due lead follow-ups: ${dueLeadFollowUpsCount}`,
+      `Inspection requests: ${inspections.length}`,
+      `Open admin tasks: ${openAdminTasksCount}`,
+      `Urgent admin tasks: ${urgentAdminTasksCount}`,
+      `Due admin tasks: ${dueAdminTasksCount}`,
+      `Open admin action queue: ${adminActionQueueCount}`,
+      "",
+      "5. RECOMMENDED MANAGEMENT ACTION",
+      failedLaunchReadinessChecks.length > 0
+        ? `Fix first: ${failedLaunchReadinessChecks[0].label} - ${failedLaunchReadinessChecks[0].detail}`
+        : "Marketplace is in good condition. Continue monitoring leads, inspections, backup exports, and listing quality.",
+      "",
+      "This report is based on the current browser-saved INAMAAD marketplace data.",
+    ];
+
+    return reportLines.join("\\n");
+  }
+
+  function copyExecutiveMarketplaceReport() {
+    const report = buildExecutiveMarketplaceReport();
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(report);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = report;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+
+      addActivityLog(
+        "Executive report copied",
+        "Admin copied the executive marketplace report.",
+        "Admin"
+      );
+      showMessage("Executive marketplace report copied.");
+    } catch {
+      showMessage("Unable to copy report. Please export it instead.");
+    }
+  }
+
+  function exportExecutiveMarketplaceReportTxt() {
+    downloadTextFile(
+      `inamaad-executive-marketplace-report-${new Date().toISOString().slice(0, 10)}.txt`,
+      buildExecutiveMarketplaceReport(),
+      "text/plain;charset=utf-8"
+    );
+
+    addActivityLog(
+      "Executive report exported",
+      "Admin exported the executive marketplace report as TXT.",
+      "Admin"
+    );
+    showMessage("Executive marketplace report exported.");
+  }
+
   function addAdminTask(e: React.FormEvent) {
     e.preventDefault();
 
@@ -5907,6 +5998,93 @@ function InamaadApp() {
                   </button>
                 </div>
 
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Executive report center
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Generate a management-ready marketplace report covering launch readiness, inventory, due diligence, CRM, inspections, tasks, and next recommended action.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-[#f8fafc] px-4 py-3 text-center">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {marketplaceLaunchReadinessScore}%
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                        Executive score
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-4">
+                    <div className="rounded-2xl bg-[#f8fafc] p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {listings.length}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-slate-400">
+                        Listings
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-emerald-50 p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {averageDueDiligenceScore}%
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                        Due diligence
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-blue-50 p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {leads.length}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-blue-700">
+                        CRM leads
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-[#fff7df] p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {adminActionQueueCount}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
+                        Actions
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-[#f8fafc] p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      Report headline
+                    </p>
+                    <p className="mt-2 text-sm font-bold leading-6 text-[#0d1c38]">
+                      INAMAAD is currently marked as {launchReadinessLabel} with {marketplaceLaunchReadinessScore}% launch readiness. Next action: {nextLaunchReadinessAction}.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={copyExecutiveMarketplaceReport}
+                      className="rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-black text-white hover:bg-[#162b52]"
+                    >
+                      Copy executive report
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={exportExecutiveMarketplaceReportTxt}
+                      className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-black text-[#0d1c38] hover:bg-slate-50"
+                    >
+                      Export executive TXT
+                    </button>
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
@@ -6319,6 +6497,13 @@ function InamaadApp() {
                       className="rounded-xl border border-[#f0bf3c] px-3 py-2.5 text-xs font-black text-[#9b6b16] hover:bg-[#fff7df]"
                     >
                       Export launch report
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportExecutiveMarketplaceReportTxt}
+                      className="rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-black text-[#0d1c38] hover:bg-slate-50"
+                    >
+                      Export executive TXT
                     </button>
 
                     <button

@@ -66,6 +66,18 @@ type ActivityLog = {
   createdAt: string;
 };
 
+type AdminTask = {
+  id: number;
+  title: string;
+  assignee: string;
+  dueDate: string;
+  priority: "Low" | "Medium" | "High" | "Urgent";
+  status: "Open" | "In Progress" | "Done";
+  note: string;
+  createdAt: string;
+  completedAt?: string;
+};
+
 type ModalType =
   | "login"
   | "register"
@@ -488,6 +500,15 @@ function InamaadApp() {
     }
   });
 
+  const [adminTasks, setAdminTasks] = useState<AdminTask[]>(() => {
+    try {
+      const savedTasks = localStorage.getItem("inamaad_admin_tasks");
+      return savedTasks ? JSON.parse(savedTasks) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [keyword, setKeyword] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [type, setType] = useState("");
@@ -536,6 +557,13 @@ function InamaadApp() {
   const [successMessage, setSuccessMessage] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminTaskForm, setAdminTaskForm] = useState({
+    title: "",
+    assignee: "Admin",
+    dueDate: "",
+    priority: "Medium" as AdminTask["priority"],
+    note: "",
+  });
   const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState(() => {
     try {
       return localStorage.getItem("inamaad_privacy_notice_accepted") === "yes";
@@ -673,6 +701,10 @@ function InamaadApp() {
   }, [activityLogs]);
 
   useEffect(() => {
+    localStorage.setItem("inamaad_admin_tasks", JSON.stringify(adminTasks));
+  }, [adminTasks]);
+
+  useEffect(() => {
     if (authUser) {
       localStorage.setItem("inamaad_auth_user", JSON.stringify(authUser));
     } else {
@@ -768,8 +800,20 @@ function InamaadApp() {
   const newInspectionsCount = inspections.filter(
     (inspection) => inspection.status === "New"
   ).length;
+  const todayDate = new Date().toISOString().slice(0, 10);
+  const openAdminTasksCount = adminTasks.filter((task) => task.status !== "Done").length;
+  const urgentAdminTasksCount = adminTasks.filter(
+    (task) => task.status !== "Done" && task.priority === "Urgent"
+  ).length;
+  const dueAdminTasksCount = adminTasks.filter(
+    (task) => task.status !== "Done" && Boolean(task.dueDate) && task.dueDate <= todayDate
+  ).length;
   const adminActionQueueCount =
-    pendingListingsCount + unverifiedOwnersCount + newLeadsCount + newInspectionsCount;
+    pendingListingsCount +
+    unverifiedOwnersCount +
+    newLeadsCount +
+    newInspectionsCount +
+    openAdminTasksCount;
 
   const filteredProperties = useMemo(() => {
     const searchTerm = keyword.trim().toLowerCase();
@@ -870,6 +914,111 @@ function InamaadApp() {
 
     setActivityLogs([]);
     showMessage("Activity log cleared.");
+  }
+
+  function addAdminTask(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!adminTaskForm.title.trim()) {
+      showMessage("Enter a task title first.");
+      return;
+    }
+
+    const createdTask: AdminTask = {
+      id: Date.now(),
+      title: adminTaskForm.title.trim(),
+      assignee: adminTaskForm.assignee.trim() || "Admin",
+      dueDate: adminTaskForm.dueDate,
+      priority: adminTaskForm.priority,
+      status: "Open",
+      note: adminTaskForm.note.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    setAdminTasks((currentTasks) => [createdTask, ...currentTasks]);
+
+    addActivityLog(
+      "Admin task created",
+      `${createdTask.title} assigned to ${createdTask.assignee}.`,
+      "Admin"
+    );
+
+    setAdminTaskForm({
+      title: "",
+      assignee: "Admin",
+      dueDate: "",
+      priority: "Medium",
+      note: "",
+    });
+
+    showMessage("Admin task created.");
+  }
+
+  function updateAdminTaskStatus(id: number, status: AdminTask["status"]) {
+    const task = adminTasks.find((item) => item.id === id);
+
+    setAdminTasks((currentTasks) =>
+      currentTasks.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              status,
+              completedAt: status === "Done" ? new Date().toISOString() : undefined,
+            }
+          : item
+      )
+    );
+
+    addActivityLog(
+      "Admin task updated",
+      `${task?.title || "Task"} marked as ${status}.`,
+      "Admin"
+    );
+
+    showMessage(`Task marked as ${status}.`);
+  }
+
+  function deleteAdminTask(id: number) {
+    const task = adminTasks.find((item) => item.id === id);
+
+    setAdminTasks((currentTasks) => currentTasks.filter((item) => item.id !== id));
+
+    addActivityLog(
+      "Admin task deleted",
+      `${task?.title || "Task"} was removed from the operations planner.`,
+      "Admin"
+    );
+
+    showMessage("Admin task deleted.");
+  }
+
+  function exportAdminTasksCsv() {
+    const rows = [
+      ["Title", "Assignee", "Due Date", "Priority", "Status", "Note", "Created At", "Completed At"],
+      ...adminTasks.map((task) => [
+        task.title,
+        task.assignee,
+        task.dueDate,
+        task.priority,
+        task.status,
+        task.note,
+        formatActivityDate(task.createdAt),
+        task.completedAt ? formatActivityDate(task.completedAt) : "",
+      ]),
+    ];
+
+    downloadTextFile(
+      `inamaad-admin-tasks-${new Date().toISOString().slice(0, 10)}.csv`,
+      createCsv(rows),
+      "text/csv;charset=utf-8"
+    );
+
+    addActivityLog(
+      "Admin tasks exported",
+      "Admin exported the operations planner tasks as CSV.",
+      "Admin"
+    );
+    showMessage("Admin tasks CSV exported.");
   }
 
   function scrollToSection(id: string) {
@@ -1909,6 +2058,7 @@ function InamaadApp() {
       leads,
       inspections,
       activityLogs,
+      adminTasks,
       savedListingIds,
       listingViews,
       recentListingIds,
@@ -1977,6 +2127,10 @@ function InamaadApp() {
           setActivityLogs(parsedBackup.activityLogs);
         }
 
+        if (Array.isArray(parsedBackup.adminTasks)) {
+          setAdminTasks(parsedBackup.adminTasks);
+        }
+
         addActivityLog(
           "Backup restored",
           "Admin restored an INAMAAD JSON backup.",
@@ -2014,6 +2168,7 @@ function InamaadApp() {
     setCompareListingIds([]);
     setExpandedListingId(null);
     setSelectedListing(null);
+    setAdminTasks([]);
     setActivityLogs([
       {
         id: Date.now(),
@@ -4604,6 +4759,213 @@ function InamaadApp() {
                   </button>
                 </div>
 
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Admin task manager
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-blue-700">
+                        Plan follow-ups for listings, buyer calls, inspections, documents, and team operations.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {openAdminTasksCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-blue-700">
+                          Open
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {urgentAdminTasksCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-red-600">
+                          Urgent
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {dueAdminTasksCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-[#9b6b16]">
+                          Due
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <form onSubmit={addAdminTask} className="mb-4 grid gap-3 rounded-2xl bg-white p-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input
+                        required
+                        value={adminTaskForm.title}
+                        onChange={(e) =>
+                          setAdminTaskForm({ ...adminTaskForm, title: e.target.value })
+                        }
+                        placeholder="Task title, e.g. Call buyer, verify C of O..."
+                        className="w-full rounded-xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <input
+                        value={adminTaskForm.assignee}
+                        onChange={(e) =>
+                          setAdminTaskForm({ ...adminTaskForm, assignee: e.target.value })
+                        }
+                        placeholder="Assignee"
+                        className="w-full rounded-xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <input
+                        type="date"
+                        value={adminTaskForm.dueDate}
+                        onChange={(e) =>
+                          setAdminTaskForm({ ...adminTaskForm, dueDate: e.target.value })
+                        }
+                        className="w-full rounded-xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <select
+                        value={adminTaskForm.priority}
+                        onChange={(e) =>
+                          setAdminTaskForm({
+                            ...adminTaskForm,
+                            priority: e.target.value as AdminTask["priority"],
+                          })
+                        }
+                        className="w-full rounded-xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                      >
+                        <option value="Low">Low priority</option>
+                        <option value="Medium">Medium priority</option>
+                        <option value="High">High priority</option>
+                        <option value="Urgent">Urgent priority</option>
+                      </select>
+
+                      <button
+                        type="submit"
+                        className="rounded-xl bg-[#0d1c38] px-3 py-3 text-sm font-black text-white hover:bg-[#162b52]"
+                      >
+                        Add task
+                      </button>
+                    </div>
+
+                    <textarea
+                      value={adminTaskForm.note}
+                      onChange={(e) =>
+                        setAdminTaskForm({ ...adminTaskForm, note: e.target.value })
+                      }
+                      rows={3}
+                      placeholder="Task note or follow-up detail..."
+                      className="w-full rounded-xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </form>
+
+                  <div className="mb-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={exportAdminTasksCsv}
+                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
+                    >
+                      Export tasks CSV
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminTaskForm({
+                          title: "",
+                          assignee: "Admin",
+                          dueDate: "",
+                          priority: "Medium",
+                          note: "",
+                        });
+                        showMessage("Task form cleared.");
+                      }}
+                      className="rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-xs font-black text-blue-700 hover:bg-blue-50"
+                    >
+                      Clear form
+                    </button>
+                  </div>
+
+                  {adminTasks.length > 0 ? (
+                    <div className="space-y-2">
+                      {adminTasks.slice(0, 8).map((task) => (
+                        <div
+                          key={task.id}
+                          className="rounded-2xl border border-blue-100 bg-white p-3"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-black text-[#0d1c38]">
+                                {task.title}
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-slate-500">
+                                {task.assignee} {task.dueDate ? `· Due ${task.dueDate}` : ""} {task.note ? `· ${task.note}` : ""}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <span
+                                className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
+                                  task.priority === "Urgent"
+                                    ? "bg-red-50 text-red-700"
+                                    : task.priority === "High"
+                                      ? "bg-orange-50 text-orange-700"
+                                      : "bg-blue-50 text-blue-700"
+                                }`}
+                              >
+                                {task.priority}
+                              </span>
+
+                              <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600">
+                                {task.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {(["Open", "In Progress", "Done"] as AdminTask["status"][]).map((status) => (
+                              <button
+                                key={`${task.id}-${status}`}
+                                type="button"
+                                onClick={() => updateAdminTaskStatus(task.id, status)}
+                                className={`rounded-xl px-3 py-2 text-xs font-black ${
+                                  task.status === status
+                                    ? "bg-[#0d1c38] text-white"
+                                    : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                }`}
+                              >
+                                {status}
+                              </button>
+                            ))}
+
+                            <button
+                              type="button"
+                              onClick={() => deleteAdminTask(task.id)}
+                              className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600 hover:bg-red-50"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-sm font-bold leading-6 text-slate-500">
+                        No admin tasks yet. Add tasks for buyer follow-up, title verification, inspection scheduling, owner calls, or backup reminders.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
@@ -5434,6 +5796,7 @@ class InamaadErrorBoundary extends React.Component<
       "inamaad_leads",
       "inamaad_inspections",
       "inamaad_activity_logs",
+      "inamaad_admin_tasks",
       "inamaad_listing_views",
       "inamaad_recent_listing_ids",
       "inamaad_compare_listing_ids",

@@ -1170,6 +1170,54 @@ function InamaadApp() {
     (entry) => entry.score >= 50 && entry.score < 70
   ).length;
 
+  const verifiedListingsCount = listings.filter((item) => item.status === "Verified").length;
+  const ownerVerifiedListingsCount = listings.filter((item) => item.ownerVerified).length;
+  const listingsWithDocumentsCount = listings.filter(
+    (item) => Boolean(item.documentTitle || item.documentName)
+  ).length;
+  const listingsWithContactsCount = listings.filter(
+    (item) => Boolean(item.ownerPhone || item.whatsapp)
+  ).length;
+
+  const listingVerificationRate =
+    listings.length > 0 ? Math.round((verifiedListingsCount / listings.length) * 100) : 0;
+  const ownerVerificationRate =
+    listings.length > 0 ? Math.round((ownerVerifiedListingsCount / listings.length) * 100) : 0;
+  const documentCoverageRate =
+    listings.length > 0 ? Math.round((listingsWithDocumentsCount / listings.length) * 100) : 0;
+  const contactCoverageRate =
+    listings.length > 0 ? Math.round((listingsWithContactsCount / listings.length) * 100) : 0;
+
+  const crmReadinessScore = Math.min(
+    100,
+    Math.round(
+      Math.min(leads.length, 10) * 5 +
+        Math.min(inspections.length, 10) * 3 +
+        Math.min(adminTasks.length, 10) * 2
+    )
+  );
+
+  const marketplaceLaunchReadinessScore = Math.min(
+    100,
+    Math.round(
+      averageDueDiligenceScore * 0.35 +
+        listingVerificationRate * 0.2 +
+        ownerVerificationRate * 0.18 +
+        documentCoverageRate * 0.12 +
+        contactCoverageRate * 0.1 +
+        crmReadinessScore * 0.05
+    )
+  );
+
+  const launchReadinessLabel =
+    marketplaceLaunchReadinessScore >= 85
+      ? "Launch ready"
+      : marketplaceLaunchReadinessScore >= 70
+        ? "Almost ready"
+        : marketplaceLaunchReadinessScore >= 50
+          ? "Needs work"
+          : "Not ready";
+
   const adminActionQueueCount =
     pendingListingsCount +
     unverifiedOwnersCount +
@@ -1177,6 +1225,61 @@ function InamaadApp() {
     newInspectionsCount +
     openAdminTasksCount +
     dueLeadFollowUpsCount;
+
+  const launchReadinessChecks = [
+    {
+      label: "Verified listings",
+      passed: listingVerificationRate >= 70,
+      value: `${listingVerificationRate}%`,
+      detail: "Most listings should be admin verified before a serious public launch.",
+    },
+    {
+      label: "Owner / agent verification",
+      passed: ownerVerificationRate >= 70,
+      value: `${ownerVerificationRate}%`,
+      detail: "Owner or agent verification reduces fake-agent and trust risk.",
+    },
+    {
+      label: "Document coverage",
+      passed: documentCoverageRate >= 60,
+      value: `${documentCoverageRate}%`,
+      detail: "Listings should include title, survey, allocation, deed, C of O, or document context.",
+    },
+    {
+      label: "Contact readiness",
+      passed: contactCoverageRate >= 75,
+      value: `${contactCoverageRate}%`,
+      detail: "Phone or WhatsApp contact should be available for follow-up and inspection.",
+    },
+    {
+      label: "Due diligence quality",
+      passed: averageDueDiligenceScore >= 70,
+      value: `${averageDueDiligenceScore}%`,
+      detail: "Average due diligence score should be strong across all listings.",
+    },
+    {
+      label: "High-risk listings",
+      passed: highRiskDueDiligenceCount === 0,
+      value: `${highRiskDueDiligenceCount}`,
+      detail: "High-risk listings should be fixed, hidden, or reviewed before launch.",
+    },
+    {
+      label: "CRM and operations",
+      passed: leads.length > 0 || adminTasks.length > 0 || inspections.length > 0,
+      value: `${leads.length} leads · ${adminTasks.length} tasks · ${inspections.length} inspections`,
+      detail: "A professional marketplace needs CRM, tasks, and inspection workflow ready.",
+    },
+    {
+      label: "Open admin queue",
+      passed: adminActionQueueCount <= 5,
+      value: `${adminActionQueueCount}`,
+      detail: "Keep pending listings, owner checks, leads, inspections, and tasks under control.",
+    },
+  ];
+
+  const failedLaunchReadinessChecks = launchReadinessChecks.filter((check) => !check.passed);
+  const nextLaunchReadinessAction =
+    failedLaunchReadinessChecks[0]?.label || "Maintain backups, monitor leads, and continue quality review.";
 
   const filteredProperties = useMemo(() => {
     const searchTerm = keyword.trim().toLowerCase();
@@ -1277,6 +1380,33 @@ function InamaadApp() {
 
     setActivityLogs([]);
     showMessage("Activity log cleared.");
+  }
+
+  function copyAdminCommunicationTemplate(title: string, text: string) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+
+      addActivityLog(
+        "Communication template copied",
+        `${title} template copied for follow-up.`,
+        "Admin"
+      );
+      showMessage(`${title} template copied.`);
+    } catch {
+      showMessage("Unable to copy template. Please copy manually.");
+    }
   }
 
   function addAdminTask(e: React.FormEvent) {
@@ -2224,6 +2354,45 @@ function InamaadApp() {
         item.id === id ? { ...item, notes } : item
       )
     );
+  }
+
+  function exportLaunchReadinessReportCsv() {
+    const rows = [
+      ["Metric", "Value", "Status", "Recommendation"],
+      [
+        "Marketplace launch readiness score",
+        `${marketplaceLaunchReadinessScore}%`,
+        launchReadinessLabel,
+        `Next action: ${nextLaunchReadinessAction}`,
+      ],
+      ...launchReadinessChecks.map((check) => [
+        check.label,
+        check.value,
+        check.passed ? "Passed" : "Needs work",
+        check.detail,
+      ]),
+      ["Verified listings", verifiedListingsCount, "", ""],
+      ["Owner verified listings", ownerVerifiedListingsCount, "", ""],
+      ["Listings with documents", listingsWithDocumentsCount, "", ""],
+      ["Listings with contacts", listingsWithContactsCount, "", ""],
+      ["High risk due diligence listings", highRiskDueDiligenceCount, "", ""],
+      ["CRM leads", leads.length, "", ""],
+      ["Inspection requests", inspections.length, "", ""],
+      ["Admin tasks", adminTasks.length, "", ""],
+    ];
+
+    downloadTextFile(
+      `inamaad-launch-readiness-${new Date().toISOString().slice(0, 10)}.csv`,
+      createCsv(rows),
+      "text/csv;charset=utf-8"
+    );
+
+    addActivityLog(
+      "Launch readiness exported",
+      `Admin exported launch readiness report at ${marketplaceLaunchReadinessScore}%.`,
+      "Admin"
+    );
+    showMessage("Launch readiness report exported.");
   }
 
   function exportCrmPipelineCsv() {
@@ -5374,6 +5543,113 @@ function InamaadApp() {
                   </div>
                 </div>
 
+                <div className="rounded-2xl border border-[#0d1c38]/10 bg-[#0d1c38] p-4 text-white">
+                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-[#f0bf3c]">
+                        Marketplace launch readiness center
+                      </p>
+                      <p className="mt-1 max-w-2xl text-xs leading-5 text-white/60">
+                        A professional pre-launch score based on verified listings, owner checks, documents, contacts, due diligence, CRM readiness, tasks, and open admin queue.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white px-5 py-4 text-center text-[#0d1c38]">
+                      <p className="text-3xl font-black">
+                        {marketplaceLaunchReadinessScore}%
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
+                        {launchReadinessLabel}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 grid gap-3 sm:grid-cols-4">
+                    <div className="rounded-2xl bg-white/10 p-3">
+                      <p className="text-xl font-black text-white">
+                        {verifiedListingsCount}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-white/45">
+                        Verified
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-3">
+                      <p className="text-xl font-black text-white">
+                        {ownerVerifiedListingsCount}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-white/45">
+                        Owners checked
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-3">
+                      <p className="text-xl font-black text-white">
+                        {listingsWithDocumentsCount}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-white/45">
+                        Documents
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/10 p-3">
+                      <p className="text-xl font-black text-white">
+                        {failedLaunchReadinessChecks.length}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-white/45">
+                        Fixes needed
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 rounded-2xl bg-white/10 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-[#f0bf3c]">
+                      Next recommended move
+                    </p>
+                    <p className="mt-2 text-sm font-bold leading-6 text-white">
+                      {nextLaunchReadinessAction}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {launchReadinessChecks.map((check) => (
+                      <div
+                        key={check.label}
+                        className="rounded-2xl bg-white/10 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-black text-white">
+                              {check.passed ? "✓" : "!"} {check.label}
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-white/55">
+                              {check.detail}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
+                              check.passed
+                                ? "bg-emerald-400 text-[#0d1c38]"
+                                : "bg-[#f0bf3c] text-[#0d1c38]"
+                            }`}
+                          >
+                            {check.value}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={exportLaunchReadinessReportCsv}
+                    className="mt-4 w-full rounded-xl bg-[#f0bf3c] px-4 py-3 text-sm font-black text-[#0d1c38] hover:bg-[#f7ce62]"
+                  >
+                    Export launch readiness report
+                  </button>
+                </div>
+
                 <div className="rounded-2xl border border-emerald-100 bg-white p-4">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
@@ -5629,6 +5905,99 @@ function InamaadApp() {
                   >
                     Feature top viewed listings
                   </button>
+                </div>
+
+                <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Admin communication template center
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-purple-700">
+                        Copy professional WhatsApp/email scripts for buyer follow-up, inspection confirmation, owner verification, documents, JV checks, and launch announcements.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        6
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-purple-700">
+                        Templates
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      {
+                        title: "Buyer follow-up",
+                        audience: "Buyer / investor",
+                        text:
+                          "Hello, thank you for your interest in INAMAAD Real Estate. Please share your preferred location, budget, property type, timeline, and whether you want inspection support so we can match you with verified options.",
+                      },
+                      {
+                        title: "Inspection confirmation",
+                        audience: "Inspection request",
+                        text:
+                          "Hello, your inspection request has been received by INAMAAD Real Estate. Please confirm your preferred date, time, contact number, and the property you want to inspect. We will coordinate the next step before payment or commitment.",
+                      },
+                      {
+                        title: "Owner verification request",
+                        audience: "Owner / agent",
+                        text:
+                          "Hello, INAMAAD requires owner/agent verification before promoting this listing. Kindly provide your full name, role, mandate/authorization, property title details, phone number, and any supporting document needed for admin review.",
+                      },
+                      {
+                        title: "Missing documents request",
+                        audience: "Listing quality",
+                        text:
+                          "Hello, this listing needs stronger document support before full marketplace promotion. Please provide available title evidence such as C of O, deed, allocation letter, survey plan, registered title, or other proof for review.",
+                      },
+                      {
+                        title: "JV due diligence request",
+                        audience: "JV partner",
+                        text:
+                          "Hello, for this JV opportunity, kindly provide land title details, proposed sharing formula, land size, development concept, project stage, expected partner role, approval status, and any legal or technical document available.",
+                      },
+                      {
+                        title: "Launch announcement",
+                        audience: "Public / marketing",
+                        text:
+                          "INAMAAD Real Estate is building a professional marketplace for verified properties, JV opportunities, buyer concierge support, inspection booking, CRM follow-up, and safer real estate decision-making across Nigeria.",
+                      },
+                    ].map((template) => (
+                      <div
+                        key={template.title}
+                        className="rounded-2xl border border-purple-100 bg-white p-4"
+                      >
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-black text-[#0d1c38]">
+                              {template.title}
+                            </p>
+                            <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-purple-700">
+                              {template.audience}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyAdminCommunicationTemplate(template.title, template.text)
+                            }
+                            className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white hover:bg-[#162b52]"
+                          >
+                            Copy
+                          </button>
+                        </div>
+
+                        <p className="text-xs leading-5 text-slate-500">
+                          {template.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
@@ -5943,6 +6312,13 @@ function InamaadApp() {
                       className="rounded-xl border border-indigo-200 px-3 py-2.5 text-xs font-black text-indigo-700 hover:bg-indigo-50"
                     >
                       Export CRM CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportLaunchReadinessReportCsv}
+                      className="rounded-xl border border-[#f0bf3c] px-3 py-2.5 text-xs font-black text-[#9b6b16] hover:bg-[#fff7df]"
+                    >
+                      Export launch report
                     </button>
 
                     <button

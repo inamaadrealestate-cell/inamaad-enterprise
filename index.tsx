@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient, type User } from "@supabase/supabase-js";
 
 type ModalType =
@@ -2464,15 +2464,15 @@ function InamaadMainApp() {
   useEffect(() => {
     if (!supabase) return;
 
-    const handleAnyWebsiteClick = (event: Event) => {
+    const handleBackgroundClickRefresh = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
 
-      // Do not let the automatic refresh fight with critical UI actions.
-      // The old capture-phase refresh fired on pointerdown/click before the
-      // property details modal could settle, so property/JV clicks felt like
-      // they did nothing. Protected actions still open instantly; normal
-      // background clicks continue to refresh the marketplace data.
+      // Mobile scroll stability:
+      // Do not refresh on touchstart, pointerdown, mousedown, wheel, or scroll.
+      // Refreshing while a finger-scroll is starting can re-render the listing
+      // area and make the page jump to the footer/end unexpectedly.
       if (
+        event.defaultPrevented ||
         target?.closest(
           '[data-inamaad-open-listing="true"], [data-inamaad-no-refresh="true"], [role="dialog"], form, input, textarea, select, button, a'
         )
@@ -2480,26 +2480,13 @@ function InamaadMainApp() {
         return;
       }
 
-      scheduleAutoRefresh(900);
+      scheduleAutoRefresh(1200);
     };
 
-    const clickEvents: Array<keyof WindowEventMap> = [
-      "pointerdown",
-      "mousedown",
-      "touchstart",
-      "click",
-    ];
-
-    clickEvents.forEach((eventName) => {
-      window.addEventListener(eventName, handleAnyWebsiteClick, true);
-      document.addEventListener(eventName, handleAnyWebsiteClick, true);
-    });
+    document.addEventListener("click", handleBackgroundClickRefresh, true);
 
     return () => {
-      clickEvents.forEach((eventName) => {
-        window.removeEventListener(eventName, handleAnyWebsiteClick, true);
-        document.removeEventListener(eventName, handleAnyWebsiteClick, true);
-      });
+      document.removeEventListener("click", handleBackgroundClickRefresh, true);
 
       if (autoRefreshTimerRef.current) {
         window.clearTimeout(autoRefreshTimerRef.current);
@@ -2864,6 +2851,9 @@ function InamaadMainApp() {
   async function refreshAllData() {
     if (!supabase) return;
 
+    const savedScrollX = window.scrollX;
+    const savedScrollY = window.scrollY;
+
     setIsRefreshingData(true);
 
     try {
@@ -2888,6 +2878,16 @@ function InamaadMainApp() {
       }
     } finally {
       setIsRefreshingData(false);
+
+      // Keep background sync invisible and stable. Data can refresh, but the
+      // page must not jump while the user is browsing properties/JV deals.
+      window.requestAnimationFrame(() => {
+        window.scrollTo({
+          left: savedScrollX,
+          top: savedScrollY,
+          behavior: "auto",
+        });
+      });
     }
   }
 
@@ -6288,19 +6288,210 @@ function InamaadMainApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f8fb] text-slate-950">
+    <div className="inamaad-mobile-shell min-h-screen overflow-x-hidden bg-[#f7f8fb] text-slate-950 antialiased">
       <datalist id="nigeria-location-options">
         {nigeriaLocationLabels.map((location) => (
           <option key={location} value={location} />
         ))}
       </datalist>
 
+      <style>{`
+        html,
+        body,
+        #root {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
+        *,
+        *::before,
+        *::after {
+          box-sizing: border-box;
+        }
+
+        .inamaad-mobile-shell {
+          width: 100%;
+          max-width: 100vw;
+          overflow-x: hidden;
+        }
+
+        .inamaad-mobile-shell img,
+        .inamaad-mobile-shell video,
+        .inamaad-mobile-shell iframe,
+        .inamaad-mobile-shell canvas,
+        .inamaad-mobile-shell svg {
+          max-width: 100%;
+        }
+
+        .inamaad-mobile-shell input,
+        .inamaad-mobile-shell select,
+        .inamaad-mobile-shell textarea,
+        .inamaad-mobile-shell button {
+          max-width: 100%;
+        }
+
+        .inamaad-mobile-shell table {
+          width: 100%;
+          max-width: 100%;
+        }
+
+        @media (max-width: 640px) {
+          .inamaad-mobile-shell {
+            -webkit-text-size-adjust: 100%;
+          }
+
+          .inamaad-mobile-shell section,
+          .inamaad-mobile-shell header,
+          .inamaad-mobile-shell footer {
+            max-width: 100vw;
+          }
+
+          .inamaad-mobile-shell h1 {
+            font-size: clamp(1.75rem, 8vw, 2.45rem) !important;
+            line-height: 1.05 !important;
+            overflow-wrap: anywhere;
+          }
+
+          .inamaad-mobile-shell h2 {
+            font-size: clamp(1.35rem, 6.2vw, 1.95rem) !important;
+            line-height: 1.12 !important;
+            overflow-wrap: anywhere;
+          }
+
+          .inamaad-mobile-shell h3 {
+            font-size: clamp(1.05rem, 5vw, 1.45rem) !important;
+            line-height: 1.18 !important;
+            overflow-wrap: anywhere;
+          }
+
+          .inamaad-mobile-shell p,
+          .inamaad-mobile-shell a,
+          .inamaad-mobile-shell button,
+          .inamaad-mobile-shell span,
+          .inamaad-mobile-shell div {
+            overflow-wrap: anywhere;
+          }
+
+          .inamaad-mobile-shell input,
+          .inamaad-mobile-shell select,
+          .inamaad-mobile-shell textarea {
+            min-height: 46px;
+            font-size: 16px !important;
+          }
+
+          .inamaad-mobile-shell button,
+          .inamaad-mobile-shell a {
+            touch-action: manipulation;
+          }
+
+          .inamaad-mobile-shell .overflow-x-auto {
+            -webkit-overflow-scrolling: touch;
+          }
+
+          .inamaad-mobile-shell [class*="rounded-["] {
+            border-radius: 1.25rem;
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-horizontal {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            gap: 0.85rem !important;
+            scroll-snap-type: x mandatory;
+            padding-bottom: 0.75rem;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-horizontal > * {
+            scroll-snap-align: start;
+            flex: 0 0 auto;
+          }
+
+          .inamaad-mobile-shell .inamaad-listing-card-mobile {
+            width: 82vw;
+            min-width: 82vw;
+            max-width: 82vw;
+          }
+
+          .inamaad-mobile-shell .inamaad-profile-action-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-chip-row {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            gap: 0.55rem !important;
+            padding-bottom: 0.55rem;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-chip-row > * {
+            flex: 0 0 auto;
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-profile-strip {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            gap: 0.5rem !important;
+            padding-bottom: 0.25rem;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-profile-strip > * {
+            flex: 0 0 auto;
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-muted-text {
+            font-size: 0.82rem !important;
+            line-height: 1.45rem !important;
+          }
+
+          .inamaad-mobile-shell #properties,
+          .inamaad-mobile-shell #jv {
+            scroll-margin-top: 5.5rem;
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-horizontal {
+            overscroll-behavior-x: contain;
+          }
+        }
+
+        @media (min-width: 641px) {
+          .inamaad-mobile-shell .inamaad-listing-card-mobile {
+            width: auto;
+            min-width: 0;
+            max-width: none;
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-horizontal {
+            display: grid !important;
+            overflow: visible !important;
+            padding-bottom: 0;
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-chip-row {
+            flex-wrap: wrap !important;
+            overflow: visible !important;
+            padding-bottom: 0;
+          }
+
+          .inamaad-mobile-shell .inamaad-mobile-profile-strip {
+            flex-wrap: wrap !important;
+            overflow: visible !important;
+            padding-bottom: 0;
+          }
+        }
+      `}</style>
+
       {showNewUserGuideNotice && (
         <div
           data-inamaad-no-refresh="true"
-          className="sticky top-0 z-[60] border-b border-[#f0bf3c]/30 bg-[#0d1c38] px-4 py-2 text-white shadow-sm"
+          className="relative z-[60] border-b border-[#f0bf3c]/30 bg-[#0d1c38] px-3 py-2 text-white shadow-sm sm:px-4"
         >
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-2 text-center text-xs sm:justify-between sm:text-left">
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-center gap-2 text-center text-[11px] leading-5 sm:flex-row sm:justify-between sm:text-left sm:text-xs">
             <p className="font-semibold">
               New here? See how to browse, inspect, contact, and post property on INAMAAD.
             </p>
@@ -6327,18 +6518,18 @@ function InamaadMainApp() {
         </div>
       )}
 
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
+      <header className="relative z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-5 lg:px-10">
           <a href="#" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0d1c38] text-xl font-black text-[#f0bf3c] shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0d1c38] text-lg font-black text-[#f0bf3c] shadow-sm sm:h-11 sm:w-11 sm:text-xl">
               I
             </div>
 
             <div>
-              <div className="text-[15px] font-black uppercase tracking-wide text-[#0d1c38]">
+              <div className="text-sm font-black uppercase tracking-wide text-[#0d1c38] sm:text-[15px]">
                 INAMAAD
               </div>
-              <div className="text-xs text-slate-500">
+              <div className="text-[11px] text-slate-500 sm:text-xs">
                 Real Estate Enterprise
               </div>
             </div>
@@ -6386,14 +6577,14 @@ function InamaadMainApp() {
 
           <button
             onClick={() => setMobileOpen((current) => !current)}
-            className="rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-bold text-white lg:hidden"
+            className="shrink-0 rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-bold text-white sm:px-4 sm:py-3 sm:text-sm lg:hidden"
           >
             Menu
           </button>
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-slate-200 bg-white px-6 py-5 lg:hidden">
+          <div className="max-h-[calc(100vh-72px)] overflow-y-auto border-t border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5 lg:hidden">
             <div className="grid gap-4 text-sm font-semibold text-slate-700">
               {navLinks.map((item) => (
                 <a
@@ -6439,7 +6630,7 @@ function InamaadMainApp() {
 
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.22),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.1),transparent_35%)]" />
 
-          <div className="relative mx-auto max-w-7xl px-6 py-12 lg:px-10 lg:py-14">
+          <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-10 lg:py-14">
             <div className="max-w-5xl">
               <div className="mb-5 flex items-center gap-3">
                 <div className="h-[3px] w-14 bg-[#f0bf3c]" />
@@ -6461,7 +6652,7 @@ function InamaadMainApp() {
                 with confidence.
               </p>
 
-              <div className="mt-8 max-w-6xl rounded-[24px] bg-white p-4 shadow-2xl">
+              <div className="mt-8 max-w-6xl rounded-[24px] bg-white p-3 shadow-2xl sm:p-4">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1.1fr]">
                   <input
                     value={query}
@@ -6526,7 +6717,7 @@ function InamaadMainApp() {
         </section>
 
         <section className="bg-white">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-6 py-12 lg:grid-cols-4 lg:px-10">
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-5 px-4 py-10 sm:gap-8 sm:px-6 sm:py-12 lg:grid-cols-4 lg:px-10">
             {stats.map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="mb-2 text-4xl font-black text-[#0d1c38] lg:text-5xl">
@@ -6542,7 +6733,7 @@ function InamaadMainApp() {
         </section>
 
 
-        <section className="bg-[#f7f8fb] px-6 py-16 lg:px-10">
+        <section className="bg-[#f7f8fb] px-4 py-12 sm:px-6 sm:py-16 lg:px-10">
           <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
             {categoryCards.map((card) => (
               <div
@@ -6566,7 +6757,7 @@ function InamaadMainApp() {
         </section>
 
         {recentlyViewedListings.length > 0 && (
-          <section className="bg-[#f7f8fb] px-6 pb-12 lg:px-10">
+          <section className="bg-[#f7f8fb] px-4 pb-10 sm:px-6 sm:pb-12 lg:px-10">
             <div className="mx-auto max-w-7xl rounded-[2rem] border border-[#f0bf3c]/40 bg-[#fff7df] p-5 lg:p-7">
               <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
@@ -6587,13 +6778,13 @@ function InamaadMainApp() {
                 </button>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="inamaad-mobile-horizontal sm:grid-cols-3">
                 {recentlyViewedListings.slice(0, 3).map((listing) => (
                   <button
                     key={`recent-${listing.id}`}
                     type="button"
                     onClick={() => openListing(listing)}
-                    className="rounded-2xl border border-[#f0bf3c]/40 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                    className="w-[78vw] rounded-2xl border border-[#f0bf3c]/40 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg sm:w-auto"
                   >
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white">
@@ -6616,7 +6807,7 @@ function InamaadMainApp() {
           </section>
         )}
 
-        <section id="properties" className="bg-[#f7f8fb] px-6 py-20 lg:px-10">
+        <section id="properties" className="bg-[#f7f8fb] px-4 py-14 sm:px-6 sm:py-20 lg:px-10">
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
               <div>
@@ -6645,7 +6836,7 @@ function InamaadMainApp() {
               </button>
             </div>
 
-            <div className="mt-10 flex flex-wrap gap-3">
+            <div className="inamaad-mobile-chip-row mt-8 sm:mt-10">
               {[
                 "All",
                 "Residential",
@@ -6767,11 +6958,11 @@ function InamaadMainApp() {
             </div>
 
             {isLoading ? (
-              <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              <div className="inamaad-mobile-horizontal mt-10 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3].map((item) => (
-                  <div key={item} className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-                    <div className="h-72 animate-pulse bg-slate-200" />
-                    <div className="space-y-4 p-7">
+                  <div key={item} className="inamaad-listing-card-mobile overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm sm:rounded-[28px]">
+                    <div className="h-44 animate-pulse bg-slate-200 sm:h-72" />
+                    <div className="space-y-3 p-4 sm:space-y-4 sm:p-7">
                       <div className="h-5 w-1/2 animate-pulse rounded-full bg-slate-200" />
                       <div className="h-8 w-3/4 animate-pulse rounded-full bg-slate-200" />
                       <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
@@ -6780,7 +6971,7 @@ function InamaadMainApp() {
                 ))}
               </div>
             ) : (
-              <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              <div className="inamaad-mobile-horizontal mt-10 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredListings.length === 0 && (
                   <div className="rounded-[28px] border border-dashed border-slate-300 bg-white p-8 text-center md:col-span-2 lg:col-span-3">
                     <p className="text-lg font-black text-[#0d1c38]">
@@ -6830,11 +7021,11 @@ function InamaadMainApp() {
                         openListing(listing);
                       }
                     }}
-                    className={`group cursor-pointer overflow-hidden rounded-[28px] border bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${
+                    className={`inamaad-listing-card-mobile group cursor-pointer overflow-hidden rounded-[22px] border bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl sm:rounded-[28px] ${
                       listing.featured ? "border-[#f0bf3c] shadow-xl ring-2 ring-[#f0bf3c]/30" : "border-slate-200"
                     }`}
                   >
-                    <div className="relative h-72 overflow-hidden bg-[#0d1c38]">
+                    <div className="relative h-44 overflow-hidden bg-[#0d1c38] sm:h-72">
                       {listing.imageUrl ? (
                         <img
                           src={listing.imageUrl}
@@ -6851,105 +7042,105 @@ function InamaadMainApp() {
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0d1c38]/95 via-[#0d1c38]/45 to-[#0d1c38]/10" />
 
                       {propertyImagesByListingId[listing.id]?.length ? (
-                        <div className="absolute bottom-5 right-5 z-20 rounded-full bg-white/90 px-4 py-2 text-xs font-black text-[#0d1c38] shadow-lg">
+                        <div className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-black text-[#0d1c38] shadow-lg sm:bottom-5 sm:right-5 sm:px-4 sm:py-2 sm:text-xs">
                           {propertyImagesByListingId[listing.id].length + (listing.imageUrl ? 1 : 0)} Photos
                         </div>
                       ) : null}
 
-                      <div className="relative z-10 flex h-full flex-col justify-between p-7 text-white">
+                      <div className="relative z-10 flex h-full flex-col justify-between p-4 text-white sm:p-7">
                         <div className="flex items-start justify-between gap-4">
-                          <div className="flex flex-wrap gap-2">
-                            <div className="rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide backdrop-blur">
+                          <div className="inamaad-mobile-profile-strip">
+                            <div className="rounded-full bg-white/15 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide backdrop-blur sm:px-4 sm:py-2 sm:text-xs">
                               {listing.type}
                             </div>
 
                             {listing.featured && (
-                              <div className="rounded-full bg-[#f0bf3c] px-4 py-2 text-xs font-black uppercase tracking-wide text-[#0d1c38] shadow-lg">
+                              <div className="rounded-full bg-[#f0bf3c] px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-[#0d1c38] shadow-lg sm:px-4 sm:py-2 sm:text-xs">
                                 Featured
                               </div>
                             )}
                           </div>
 
-                          <div className="flex flex-col items-end gap-2">
-                            <div className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white">
+                          <div className="flex shrink-0 flex-col items-end gap-1.5 sm:gap-2">
+                            <div className="rounded-full bg-emerald-500 px-3 py-1.5 text-[10px] font-black text-white sm:px-4 sm:py-2 sm:text-xs">
                               {listing.status}
                             </div>
-                            <div className={`rounded-full px-4 py-2 text-xs font-black ${availabilityBadgeClass(listing.availabilityStatus)}`}>
+                            <div className={`rounded-full px-3 py-1.5 text-[10px] font-black sm:px-4 sm:py-2 sm:text-xs ${availabilityBadgeClass(listing.availabilityStatus)}`}>
                               {listing.availabilityStatus || "Available"}
                             </div>
-                            <div className="rounded-full bg-white/15 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-white backdrop-blur">
+                            <div className="rounded-full bg-white/15 px-3 py-1.5 text-[9px] font-black uppercase tracking-wide text-white backdrop-blur sm:px-4 sm:py-2 sm:text-[11px]">
                               Ref {buildListingReference(listing.id)}
                             </div>
                           </div>
                         </div>
 
                         <div>
-                          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#f0bf3c] sm:text-xs sm:tracking-[0.2em]">
                             {listing.featured ? "INAMAAD premium featured asset" : "INAMAAD verified asset"}
                           </p>
-                          <h3 className="mt-3 max-w-sm text-3xl font-black leading-tight">
+                          <h3 className="mt-2 max-w-sm text-lg font-black leading-tight sm:mt-3 sm:text-3xl">
                             {listing.title}
                           </h3>
-                          <p className="mt-3 text-base font-medium text-slate-200">
+                          <p className="mt-2 text-xs font-medium text-slate-200 sm:mt-3 sm:text-base">
                             {listing.location}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="p-7">
-                      <div className="flex items-start justify-between gap-5">
+                    <div className="p-4 sm:p-7">
+                      <div className="flex items-start justify-between gap-3 sm:gap-5">
                         <div>
-                          <p className="text-sm font-bold text-slate-500">
+                          <p className="text-xs font-bold text-slate-500 sm:text-sm">
                             Starting price
                           </p>
-                          <p className="mt-1 text-3xl font-black text-[#0d1c38]">
+                          <p className="mt-1 text-xl font-black text-[#0d1c38] sm:text-3xl">
                             {listing.price}
                           </p>
-                          <p className="mt-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                          <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-slate-500 sm:mt-2 sm:text-xs">
                             {availabilityShortNote(listing.availabilityStatus)}
                           </p>
                         </div>
 
-                        <div className="rounded-2xl bg-[#fff6dc] px-4 py-3 text-right">
-                          <p className="text-xs font-bold text-slate-500">
+                        <div className="shrink-0 rounded-2xl bg-[#fff6dc] px-3 py-2 text-right sm:px-4 sm:py-3">
+                          <p className="text-[10px] font-bold text-slate-500 sm:text-xs">
                             Type
                           </p>
-                          <p className="text-sm font-black text-[#9b6b16]">
+                          <p className="text-xs font-black text-[#9b6b16] sm:text-sm">
                             {listing.category}
                           </p>
                         </div>
                       </div>
 
                       {isJointVentureListing(listing) ? (
-                        <div className="mt-5 flex flex-wrap gap-2 text-xs font-black text-[#0d1c38]">
+                        <div className="inamaad-mobile-profile-strip mt-4 text-[11px] font-black text-[#0d1c38] sm:mt-5 sm:flex sm:flex-wrap sm:gap-2 sm:text-xs">
                           {listing.jvStructure ? <span className="rounded-full bg-amber-100 px-3 py-2">{listing.jvStructure}</span> : null}
                           {listing.jvProjectStage ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.jvProjectStage}</span> : null}
                           {listing.landSize ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.landSize}</span> : null}
                           {listing.jvExpectedUnits ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.jvExpectedUnits} units</span> : null}
                         </div>
                       ) : (listing.bedrooms || listing.bathrooms || listing.landSize) && (
-                        <div className="mt-5 flex flex-wrap gap-2 text-xs font-black text-[#0d1c38]">
+                        <div className="inamaad-mobile-profile-strip mt-4 text-[11px] font-black text-[#0d1c38] sm:mt-5 sm:flex sm:flex-wrap sm:gap-2 sm:text-xs">
                           {listing.bedrooms ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.bedrooms} Beds</span> : null}
                           {listing.bathrooms ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.bathrooms} Baths</span> : null}
                           {listing.landSize ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.landSize}</span> : null}
                         </div>
                       )}
 
-                      <p className="mt-5 min-h-[72px] text-base leading-7 text-slate-600">
+                      <p className="mt-4 min-h-[58px] text-sm leading-6 text-slate-600 sm:mt-5 sm:min-h-[72px] sm:text-base sm:leading-7">
                         {listing.description}
                       </p>
 
-                      <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+                      <div className="mt-4 rounded-2xl bg-slate-50 p-4 sm:mt-6 sm:p-5">
                         <p className="text-sm font-bold text-slate-500">
                           Investment highlight
                         </p>
-                        <p className="mt-2 text-base font-black text-[#0d1c38]">
+                        <p className="mt-2 text-sm font-black text-[#0d1c38] sm:text-base">
                           {listing.yieldText}
                         </p>
                       </div>
 
-                      <div className="mt-6 grid grid-cols-2 gap-3">
+                      <div className="inamaad-profile-action-grid mt-4 grid gap-2 sm:mt-6 sm:gap-3">
                         <button
                           type="button"
                           data-inamaad-open-listing="true"
@@ -6958,7 +7149,7 @@ function InamaadMainApp() {
                             event.stopPropagation();
                             openListing(listing);
                           }}
-                          className="flex items-center justify-center rounded-2xl bg-[#0d1c38] px-5 py-4 text-base font-bold text-white transition hover:bg-[#13284f]"
+                          className="flex items-center justify-center rounded-xl bg-[#0d1c38] px-3 py-3 text-sm font-bold text-white transition hover:bg-[#13284f] sm:rounded-2xl sm:px-5 sm:py-4 sm:text-base"
                         >
                           View Details
                         </button>
@@ -6971,7 +7162,7 @@ function InamaadMainApp() {
                             event.stopPropagation();
                             shareListing(listing);
                           }}
-                          className="flex items-center justify-center rounded-2xl border border-[#0d1c38] bg-white px-5 py-4 text-base font-black text-[#0d1c38] transition hover:bg-slate-50"
+                          className="flex items-center justify-center rounded-xl border border-[#0d1c38] bg-white px-3 py-3 text-sm font-black text-[#0d1c38] transition hover:bg-slate-50 sm:rounded-2xl sm:px-5 sm:py-4 sm:text-base"
                         >
                           Share
                         </button>
@@ -7027,7 +7218,7 @@ function InamaadMainApp() {
           </div>
         </section>
 
-        <section id="about" className="bg-[#f7f8fb] px-6 py-20 lg:px-10">
+        <section id="about" className="bg-[#f7f8fb] px-4 py-14 sm:px-6 sm:py-20 lg:px-10">
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div className="relative overflow-hidden rounded-[32px] bg-[#0d1c38] p-10 text-white">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.15),transparent_35%)]" />
@@ -7430,7 +7621,7 @@ function InamaadMainApp() {
           </div>
         </section>
 
-        <section id="faq" className="bg-[#f7f8fb] px-6 py-20 lg:px-10">
+        <section id="faq" className="bg-[#f7f8fb] px-4 py-14 sm:px-6 sm:py-20 lg:px-10">
           <div className="mx-auto max-w-5xl">
             <div className="text-center">
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
@@ -7535,6 +7726,10 @@ function InamaadMainApp() {
             </div>
           </div>
         </div>
+
+        <div className="mx-auto mt-8 max-w-7xl border-t border-slate-200 pt-5 text-center text-xs font-semibold text-slate-500">
+          © 2026 INAMAAD Real Estate. All rights reserved.
+        </div>
       </footer>
 
       <a
@@ -7554,23 +7749,17 @@ function InamaadMainApp() {
         </div>
       )}
 
-      {isRefreshingData && (
-        <div className="fixed right-6 top-24 z-[130] rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#0d1c38] shadow-xl">
-          Syncing latest data...
-        </div>
-      )}
-
       {modal && (
         <div
           data-inamaad-no-refresh="true"
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm"
+          className="fixed inset-0 z-[110] flex items-start justify-center overflow-y-auto bg-slate-950/70 px-2 py-3 backdrop-blur-sm sm:items-center sm:px-4 sm:py-8"
         >
           <div
-            className={`max-h-[90vh] w-full overflow-y-auto rounded-[30px] bg-white p-6 shadow-2xl md:p-8 ${
-              modal === "guide" ? "max-w-5xl" : "max-w-3xl"
+            className={`max-h-[94vh] w-full max-w-[calc(100vw-1rem)] overflow-y-auto rounded-[22px] bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:rounded-[30px] sm:p-6 md:p-8 ${
+              modal === "guide" ? "sm:max-w-5xl" : "sm:max-w-3xl"
             }`}
           >
-            <div className="mb-6 flex items-start justify-between gap-5">
+            <div className="mb-5 flex items-start justify-between gap-3 sm:mb-6 sm:gap-5">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-[#d39b19]">
                   INAMAAD
@@ -7594,7 +7783,7 @@ function InamaadMainApp() {
                   setSelectedListing(null);
                   setEditingListing(null);
                 }}
-                className="rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-200"
+                className="shrink-0 rounded-full bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-200 sm:px-4 sm:text-sm"
               >
                 Close
               </button>
@@ -12752,3 +12941,19 @@ export default function App() {
 // JV upgrade: JV listings now use project structure, landowner/developer/investor requirements, sharing formula, stage, expected units, project cost, and timeline instead of bedroom/bathroom fields.
 
 // Final property/JV separation repair: normal properties no longer store/display JV-only fields, and JV deals no longer store/display bedroom/bathroom/furnishing fields.
+
+// INAMAAD_MOBILE_FIT_AUDIT: mobile overflow guard, compact header, responsive modal, and safer small-screen spacing added without adding homepage upgrade reminders.
+
+// INAMAAD_MOBILE_MEDIUM_HORIZONTAL_AUDIT: reduced mobile font scale, made property/JV profile cards horizontal on mobile, kept homepage free of upgrade reminders.
+
+// INAMAAD_INVISIBLE_SYNC_SCROLL_STABILITY_AUDIT: removed visible syncing badge, stopped touch/pointer refresh during mobile scroll, and preserved scroll position during background data refresh.
+
+// INAMAAD_STATIC_NAVBAR_AUDIT: navbar and new-user notice changed from sticky to normal/static layout so they do not move while scrolling.
+
+// INAMAAD_STICKY_NAVBAR_VISIBLE_AUDIT: navbar is sticky and visible while scrolling; new-user notice remains non-sticky to avoid double-bar jumping.
+
+// INAMAAD_FIXED_VISIBLE_NAVBAR_AUDIT: navbar is fixed at the top and remains visible while scrolling; page content is padded so it does not hide under the navbar.
+
+// INAMAAD_COPYRIGHT_FOOTER_AUDIT: footer copyright added at the end of the page.
+
+// INAMAAD_MOVABLE_NAVBAR_RESTORE_AUDIT: navbar restored to normal movable/static page flow; fixed top padding removed.

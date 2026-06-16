@@ -1422,6 +1422,43 @@ function InamaadApp() {
         )
       : 0;
 
+  const marketingCampaignInsights = useMemo(
+    () =>
+      listings
+        .map((item) => {
+          const dueScore = getDueDiligenceScore(item);
+          const documentScore = getDocumentReadinessScore(item);
+          const priceIntel = getPriceIntelligence(item, listings);
+          const mediaScore = item.imageUrl || (item.galleryUrls && item.galleryUrls.length > 0) ? 15 : 0;
+          const verificationScore = item.ownerVerified ? 20 : 0;
+          const featuredScore = item.featured ? 10 : 0;
+          const marketingScore = Math.min(
+            100,
+            Math.round(dueScore * 0.35 + documentScore * 0.3 + mediaScore + verificationScore + featuredScore)
+          );
+
+          return {
+            item,
+            dueScore,
+            documentScore,
+            priceIntel,
+            marketingScore,
+          };
+        })
+        .sort((a, b) => b.marketingScore - a.marketingScore),
+    [listings]
+  );
+
+  const campaignReadyListingsCount = marketingCampaignInsights.filter(
+    (entry) => entry.marketingScore >= 80
+  ).length;
+  const marketingNeedsWorkCount = marketingCampaignInsights.filter(
+    (entry) => entry.marketingScore < 60
+  ).length;
+  const featuredMarketingListingsCount = marketingCampaignInsights.filter(
+    (entry) => Boolean(entry.item.featured)
+  ).length;
+
   const filteredProperties = useMemo(() => {
     const searchTerm = keyword.trim().toLowerCase();
     const stateTerm = selectedState.trim().toLowerCase();
@@ -1762,6 +1799,137 @@ function InamaadApp() {
       "Admin"
     );
     showMessage("Document readiness CSV exported.");
+  }
+
+  function buildListingMarketingCopy(item: Listing) {
+    const priceIntel = getPriceIntelligence(item, listings);
+    const dueScore = getDueDiligenceScore(item);
+    const documentScore = getDocumentReadinessScore(item);
+    const listingType = isJVListing(item) ? "JV opportunity" : "property listing";
+
+    return [
+      `INAMAAD Real Estate ${listingType.toUpperCase()}`,
+      "",
+      `${item.title}`,
+      `${item.location}, ${item.state}`,
+      `Price / Investment: ${item.price}`,
+      `Type: ${item.type} ${item.typeValue ? `· ${item.typeValue}` : ""}`,
+      item.roi ? `ROI / Return: ${item.roi}` : "",
+      "",
+      item.summary,
+      "",
+      `Trust signals: ${item.status} listing · Owner/agent ${item.ownerVerified ? "verified" : "pending verification"} · Due diligence ${dueScore}% · Document readiness ${documentScore}%`,
+      `Price guidance: ${priceIntel.label} · ${priceIntel.confidence} confidence`,
+      "",
+      "Interested buyers/investors can contact INAMAAD for verification, inspection, and next steps before payment or commitment.",
+    ]
+      .filter(Boolean)
+      .join("\\n");
+  }
+
+  function copyListingMarketingCopy(item: Listing) {
+    const copyText = buildListingMarketingCopy(item);
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(copyText);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = copyText;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+
+      addActivityLog(
+        "Marketing copy copied",
+        `Marketing copy copied for ${item.title}.`,
+        "Admin"
+      );
+      showMessage("Marketing copy copied.");
+    } catch {
+      showMessage("Unable to copy marketing copy.");
+    }
+  }
+
+  function createMarketingTask(item: Listing) {
+    const marketingScore = marketingCampaignInsights.find(
+      (entry) => entry.item.id === item.id
+    )?.marketingScore;
+
+    const createdTask: AdminTask = {
+      id: Date.now(),
+      title: `Promote listing: ${item.title}`,
+      assignee: "Marketing",
+      dueDate: "",
+      priority: Number(marketingScore || 0) >= 80 ? "High" : "Medium",
+      status: "Open",
+      note: `Prepare WhatsApp/social media campaign. Marketing readiness: ${marketingScore || getDueDiligenceScore(item)}%.`,
+      createdAt: new Date().toISOString(),
+    };
+
+    setAdminTasks((currentTasks) => [createdTask, ...currentTasks]);
+
+    addActivityLog(
+      "Marketing task created",
+      `Marketing task created for ${item.title}.`,
+      "Admin"
+    );
+    showMessage("Marketing task created.");
+  }
+
+  function exportMarketingCampaignCsv() {
+    const rows = [
+      [
+        "Reference",
+        "Title",
+        "Type",
+        "State",
+        "Price",
+        "Marketing Score",
+        "Featured",
+        "Owner Verified",
+        "Due Diligence",
+        "Document Readiness",
+        "Price Guidance",
+        "Recommended Campaign Action",
+      ],
+      ...marketingCampaignInsights.map((entry) => [
+        getListingReference(entry.item.id),
+        entry.item.title,
+        entry.item.type,
+        entry.item.state,
+        entry.item.price,
+        `${entry.marketingScore}%`,
+        entry.item.featured ? "Yes" : "No",
+        entry.item.ownerVerified ? "Yes" : "No",
+        `${entry.dueScore}%`,
+        `${entry.documentScore}%`,
+        entry.priceIntel.label,
+        entry.marketingScore >= 80
+          ? "Promote strongly"
+          : entry.marketingScore >= 60
+            ? "Promote after small fixes"
+            : "Fix verification/documents/media first",
+      ]),
+    ];
+
+    downloadTextFile(
+      `inamaad-marketing-campaign-${new Date().toISOString().slice(0, 10)}.csv`,
+      createCsv(rows),
+      "text/csv;charset=utf-8"
+    );
+
+    addActivityLog(
+      "Marketing campaign exported",
+      "Admin exported marketing campaign report as CSV.",
+      "Admin"
+    );
+    showMessage("Marketing campaign CSV exported.");
   }
 
   function addAdminTask(e: React.FormEvent) {
@@ -3719,6 +3887,7 @@ function InamaadApp() {
                   ["Market average", formatNairaCompact(priceIntel.stateAverage)],
                   ["Due diligence", `${dueScore}% · ${dueLabel}`],
                   ["Document readiness", `${getDocumentReadinessScore(item)}% · ${getDocumentReadinessLabel(getDocumentReadinessScore(item))}`],
+                  ["Marketing readiness", `${marketingCampaignInsights.find((entry) => entry.item.id === item.id)?.marketingScore || 0}%`],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-xl bg-white p-3">
                     <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
@@ -6497,6 +6666,127 @@ function InamaadApp() {
                   </div>
                 </div>
 
+                <div className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
+                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Marketing campaign center
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-pink-700">
+                        Create professional WhatsApp/social copy, marketing tasks, and campaign exports using verified marketplace data.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {campaignReadyListingsCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-pink-700">
+                          Ready
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {featuredMarketingListingsCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-[#9b6b16]">
+                          Featured
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {marketingNeedsWorkCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-red-600">
+                          Fix first
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={exportMarketingCampaignCsv}
+                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
+                    >
+                      Export marketing CSV
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const firstReady = marketingCampaignInsights.find((entry) => entry.marketingScore >= 80);
+                        if (firstReady) {
+                          copyListingMarketingCopy(firstReady.item);
+                        } else {
+                          showMessage("No campaign-ready listing yet. Improve verification, documents, and media first.");
+                        }
+                      }}
+                      className="rounded-xl border border-pink-200 bg-white px-3 py-2.5 text-xs font-black text-pink-700 hover:bg-pink-50"
+                    >
+                      Copy best campaign
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {marketingCampaignInsights.slice(0, 6).map((entry) => (
+                      <div
+                        key={`marketing-${entry.item.id}`}
+                        className="rounded-2xl border border-pink-100 bg-white p-3"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-[#0d1c38]">
+                              {entry.item.title}
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                              {entry.item.location} · {entry.item.price} · {entry.priceIntel.label}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
+                              entry.marketingScore >= 80
+                                ? "bg-emerald-50 text-emerald-700"
+                                : entry.marketingScore >= 60
+                                  ? "bg-[#fff7df] text-[#9b6b16]"
+                                  : "bg-red-50 text-red-700"
+                            }`}
+                          >
+                            {entry.marketingScore}% ready
+                          </span>
+                        </div>
+
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          DD {entry.dueScore}% · Documents {entry.documentScore}% · {entry.item.featured ? "Featured" : "Not featured"}
+                        </p>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => copyListingMarketingCopy(entry.item)}
+                            className="rounded-xl border border-pink-200 px-3 py-2 text-xs font-black text-pink-700 hover:bg-pink-50"
+                          >
+                            Copy campaign
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => createMarketingTask(entry.item)}
+                            className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white hover:bg-[#162b52]"
+                          >
+                            Create task
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
@@ -6923,6 +7213,13 @@ function InamaadApp() {
                       className="rounded-xl border border-emerald-200 px-3 py-2.5 text-xs font-black text-emerald-700 hover:bg-emerald-50"
                     >
                       Export document readiness
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportMarketingCampaignCsv}
+                      className="rounded-xl border border-pink-200 px-3 py-2.5 text-xs font-black text-pink-700 hover:bg-pink-50"
+                    >
+                      Export marketing CSV
                     </button>
 
                     <button

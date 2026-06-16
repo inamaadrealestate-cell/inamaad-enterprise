@@ -30,6 +30,16 @@ type Listing = {
 };
 
 
+type LeadStage =
+  | "New"
+  | "Contacted"
+  | "Qualified"
+  | "Inspection"
+  | "Negotiation"
+  | "Closed";
+
+type LeadPriority = "Low" | "Medium" | "High" | "Hot";
+
 type Lead = {
   id: number;
   listingId?: number;
@@ -41,6 +51,11 @@ type Lead = {
   message: string;
   createdAt: string;
   status: "New" | "Contacted" | "Closed";
+  crmStage?: LeadStage;
+  priority?: LeadPriority;
+  source?: string;
+  followUpDate?: string;
+  notes?: string;
 };
 
 
@@ -95,6 +110,32 @@ type AuthUser = {
 
 const WHATSAPP_NUMBER = "2348106350486";
 const ADMIN_PASSWORD = "admin123";
+
+const LEAD_PIPELINE_STAGES: LeadStage[] = [
+  "New",
+  "Contacted",
+  "Qualified",
+  "Inspection",
+  "Negotiation",
+  "Closed",
+];
+
+const LEAD_PRIORITIES: LeadPriority[] = ["Low", "Medium", "High", "Hot"];
+
+function getLeadStage(lead: Lead): LeadStage {
+  if (lead.crmStage) return lead.crmStage;
+  if (lead.status === "Closed") return "Closed";
+  if (lead.status === "Contacted") return "Contacted";
+  return "New";
+}
+
+function getLeadPriority(lead: Lead): LeadPriority {
+  return lead.priority || "Medium";
+}
+
+function getLeadSource(lead: Lead) {
+  return lead.source || (lead.listingTitle ? "Property enquiry" : "Buyer brief");
+}
 
 const STATS = [
   { num: "2,400+", label: "Verified listings" },
@@ -808,12 +849,24 @@ function InamaadApp() {
   const dueAdminTasksCount = adminTasks.filter(
     (task) => task.status !== "Done" && Boolean(task.dueDate) && task.dueDate <= todayDate
   ).length;
+  const leadPipelineCounts = LEAD_PIPELINE_STAGES.map((stage) => ({
+    stage,
+    count: leads.filter((lead) => getLeadStage(lead) === stage).length,
+  }));
+  const hotLeadsCount = leads.filter((lead) =>
+    ["High", "Hot"].includes(getLeadPriority(lead))
+  ).length;
+  const dueLeadFollowUpsCount = leads.filter((lead) => {
+    const stage = getLeadStage(lead);
+    return stage !== "Closed" && Boolean(lead.followUpDate) && String(lead.followUpDate) <= todayDate;
+  }).length;
   const adminActionQueueCount =
     pendingListingsCount +
     unverifiedOwnersCount +
     newLeadsCount +
     newInspectionsCount +
-    openAdminTasksCount;
+    openAdminTasksCount +
+    dueLeadFollowUpsCount;
 
   const filteredProperties = useMemo(() => {
     const searchTerm = keyword.trim().toLowerCase();
@@ -1745,6 +1798,11 @@ function InamaadApp() {
       message: leadForm.message.trim(),
       createdAt: new Date().toISOString(),
       status: "New",
+      crmStage: "New",
+      priority: "Medium",
+      source: leadForm.listingTitle ? "Property enquiry" : "Investor enquiry",
+      followUpDate: "",
+      notes: "",
     };
 
     setLeads((currentLeads) => [createdLead, ...currentLeads]);
@@ -1772,7 +1830,20 @@ function InamaadApp() {
     const lead = leads.find((item) => item.id === id);
 
     setLeads((currentLeads) =>
-      currentLeads.map((lead) => (lead.id === id ? { ...lead, status } : lead))
+      currentLeads.map((lead) =>
+        lead.id === id
+          ? {
+              ...lead,
+              status,
+              crmStage:
+                status === "Closed"
+                  ? "Closed"
+                  : status === "Contacted"
+                    ? "Contacted"
+                    : "New",
+            }
+          : lead
+      )
     );
     addActivityLog(
       "Lead status updated",
@@ -1780,6 +1851,115 @@ function InamaadApp() {
       "Lead"
     );
     showMessage(`Lead marked as ${status}.`);
+  }
+
+  function updateLeadCrmStage(id: number, crmStage: LeadStage) {
+    const lead = leads.find((item) => item.id === id);
+    const nextStatus: Lead["status"] =
+      crmStage === "Closed" ? "Closed" : crmStage === "New" ? "New" : "Contacted";
+
+    setLeads((currentLeads) =>
+      currentLeads.map((item) =>
+        item.id === id ? { ...item, crmStage, status: nextStatus } : item
+      )
+    );
+
+    addActivityLog(
+      "CRM stage updated",
+      `${lead?.name || "Lead"} moved to ${crmStage}.`,
+      "Lead"
+    );
+    showMessage(`Lead moved to ${crmStage}.`);
+  }
+
+  function updateLeadPriority(id: number, priority: LeadPriority) {
+    const lead = leads.find((item) => item.id === id);
+
+    setLeads((currentLeads) =>
+      currentLeads.map((item) =>
+        item.id === id ? { ...item, priority } : item
+      )
+    );
+
+    addActivityLog(
+      "Lead priority updated",
+      `${lead?.name || "Lead"} priority changed to ${priority}.`,
+      "Lead"
+    );
+    showMessage(`Lead priority set to ${priority}.`);
+  }
+
+  function updateLeadFollowUpDate(id: number, followUpDate: string) {
+    const lead = leads.find((item) => item.id === id);
+
+    setLeads((currentLeads) =>
+      currentLeads.map((item) =>
+        item.id === id ? { ...item, followUpDate } : item
+      )
+    );
+
+    addActivityLog(
+      "Lead follow-up updated",
+      `${lead?.name || "Lead"} follow-up date set to ${followUpDate || "not set"}.`,
+      "Lead"
+    );
+    showMessage("Lead follow-up date updated.");
+  }
+
+  function updateLeadNotes(id: number, notes: string) {
+    setLeads((currentLeads) =>
+      currentLeads.map((item) =>
+        item.id === id ? { ...item, notes } : item
+      )
+    );
+  }
+
+  function exportCrmPipelineCsv() {
+    const rows = [
+      [
+        "ID",
+        "Lead",
+        "Email",
+        "Phone",
+        "Budget",
+        "Property",
+        "Stage",
+        "Priority",
+        "Source",
+        "Follow Up Date",
+        "Notes",
+        "Message",
+        "Created At",
+      ],
+      ...leads.map((lead) => [
+        lead.id,
+        lead.name,
+        lead.email,
+        lead.phone,
+        lead.budget,
+        lead.listingTitle || "",
+        getLeadStage(lead),
+        getLeadPriority(lead),
+        getLeadSource(lead),
+        lead.followUpDate || "",
+        lead.notes || "",
+        lead.message,
+        lead.createdAt,
+      ]),
+    ];
+
+    downloadTextFile(
+      `inamaad-crm-pipeline-${new Date().toISOString().slice(0, 10)}.csv`,
+      createCsv(rows),
+      "text/csv;charset=utf-8"
+    );
+
+    addActivityLog(
+      "CRM pipeline exported",
+      "Admin exported the CRM pipeline as CSV.",
+      "Lead"
+    );
+    showMessage("CRM pipeline CSV exported.");
   }
 
   function deleteLead(id: number) {
@@ -1993,6 +2173,11 @@ function InamaadApp() {
         "Phone",
         "Budget",
         "Status",
+        "CRM Stage",
+        "Priority",
+        "Source",
+        "Follow Up Date",
+        "Notes",
         "Message",
         "Created At",
       ],
@@ -2004,6 +2189,11 @@ function InamaadApp() {
         lead.phone,
         lead.budget,
         lead.status,
+        getLeadStage(lead),
+        getLeadPriority(lead),
+        getLeadSource(lead),
+        lead.followUpDate || "",
+        lead.notes || "",
         lead.message,
         lead.createdAt,
       ]),
@@ -2243,7 +2433,9 @@ function InamaadApp() {
 
     setLeads((currentLeads) =>
       currentLeads.map((lead) =>
-        lead.status === "New" ? { ...lead, status: "Contacted" } : lead
+        lead.status === "New"
+          ? { ...lead, status: "Contacted", crmStage: "Contacted" }
+          : lead
       )
     );
 
@@ -2324,6 +2516,11 @@ function InamaadApp() {
       ].join("\n"),
       createdAt: new Date().toISOString(),
       status: "New",
+      crmStage: "New",
+      priority: "High",
+      source: "Buyer concierge",
+      followUpDate: "",
+      notes: "",
     };
 
     setLeads((currentLeads) => [createdLead, ...currentLeads]);
@@ -5065,6 +5262,13 @@ function InamaadApp() {
                     >
                       Export leads CSV
                     </button>
+                    <button
+                      type="button"
+                      onClick={exportCrmPipelineCsv}
+                      className="rounded-xl border border-indigo-200 px-3 py-2.5 text-xs font-black text-indigo-700 hover:bg-indigo-50"
+                    >
+                      Export CRM CSV
+                    </button>
 
                     <button
                       type="button"
@@ -5115,6 +5319,60 @@ function InamaadApp() {
                   </button>
                 </div>
 
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Admin CRM pipeline
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-indigo-700">
+                        Track lead stage, priority, source, follow-up date, and internal notes.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-center">
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {hotLeadsCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-red-600">
+                          Hot
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {dueLeadFollowUpsCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-[#9b6b16]">
+                          Due
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {leadPipelineCounts.map((item) => (
+                      <div key={item.stage} className="rounded-2xl bg-white p-3">
+                        <p className="text-xl font-black text-[#0d1c38]">
+                          {item.count}
+                        </p>
+                        <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-indigo-700">
+                          {item.stage}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={exportCrmPipelineCsv}
+                    className="mt-3 w-full rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
+                  >
+                    Export CRM pipeline CSV
+                  </button>
+                </div>
+
                 <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
                   <p className="mb-1 text-sm font-black text-[#0d1c38]">
                     Investor leads: {leads.length}
@@ -5140,17 +5398,31 @@ function InamaadApp() {
                             </p>
                           </div>
 
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-black ${
-                              lead.status === "New"
-                                ? "bg-blue-50 text-blue-700"
-                                : lead.status === "Contacted"
-                                  ? "bg-yellow-50 text-yellow-700"
-                                  : "bg-green-50 text-green-700"
-                            }`}
-                          >
-                            {lead.status}
-                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-black ${
+                                getLeadStage(lead) === "New"
+                                  ? "bg-blue-50 text-blue-700"
+                                  : getLeadStage(lead) === "Closed"
+                                    ? "bg-green-50 text-green-700"
+                                    : "bg-yellow-50 text-yellow-700"
+                              }`}
+                            >
+                              {getLeadStage(lead)}
+                            </span>
+
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-black ${
+                                getLeadPriority(lead) === "Hot"
+                                  ? "bg-red-50 text-red-700"
+                                  : getLeadPriority(lead) === "High"
+                                    ? "bg-orange-50 text-orange-700"
+                                    : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {getLeadPriority(lead)}
+                            </span>
+                          </div>
                         </div>
 
                         {lead.listingTitle ? (
@@ -5160,8 +5432,56 @@ function InamaadApp() {
                         ) : null}
 
                         <p className="mb-2 text-xs font-black text-slate-500">
-                          Budget: {lead.budget}
+                          Budget: {lead.budget} · Source: {getLeadSource(lead)}
                         </p>
+
+                        <div className="mb-3 grid gap-2 sm:grid-cols-3">
+                          <select
+                            value={getLeadStage(lead)}
+                            onChange={(e) =>
+                              updateLeadCrmStage(lead.id, e.target.value as LeadStage)
+                            }
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#0d1c38]"
+                          >
+                            {LEAD_PIPELINE_STAGES.map((stage) => (
+                              <option key={stage} value={stage}>
+                                {stage}
+                              </option>
+                            ))}
+                          </select>
+
+                          <select
+                            value={getLeadPriority(lead)}
+                            onChange={(e) =>
+                              updateLeadPriority(lead.id, e.target.value as LeadPriority)
+                            }
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#0d1c38]"
+                          >
+                            {LEAD_PRIORITIES.map((priority) => (
+                              <option key={priority} value={priority}>
+                                {priority}
+                              </option>
+                            ))}
+                          </select>
+
+                          <input
+                            type="date"
+                            value={lead.followUpDate || ""}
+                            onChange={(e) =>
+                              updateLeadFollowUpDate(lead.id, e.target.value)
+                            }
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#0d1c38]"
+                          />
+                        </div>
+
+                        <textarea
+                          value={lead.notes || ""}
+                          onChange={(e) => updateLeadNotes(lead.id, e.target.value)}
+                          placeholder="Internal CRM note, follow-up plan, inspection status..."
+                          rows={2}
+                          className="mb-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold outline-none focus:border-[#0d1c38]"
+                        />
+
                         <p className="mb-3 text-sm leading-6 text-slate-600">{lead.message}</p>
 
                         <div className="grid grid-cols-2 gap-2">

@@ -10,7 +10,9 @@ type ModalType =
   | "admin"
   | "details"
   | "edit"
-  | "guide";
+  | "guide"
+  | "forgotPassword"
+  | "resetPassword";
 
 type ListingStatus = "Verified" | "Pending Review";
 type AvailabilityStatus = "Available" | "Reserved" | "Sold" | "Rented" | "Leased" | "Off Market";
@@ -1695,6 +1697,15 @@ function InamaadMainApp() {
     password: "",
   });
 
+  const [demoSignedIn, setDemoSignedIn] = useState(false);
+  const [demoUserEmail, setDemoUserEmail] = useState("");
+
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [resetPasswordForm, setResetPasswordForm] = useState({
+    password: "",
+    confirmPassword: "",
+  });
+
   const [registerForm, setRegisterForm] = useState({
     name: "",
     email: "",
@@ -2004,6 +2015,8 @@ function InamaadMainApp() {
   const totalLeads = investorRequests.length + propertyInquiries.length + propertyOffers.length + jvApplications.length + contactMessages.length + inspectionBookings.length;
   const conversionReadyLeads = propertyInquiries.length + propertyOffers.length + jvApplications.length + contactMessages.length + inspectionBookings.length;
   const unreadNotifications = staffNotifications.filter((notification) => !notification.isRead).length;
+  const isSignedIn = Boolean(user) || demoSignedIn;
+  const signedInEmail = user?.email || demoUserEmail || "INAMAAD Account";
   const currentStaffMember = staffMembers.find((member) => member.email === user?.email);
   const currentStaffRole: StaffRole = usesDatabase
     ? currentStaffMember?.role || "Viewer"
@@ -2378,8 +2391,19 @@ function InamaadMainApp() {
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setUser(session?.user ?? null);
+
+        if (session?.user) {
+          setDemoSignedIn(false);
+          setDemoUserEmail("");
+        }
+
+        if (event === "PASSWORD_RECOVERY") {
+          setModal("resetPassword");
+          showSuccess("Enter your new password to complete account recovery.");
+        }
+
         if (!session?.user) {
           setAdminUnlocked(false);
           setInvestorRequests([]);
@@ -4580,13 +4604,18 @@ function InamaadMainApp() {
     event.preventDefault();
 
     if (!supabase) {
+      setDemoSignedIn(true);
+      setDemoUserEmail(signInForm.email || "Demo account");
+      setSignInForm({ email: "", password: "" });
       setModal(null);
-      showSuccess("Demo sign in completed.");
+      showSuccess("Logged in successfully. Your account status is now visible.");
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: signInForm.email,
+    const loginEmail = signInForm.email.trim();
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
       password: signInForm.password,
     });
 
@@ -4595,17 +4624,100 @@ function InamaadMainApp() {
       return;
     }
 
+    const signedInUser = data.user ?? data.session?.user ?? null;
+
+    if (signedInUser) {
+      setUser(signedInUser);
+      setDemoSignedIn(false);
+      setDemoUserEmail("");
+    } else {
+      // Fallback: show the logged-in state immediately after a successful login.
+      // The Supabase auth listener will replace this with the real user session.
+      setDemoSignedIn(true);
+      setDemoUserEmail(loginEmail || "INAMAAD Account");
+    }
+
     setSignInForm({ email: "", password: "" });
     setModal(null);
-    showSuccess("Signed in successfully.");
+    showSuccess("Logged in successfully.");
+  }
+
+  async function handleForgotPassword(event: React.FormEvent) {
+    event.preventDefault();
+
+    const email = forgotPasswordEmail.trim();
+
+    if (!email) {
+      showSuccess("Enter your email address first.");
+      return;
+    }
+
+    if (!supabase) {
+      setForgotPasswordEmail("");
+      setModal("signin");
+      showSuccess("Demo mode: password reset email would be sent when Supabase is connected.");
+      return;
+    }
+
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setForgotPasswordEmail("");
+    setModal("signin");
+    showSuccess("Password reset link sent. Check your email inbox.");
+  }
+
+  async function handleResetPassword(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!supabase) {
+      setResetPasswordForm({ password: "", confirmPassword: "" });
+      setModal("signin");
+      showSuccess("Demo mode: password would be updated when Supabase is connected.");
+      return;
+    }
+
+    if (resetPasswordForm.password.length < 6) {
+      showSuccess("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (resetPasswordForm.password !== resetPasswordForm.confirmPassword) {
+      showSuccess("Passwords do not match.");
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password: resetPasswordForm.password,
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setResetPasswordForm({ password: "", confirmPassword: "" });
+    setModal("signin");
+    showSuccess("Password updated successfully. You can now sign in.");
   }
 
   async function handleRegister(event: React.FormEvent) {
     event.preventDefault();
 
     if (!supabase) {
+      setDemoSignedIn(true);
+      setDemoUserEmail(registerForm.email || registerForm.name || "Demo account");
+      setRegisterForm({ name: "", email: "", password: "" });
       setModal(null);
-      showSuccess("Demo account created.");
+      showSuccess("Demo account created and signed in.");
       return;
     }
 
@@ -4657,6 +4769,19 @@ function InamaadMainApp() {
     await checkAdminAccess();
   }
 
+  async function handlePublicSignOut() {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+
+    setUser(null);
+    setDemoSignedIn(false);
+    setDemoUserEmail("");
+    setAdminUnlocked(false);
+    setModal(null);
+    showSuccess("Signed out successfully.");
+  }
+
   async function logoutAdmin() {
     if (supabase) {
       await supabase.auth.signOut();
@@ -4664,6 +4789,8 @@ function InamaadMainApp() {
 
     setAdminUnlocked(false);
     setUser(null);
+    setDemoSignedIn(false);
+    setDemoUserEmail("");
     setInvestorRequests([]);
     setPropertyInquiries([]);
     setPropertyViews([]);
@@ -6560,19 +6687,42 @@ function InamaadMainApp() {
               Guide
             </button>
 
-            <button
-              onClick={() => setModal("signin")}
-              className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
-            >
-              Sign In
-            </button>
+            {isSignedIn ? (
+              <>
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-left shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
+                    Logged in
+                  </p>
+                  <p className="max-w-[180px] truncate text-sm font-black text-[#0d1c38]">
+                    {signedInEmail}
+                  </p>
+                </div>
 
-            <button
-              onClick={() => setModal("investor")}
-              className="rounded-xl bg-[#0d1c38] px-6 py-3 text-lg font-semibold text-white shadow-sm transition hover:bg-[#13284f]"
-            >
-              Get Started
-            </button>
+                <button
+                  type="button"
+                  onClick={handlePublicSignOut}
+                  className="rounded-xl border border-slate-300 px-5 py-3 text-base font-black text-slate-700 transition hover:border-[#0d1c38] hover:text-[#0d1c38]"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setModal("signin")}
+                  className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
+                >
+                  Sign In
+                </button>
+
+                <button
+                  onClick={() => setModal("investor")}
+                  className="rounded-xl bg-[#0d1c38] px-6 py-3 text-lg font-semibold text-white shadow-sm transition hover:bg-[#13284f]"
+                >
+                  Get Started
+                </button>
+              </>
+            )}
           </div>
 
           <button
@@ -6604,15 +6754,51 @@ function InamaadMainApp() {
                 How to use
               </button>
 
-              <button
-                onClick={() => {
-                  setMobileOpen(false);
-                  setModal("investor");
-                }}
-                className="rounded-xl bg-[#0d1c38] px-5 py-3 text-left font-black text-white"
-              >
-                Get Started
-              </button>
+              {isSignedIn ? (
+                <div className="grid gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
+                      Logged in
+                    </p>
+                    <p className="truncate text-sm font-black text-[#0d1c38]">
+                      {signedInEmail}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileOpen(false);
+                      handlePublicSignOut();
+                    }}
+                    className="rounded-xl border border-emerald-200 bg-white px-5 py-3 text-left font-black text-[#0d1c38]"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      setModal("signin");
+                    }}
+                    className="rounded-xl border border-slate-200 px-5 py-3 text-left font-black text-[#0d1c38]"
+                  >
+                    Sign In
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      setModal("investor");
+                    }}
+                    className="rounded-xl bg-[#0d1c38] px-5 py-3 text-left font-black text-white"
+                  >
+                    Get Started
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -7518,105 +7704,196 @@ function InamaadMainApp() {
           </div>
         </section>
 
-        <section id="contact" className="bg-[#0d1c38] px-6 py-20 text-white lg:px-10">
+        <section id="contact" className="bg-[#0F172A] px-4 py-16 text-white sm:px-6 sm:py-20 lg:px-10">
           <div className="mx-auto max-w-7xl">
-            <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-              <div>
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="h-[3px] w-14 bg-[#f0bf3c]" />
-                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
-                    Contact
-                  </p>
-                </div>
-
-                <h2 className="text-4xl font-black tracking-tight md:text-6xl">
-                  Ready to invest or submit a real estate opportunity?
-                </h2>
-
-                <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-                  Start with investor access, submit your property, or contact
-                  INAMAAD directly on WhatsApp.
-                </p>
-              </div>
-
-              <form
-                onSubmit={submitContactMessage}
-                className="rounded-[2rem] bg-white p-6 text-[#0d1c38] shadow-2xl shadow-black/20"
-              >
-                <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
-                  Send message
-                </p>
-                <h3 className="mt-2 text-2xl font-black">Contact INAMAAD</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Messages from this form are saved directly inside your staff portal.
-                </p>
-
-                <div className="mt-5 grid gap-3">
-                  <input
-                    required
-                    value={contactForm.name}
-                    onChange={(event) =>
-                      setContactForm({ ...contactForm, name: event.target.value })
-                    }
-                    placeholder="Full name"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <input
-                      type="email"
-                      value={contactForm.email}
-                      onChange={(event) =>
-                        setContactForm({ ...contactForm, email: event.target.value })
-                      }
-                      placeholder="Email optional"
-                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={contactForm.phone}
-                      onChange={(event) =>
-                        setContactForm({ ...contactForm, phone: event.target.value })
-                      }
-                      placeholder="Phone or WhatsApp"
-                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-5 shadow-2xl shadow-black/20 sm:p-8 lg:p-10">
+              <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+                <div>
+                  <div className="mb-5 flex items-center gap-3">
+                    <div className="h-[3px] w-12 bg-[#C9A227]" />
+                    <p className="text-xs font-black uppercase tracking-[0.28em] text-[#C9A227] sm:text-sm">
+                      Contact INAMAAD
+                    </p>
                   </div>
 
-                  <input
-                    value={contactForm.subject}
-                    onChange={(event) =>
-                      setContactForm({ ...contactForm, subject: event.target.value })
-                    }
-                    placeholder="Subject e.g. Property investment"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                  <h2 className="max-w-3xl text-3xl font-black tracking-tight sm:text-5xl lg:text-6xl">
+                    Start a serious real estate conversation.
+                  </h2>
 
-                  <textarea
-                    required
-                    value={contactForm.message}
-                    onChange={(event) =>
-                      setContactForm({ ...contactForm, message: event.target.value })
-                    }
-                    placeholder="Write your message"
-                    rows={4}
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
+                  <p className="mt-5 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
+                    Whether you are an investor, developer, landowner, JV partner, or property owner,
+                    INAMAAD provides a professional channel for verified opportunities, strategic
+                    partnerships, and investment-led real estate growth.
+                  </p>
 
-                  <button className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-sm font-black text-[#0d1c38] hover:bg-[#ffd45a]">
-                    Send message
-                  </button>
+                  <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                    {[
+                      {
+                        title: "Investors",
+                        text: "Discover verified real estate opportunities and structured investment leads.",
+                      },
+                      {
+                        title: "Developers",
+                        text: "Connect with landowners, capital partners, and development opportunities.",
+                      },
+                      {
+                        title: "Landowners",
+                        text: "Submit land or partnership opportunities for professional review.",
+                      },
+                      {
+                        title: "JV Partners",
+                        text: "Explore joint venture, land development, and strategic partnership pathways.",
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.title}
+                        className="rounded-3xl border border-white/10 bg-white/[0.06] p-5"
+                      >
+                        <h3 className="text-lg font-black text-white">{item.title}</h3>
+                        <p className="mt-2 text-sm leading-6 text-slate-300">{item.text}</p>
+                      </div>
+                    ))}
+                  </div>
 
-                  <a
-                    href={`https://wa.me/${WHATSAPP_NUMBER}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-2xl border border-slate-200 px-7 py-4 text-center text-sm font-black text-[#0d1c38] hover:border-[#0d1c38]"
-                  >
-                    Or WhatsApp: +{WHATSAPP_NUMBER}
-                  </a>
+                  <div className="mt-8 flex flex-wrap gap-3">
+                    <a
+                      href="#properties"
+                      className="rounded-full bg-[#C9A227] px-6 py-3 text-sm font-black text-[#0F172A] transition hover:bg-[#e2bd45]"
+                    >
+                      Browse Opportunities
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => setModal("post")}
+                      className="rounded-full border border-white/20 px-6 py-3 text-sm font-black text-white transition hover:border-[#C9A227] hover:text-[#C9A227]"
+                    >
+                      Submit Opportunity
+                    </button>
+
+                    <a
+                      href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-full border border-white/20 px-6 py-3 text-sm font-black text-white transition hover:border-[#C9A227] hover:text-[#C9A227]"
+                    >
+                      WhatsApp INAMAAD
+                    </a>
+                  </div>
                 </div>
-              </form>
+
+                <div className="rounded-[2rem] border border-white/10 bg-white p-5 text-[#0F172A] shadow-2xl shadow-black/30 sm:p-7">
+                  <div className="rounded-[1.5rem] border border-[#C9A227]/25 bg-[#f8f5eb] p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.24em] text-[#9a7816]">
+                      Business Inquiry
+                    </p>
+                    <h3 className="mt-2 text-2xl font-black">
+                      Contact our team
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Send your inquiry and the message will be saved in your staff portal for follow-up.
+                    </p>
+                  </div>
+
+                  <form onSubmit={submitContactMessage} className="mt-5 grid gap-3">
+                    <input
+                      required
+                      value={contactForm.name}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, name: event.target.value })
+                      }
+                      placeholder="Full name"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
+                    />
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input
+                        type="email"
+                        value={contactForm.email}
+                        onChange={(event) =>
+                          setContactForm({ ...contactForm, email: event.target.value })
+                        }
+                        placeholder="Email optional"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
+                      />
+
+                      <input
+                        value={contactForm.phone}
+                        onChange={(event) =>
+                          setContactForm({ ...contactForm, phone: event.target.value })
+                        }
+                        placeholder="Phone or WhatsApp"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
+                      />
+                    </div>
+
+                    <input
+                      value={contactForm.subject}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, subject: event.target.value })
+                      }
+                      placeholder="Subject e.g. Investor inquiry, JV proposal, land submission"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
+                    />
+
+                    <textarea
+                      required
+                      value={contactForm.message}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, message: event.target.value })
+                      }
+                      placeholder="Tell us about your opportunity, investment interest, or partnership request"
+                      rows={5}
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
+                    />
+
+                    <button className="rounded-2xl bg-[#0F172A] px-7 py-4 text-sm font-black text-white transition hover:bg-[#1e293b]">
+                      Send Business Inquiry
+                    </button>
+
+                    <div className="grid gap-3 pt-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => setModal("investor")}
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-center text-sm font-black text-[#0F172A] transition hover:border-[#C9A227] hover:text-[#9a7816]"
+                      >
+                        Investor Access
+                      </button>
+
+                      <a
+                        href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%20INAMAAD%2C%20I%20want%20to%20make%20a%20business%20inquiry.`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-center text-sm font-black text-[#0F172A] transition hover:border-[#C9A227] hover:text-[#9a7816]"
+                      >
+                        WhatsApp: +{WHATSAPP_NUMBER}
+                      </a>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <div className="mt-8 grid gap-4 border-t border-white/10 pt-8 md:grid-cols-3">
+                {[
+                  {
+                    title: "Opportunity Review",
+                    text: "Submit properties, land, or JV opportunities for structured review.",
+                  },
+                  {
+                    title: "Investor Relations",
+                    text: "Start conversations around verified deals and long-term growth.",
+                  },
+                  {
+                    title: "Partnership Desk",
+                    text: "Connect for development, land acquisition, and joint venture collaboration.",
+                  },
+                ].map((item) => (
+                  <div key={item.title} className="rounded-3xl bg-white/[0.05] p-5">
+                    <h3 className="text-base font-black text-[#C9A227]">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">{item.text}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -7710,12 +7987,33 @@ function InamaadMainApp() {
                 How to use INAMAAD
               </button>
 
-              <button
-                onClick={() => setModal("signin")}
-                className="w-fit text-left"
-              >
-                Sign In
-              </button>
+              {isSignedIn ? (
+                <>
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
+                      Logged in
+                    </p>
+                    <p className="mt-1 max-w-[190px] truncate text-xs font-black text-[#0d1c38]">
+                      {signedInEmail}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handlePublicSignOut}
+                    className="w-fit text-left font-black text-[#0d1c38]"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setModal("signin")}
+                  className="w-fit text-left"
+                >
+                  Sign In
+                </button>
+              )}
 
               <button
                 onClick={() => setModal("investor")}
@@ -7775,6 +8073,8 @@ function InamaadMainApp() {
                   {modal === "admin" && "Staff portal"}
                   {modal === "edit" && "Edit listing"}
                   {modal === "guide" && "How to use INAMAAD"}
+                  {modal === "forgotPassword" && "Forgot password"}
+                  {modal === "resetPassword" && "Create new password"}
                   {modal === "details" && selectedListing?.title}
                 </h2>
               </div>
@@ -7965,16 +8265,102 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotPasswordEmail(signInForm.email);
+                      setModal("forgotPassword");
+                    }}
+                    className="text-sm font-black text-[#9a7816] hover:text-[#0d1c38]"
+                  >
+                    Forgot password?
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModal("register")}
+                    className="text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
+                  >
+                    Create a new account
+                  </button>
+                </div>
+
                 <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
                   Sign in
+                </button>
+              </form>
+            )}
+
+            {modal === "forgotPassword" && (
+              <form onSubmit={handleForgotPassword} className="grid gap-4">
+                <div className="rounded-3xl border border-[#C9A227]/25 bg-[#f8f5eb] p-5">
+                  <p className="text-sm font-bold leading-6 text-slate-700">
+                    Enter the email address linked to your INAMAAD account. We will send a secure password reset link to your inbox.
+                  </p>
+                </div>
+
+                <input
+                  required
+                  type="email"
+                  value={forgotPasswordEmail}
+                  onChange={(event) => setForgotPasswordEmail(event.target.value)}
+                  placeholder="Email address"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                  Send reset link
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setModal("register")}
-                  className="text-sm font-bold text-slate-500"
+                  onClick={() => setModal("signin")}
+                  className="text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
                 >
-                  Create a new account
+                  Back to sign in
+                </button>
+              </form>
+            )}
+
+            {modal === "resetPassword" && (
+              <form onSubmit={handleResetPassword} className="grid gap-4">
+                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+                  <p className="text-sm font-bold leading-6 text-emerald-800">
+                    Your reset link has been verified. Create a new password for your INAMAAD account.
+                  </p>
+                </div>
+
+                <input
+                  required
+                  type="password"
+                  value={resetPasswordForm.password}
+                  onChange={(event) =>
+                    setResetPasswordForm({
+                      ...resetPasswordForm,
+                      password: event.target.value,
+                    })
+                  }
+                  placeholder="New password"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <input
+                  required
+                  type="password"
+                  value={resetPasswordForm.confirmPassword}
+                  onChange={(event) =>
+                    setResetPasswordForm({
+                      ...resetPasswordForm,
+                      confirmPassword: event.target.value,
+                    })
+                  }
+                  placeholder="Confirm new password"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                  Update password
                 </button>
               </form>
             )}
@@ -12961,3 +13347,11 @@ export default function App() {
 // INAMAAD_MOVABLE_NAVBAR_RESTORE_AUDIT: navbar restored to normal movable/static page flow; fixed top padding removed.
 
 // INAMAAD_STAFF_ACCESS_UNDER_COMPANY_AUDIT: staff portal link moved from Access footer column into Company footer column as small Staff Access link.
+
+// INAMAAD_PREMIUM_CONTACT_SECTION_AUDIT: contact section upgraded to premium business-focused investor/developer/landowner/JV inquiry layout.
+
+// INAMAAD_FORGOT_PASSWORD_AUDIT: forgot password and reset password modals added using Supabase password recovery flow.
+
+// INAMAAD_SIGNED_IN_STATUS_AUDIT: navbar now clearly changes after sign in by showing signed-in account badge and sign-out action on desktop and mobile.
+
+// INAMAAD_LOGIN_VISIBLE_STRONG_FIX_AUDIT: login state now switches immediately to Logged in after successful sign in, and footer Access column no longer shows Sign In while logged in.

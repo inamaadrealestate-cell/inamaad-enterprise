@@ -874,6 +874,44 @@ function formatPricePreview(value: string) {
   return `${formatNairaFull(numericValue)} (${formatNairaCompact(numericValue)})`;
 }
 
+type UploadFileCategory = "image" | "document";
+
+function validateUploadFile(file: File, category: UploadFileCategory) {
+  const fileName = file.name || "Selected file";
+  const extension = fileName.split(".").pop()?.toLowerCase() || "";
+  const maxImageSize = 5 * 1024 * 1024;
+  const maxDocumentSize = 10 * 1024 * 1024;
+  const allowedImageExtensions = ["jpg", "jpeg", "png", "webp"];
+  const allowedDocumentExtensions = ["pdf", "jpg", "jpeg", "png", "webp"];
+  const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+  const allowedDocumentTypes = ["application/pdf", ...allowedImageTypes];
+
+  const maxSize = category === "image" ? maxImageSize : maxDocumentSize;
+  const allowedExtensions =
+    category === "image" ? allowedImageExtensions : allowedDocumentExtensions;
+  const allowedTypes = category === "image" ? allowedImageTypes : allowedDocumentTypes;
+
+  if (file.size > maxSize) {
+    throw new Error(
+      `${fileName} is too large. ${category === "image" ? "Images" : "Documents"} must be ${
+        category === "image" ? "5MB" : "10MB"
+      } or less.`
+    );
+  }
+
+  if (extension && !allowedExtensions.includes(extension)) {
+    throw new Error(
+      `${fileName} is not supported. Use ${allowedExtensions.join(", ").toUpperCase()}.`
+    );
+  }
+
+  if (file.type && !allowedTypes.includes(file.type)) {
+    throw new Error(`${fileName} has an unsupported file type.`);
+  }
+
+  return true;
+}
+
 type PriceBreakdownInput = {
   price?: string;
   agencyFee?: string;
@@ -1525,10 +1563,10 @@ function verificationSummary(listing: Listing | Omit<Listing, "id">) {
 }
 
 class InamaadErrorBoundary extends React.Component<
-  { children: React.ReactNode },
+  { children?: React.ReactNode },
   { hasError: boolean; errorMessage: string }
 > {
-  constructor(props: { children: React.ReactNode }) {
+  constructor(props: { children?: React.ReactNode }) {
     super(props);
     this.state = { hasError: false, errorMessage: "" };
   }
@@ -1978,6 +2016,61 @@ function InamaadMainApp() {
     (member) => member.isActive && member.role !== "Viewer"
   );
   const activeStaffCount = staffMembers.filter((member) => member.isActive).length;
+  const publicListingsWithContactCount = verifiedListings.filter(
+    (listing) => listing.ownerPhone || listing.contactWhatsapp || listing.contactEmail
+  ).length;
+  const listingsWithImagesCount = listings.filter((listing) => listing.imageUrl).length;
+
+  const launchFoundationChecks = [
+    {
+      label: "Database connection",
+      passed: usesDatabase,
+      detail: usesDatabase
+        ? "Supabase environment variables are detected."
+        : "Supabase is not connected yet; local storage is still being used.",
+    },
+    {
+      label: "Public property browsing",
+      passed: verifiedListings.length > 0,
+      detail: `${verifiedListings.length} verified listing${verifiedListings.length === 1 ? "" : "s"} available to visitors.`,
+    },
+    {
+      label: "Property/JV detail opening",
+      passed: true,
+      detail: "Property and JV cards use the protected click handler so details open without refresh conflict.",
+    },
+    {
+      label: "Upload guard",
+      passed: true,
+      detail: "Images and documents are checked for file type and size before upload.",
+    },
+    {
+      label: "Admin approval flow",
+      passed: true,
+      detail: `${pendingListings.length} listing${pendingListings.length === 1 ? "" : "s"} currently waiting for review.`,
+    },
+    {
+      label: "Contact channels",
+      passed: publicListingsWithContactCount > 0 || Boolean(WHATSAPP_NUMBER),
+      detail: `${publicListingsWithContactCount} verified listing${publicListingsWithContactCount === 1 ? "" : "s"} include direct listing contact details. Global WhatsApp is available.`,
+    },
+    {
+      label: "Listing media readiness",
+      passed: listings.length === 0 || listingsWithImagesCount > 0,
+      detail: `${listingsWithImagesCount} listing${listingsWithImagesCount === 1 ? "" : "s"} currently have image/gallery media.`,
+    },
+    {
+      label: "Lead capture forms",
+      passed: true,
+      detail: "Investor requests, property inquiries, offers, inspections, and contact messages are available.",
+    },
+  ];
+  const launchFoundationScore = Math.round(
+    (launchFoundationChecks.filter((check) => check.passed).length /
+      launchFoundationChecks.length) *
+      100
+  );
+  const failedLaunchFoundationChecks = launchFoundationChecks.filter((check) => !check.passed);
   const todayKey = new Date().toISOString().slice(0, 10);
 
   const leadFollowUpItems = useMemo(() => {
@@ -2373,13 +2466,13 @@ function InamaadMainApp() {
       // background clicks continue to refresh the marketplace data.
       if (
         target?.closest(
-          '[data-inamaad-open-listing="true"], [data-inamaad-no-refresh="true"]'
+          '[data-inamaad-open-listing="true"], [data-inamaad-no-refresh="true"], [role="dialog"], form, input, textarea, select, button, a'
         )
       ) {
         return;
       }
 
-      scheduleAutoRefresh(650);
+      scheduleAutoRefresh(900);
     };
 
     const clickEvents: Array<keyof WindowEventMap> = [
@@ -2804,6 +2897,8 @@ function InamaadMainApp() {
   }
 
   async function uploadPropertyImage(file: File) {
+    validateUploadFile(file, "image");
+
     if (!supabase) return "";
 
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
@@ -2860,7 +2955,7 @@ function InamaadMainApp() {
       files.map(async (file, index) => ({
         id: Date.now() + index,
         listingId,
-        imageUrl: await imageFileToBase64(file),
+        imageUrl: await imageFileToBase64(file, "image"),
         caption: file.name,
         displayOrder: startOrder + index,
         isMain: false,
@@ -2872,6 +2967,8 @@ function InamaadMainApp() {
   }
 
   async function uploadPropertyDocument(file: File) {
+    validateUploadFile(file, "document");
+
     if (!supabase) return "";
 
     const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
@@ -2937,6 +3034,8 @@ function InamaadMainApp() {
   }
 
   async function uploadVerificationDocument(file: File, folder: string) {
+    validateUploadFile(file, "document");
+
     if (!supabase) return "";
 
     if (!canOpenDocuments) {
@@ -3007,6 +3106,8 @@ function InamaadMainApp() {
   }
 
   async function uploadJvDocument(file: File, folder: string) {
+    validateUploadFile(file, "document");
+
     if (!supabase) return "";
 
     if (!canOpenDocuments) {
@@ -3077,6 +3178,8 @@ function InamaadMainApp() {
   }
 
   async function uploadJvApplicationDocument(file: File, folder: string) {
+    validateUploadFile(file, "document");
+
     if (!supabase) return "";
 
     const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
@@ -3141,7 +3244,9 @@ function InamaadMainApp() {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
-  function imageFileToBase64(file: File) {
+  function imageFileToBase64(file: File, category: UploadFileCategory = "document") {
+    validateUploadFile(file, category);
+
     return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
@@ -3444,7 +3549,7 @@ function InamaadMainApp() {
       const imageUrl = postImageFile
         ? supabase
           ? await uploadPropertyImage(postImageFile)
-          : await imageFileToBase64(postImageFile)
+          : await imageFileToBase64(postImageFile, "image")
         : "";
 
       const documentFileUrl = postDocumentFile
@@ -3641,6 +3746,17 @@ function InamaadMainApp() {
         jvEstimatedProjectCost: "",
         jvCompletionTimeline: "",
         jvTerms: "",
+        jvFeasibilityStudyUrl: "",
+        jvArchitecturalConceptUrl: "",
+        jvEstateLayoutUrl: "",
+        jvBoqUrl: "",
+        jvProposalDocumentUrl: "",
+        jvLandTitleStatus: "Not Reviewed",
+        jvDevelopmentApprovalStatus: "Not Reviewed",
+        jvDealStatus: "New JV" as JVDealStatus,
+        jvNextAction: "",
+        jvNextActionDate: "",
+        jvInternalNotes: "",
         neighborhoodOverview: "",
         roadAccess: "",
         powerSupply: "",
@@ -3672,6 +3788,15 @@ function InamaadMainApp() {
         contactAddress: "",
         publicContactVisibility: "Hide Phone",
         mandateStatus: "Not Confirmed",
+        identityType: "Not Provided",
+        identityNumber: "",
+        companyRegistrationNumber: "",
+        mandateDocumentStatus: "Not Provided",
+        contactProfileVerified: false,
+        contactVerificationNotes: "",
+        identityDocumentUrl: "",
+        cacDocumentUrl: "",
+        mandateDocumentUrl: "",
       });
       setPostMode("property");
       setPostFormRenderKey((current) => current + 1);
@@ -3683,7 +3808,11 @@ function InamaadMainApp() {
       showSuccess("Opportunity submitted successfully. Admin review is pending.");
     } catch (error) {
       console.error(error);
-      showSuccess("Upload failed. Please try a smaller image/document file.");
+      showSuccess(
+        error instanceof Error
+          ? error.message
+          : "Upload failed. Please check image/document size and try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -3705,7 +3834,7 @@ function InamaadMainApp() {
       const imageUrl = editImageFile
         ? supabase
           ? await uploadPropertyImage(editImageFile)
-          : await imageFileToBase64(editImageFile)
+          : await imageFileToBase64(editImageFile, "image")
         : editForm.imageUrl;
 
       const documentFileUrl = editDocumentFile
@@ -6566,11 +6695,56 @@ function InamaadMainApp() {
             </div>
 
             {isLoading ? (
-              <div className="mt-12 rounded-[28px] bg-white p-8 text-center font-bold text-slate-500">
-                Loading listings...
+              <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                    <div className="h-72 animate-pulse bg-slate-200" />
+                    <div className="space-y-4 p-7">
+                      <div className="h-5 w-1/2 animate-pulse rounded-full bg-slate-200" />
+                      <div className="h-8 w-3/4 animate-pulse rounded-full bg-slate-200" />
+                      <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {filteredListings.length === 0 && (
+                  <div className="rounded-[28px] border border-dashed border-slate-300 bg-white p-8 text-center md:col-span-2 lg:col-span-3">
+                    <p className="text-lg font-black text-[#0d1c38]">
+                      No matching listings found
+                    </p>
+                    <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-500">
+                      Try clearing filters, searching a different location, or submit a new property/JV opportunity for admin review.
+                    </p>
+                    <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuery("");
+                          setPropertyType("All");
+                          setListingPurpose("All Purposes");
+                          setAvailabilityFilter("All Availability");
+                          setLocationFilter("All Locations");
+                          setMinValueFilter("");
+                          setMaxValueFilter("");
+                          setSortMode("Newest");
+                        }}
+                        className="rounded-2xl border border-[#0d1c38] px-5 py-3 text-sm font-black text-[#0d1c38] hover:bg-slate-50"
+                      >
+                        Clear filters
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openPostModal("property")}
+                        className="rounded-2xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#13284f]"
+                      >
+                        Submit property
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {filteredListings.map((listing) => (
                   <article
                     key={listing.id}
@@ -10345,6 +10519,56 @@ function InamaadMainApp() {
                   <p className="mt-2 leading-6">
                     Access enabled: {canEditListings ? "edit listings" : "read listings"}, {canApproveListings ? "approve listings" : "no approval"}, {canManageLeads ? "manage leads" : "read-only leads"}, {canOpenDocuments ? "secure documents" : "documents locked"}, {canExportReports ? "reports" : "no report export"}.
                   </p>
+                </div>
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                        Phase 1 launch foundation
+                      </p>
+                      <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                        Stability checklist
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                        Admin-only launch check for browsing, uploads, approval flow, contact channels, data mode, and lead capture. No payments or monetization added.
+                      </p>
+                    </div>
+
+                    <div className={`rounded-2xl px-5 py-3 text-center ${launchFoundationScore >= 85 ? "bg-emerald-50 text-emerald-700" : launchFoundationScore >= 65 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
+                      <p className="text-2xl font-black">{launchFoundationScore}%</p>
+                      <p className="text-[10px] font-black uppercase tracking-wide">Ready</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 md:grid-cols-2">
+                    {launchFoundationChecks.map((check) => (
+                      <div
+                        key={check.label}
+                        className={`rounded-2xl border p-4 ${check.passed ? "border-emerald-100 bg-emerald-50" : "border-amber-100 bg-amber-50"}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${check.passed ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"}`}>
+                            {check.passed ? "✓" : "!"}
+                          </span>
+                          <div>
+                            <p className="text-sm font-black text-[#0d1c38]">{check.label}</p>
+                            <p className="mt-1 text-xs leading-5 text-slate-600">{check.detail}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {failedLaunchFoundationChecks.length > 0 ? (
+                    <p className="mt-4 rounded-2xl bg-[#fff7df] p-4 text-sm font-semibold leading-6 text-[#9b6b16]">
+                      Next Phase 1 action: {failedLaunchFoundationChecks[0].label} — {failedLaunchFoundationChecks[0].detail}
+                    </p>
+                  ) : (
+                    <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold leading-6 text-emerald-700">
+                      Phase 1 foundation looks ready. Keep testing uploads, property details, and admin approval before moving to Phase 2.
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-10">

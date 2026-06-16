@@ -1701,6 +1701,7 @@ function InamaadMainApp() {
   const [demoUserEmail, setDemoUserEmail] = useState("");
 
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [confirmationEmail, setConfirmationEmail] = useState("");
   const [resetPasswordForm, setResetPasswordForm] = useState({
     password: "",
     confirmPassword: "",
@@ -1711,6 +1712,7 @@ function InamaadMainApp() {
     email: "",
     password: "",
   });
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const [postForm, setPostForm] = useState({
     title: "",
@@ -2395,6 +2397,18 @@ function InamaadMainApp() {
         setUser(session?.user ?? null);
 
         if (session?.user) {
+          const emailConfirmedAt = session.user.email_confirmed_at;
+
+          if (!emailConfirmedAt && event === "SIGNED_IN") {
+            setConfirmationEmail(session.user.email ?? "");
+            supabase.auth.signOut();
+            setUser(null);
+            setDemoSignedIn(false);
+            setDemoUserEmail("");
+            showSuccess("Email confirmation is required before signing in. Check your inbox and confirm your email first.");
+            return;
+          }
+
           setDemoSignedIn(false);
           setDemoUserEmail("");
         }
@@ -2582,8 +2596,59 @@ function InamaadMainApp() {
     }, delay);
   }
 
-  function showSuccess(message: string) {
-    setSuccessMessage(message);
+  function formatAuthError(error: unknown, fallback = "Unable to complete request. Please try again."): string {
+    if (!error) return fallback;
+
+    if (typeof error === "string") {
+      return error.trim() && error !== "{}" ? error : fallback;
+    }
+
+    if (error instanceof Error) {
+      return error.message || fallback;
+    }
+
+    if (typeof error === "object") {
+      const value = error as { message?: unknown; error_description?: unknown; error?: unknown; status?: unknown };
+
+      const rawMessage =
+        typeof value.message === "string"
+          ? value.message
+          : typeof value.error_description === "string"
+            ? value.error_description
+            : typeof value.error === "string"
+              ? value.error
+              : "";
+
+      const message = rawMessage.trim();
+
+      if (!message || message === "{}") {
+        return fallback;
+      }
+
+      const lowerMessage = message.toLowerCase();
+
+      if (lowerMessage.includes("rate limit")) {
+        return "Request rate limit reached. Please wait a few minutes before trying again. If this continues, check Supabase SMTP and email rate limits.";
+      }
+
+      if (lowerMessage.includes("error sending confirmation email")) {
+        return "Confirmation email could not be sent. Check Supabase SMTP settings or wait for the email limit to reset.";
+      }
+
+      if (lowerMessage.includes("email not confirmed")) {
+        return "Please confirm your email before signing in. Check your inbox or resend the confirmation email.";
+      }
+
+      return message;
+    }
+
+    return fallback;
+  }
+
+  function showSuccess(message: unknown) {
+    const readableMessage = formatAuthError(message, "Action completed.");
+
+    setSuccessMessage(readableMessage);
     setTimeout(() => setSuccessMessage(""), 4500);
 
     if (supabase) {
@@ -4620,7 +4685,15 @@ function InamaadMainApp() {
     });
 
     if (error) {
-      showSuccess(error.message);
+      const message = formatAuthError(error, "Unable to sign in. Please check your email and password.");
+
+      if (message.toLowerCase().includes("confirm your email") || message.toLowerCase().includes("email not confirmed")) {
+        setConfirmationEmail(loginEmail);
+        showSuccess("Please confirm your email before signing in. Check your inbox or resend the confirmation email.");
+        return;
+      }
+
+      showSuccess(message);
       return;
     }
 
@@ -4640,6 +4713,39 @@ function InamaadMainApp() {
     setSignInForm({ email: "", password: "" });
     setModal(null);
     showSuccess("Logged in successfully.");
+  }
+
+  async function handleResendConfirmationEmail() {
+    const email = (signInForm.email || confirmationEmail || registerForm.email).trim();
+
+    if (!email) {
+      showSuccess("Enter your email address first, then resend confirmation.");
+      return;
+    }
+
+    setConfirmationEmail(email);
+
+    if (!supabase) {
+      showSuccess("Demo mode: confirmation email would be sent when Supabase is connected.");
+      return;
+    }
+
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
+    });
+
+    if (error) {
+      showSuccess(formatAuthError(error));
+      return;
+    }
+
+    showSuccess("Confirmation email sent. Check your inbox and spam folder.");
   }
 
   async function handleForgotPassword(event: React.FormEvent) {
@@ -4666,7 +4772,7 @@ function InamaadMainApp() {
     });
 
     if (error) {
-      showSuccess(error.message);
+      showSuccess(formatAuthError(error));
       return;
     }
 
@@ -4700,7 +4806,7 @@ function InamaadMainApp() {
     });
 
     if (error) {
-      showSuccess(error.message);
+      showSuccess(formatAuthError(error));
       return;
     }
 
@@ -4712,33 +4818,112 @@ function InamaadMainApp() {
   async function handleRegister(event: React.FormEvent) {
     event.preventDefault();
 
-    if (!supabase) {
-      setDemoSignedIn(true);
-      setDemoUserEmail(registerForm.email || registerForm.name || "Demo account");
+    if (isRegistering) {
+      return;
+    }
+
+    const registerEmail = registerForm.email.trim().toLowerCase();
+    const registerName = registerForm.name.trim();
+    const registerPassword = registerForm.password;
+
+    if (!registerName) {
+      showSuccess("Enter your full name first.");
+      return;
+    }
+
+    if (!registerEmail) {
+      showSuccess("Enter your email address first.");
+      return;
+    }
+
+    if (!registerEmail.includes("@") || !registerEmail.includes(".")) {
+      showSuccess("Enter a valid email address.");
+      return;
+    }
+
+    if (registerPassword.length < 6) {
+      showSuccess("Password must be at least 6 characters.");
+      return;
+    }
+
+    setIsRegistering(true);
+    showSuccess("Creating your account and requesting confirmation email...");
+
+    try {
+      if (!supabase) {
+        setDemoSignedIn(false);
+        setDemoUserEmail("");
+        setConfirmationEmail(registerEmail);
+        setRegisterForm({ name: "", email: "", password: "" });
+        setSignInForm({ email: registerEmail, password: "" });
+        setModal("signin");
+        showSuccess("Demo mode: account created. Email confirmation would be required when Supabase is connected.");
+        return;
+      }
+
+      const redirectTo = `${window.location.origin}${window.location.pathname}`;
+
+      const signUpResponse = await Promise.race([
+        supabase.auth.signUp({
+          email: registerEmail,
+          password: registerPassword,
+          options: {
+            emailRedirectTo: redirectTo,
+            data: {
+              full_name: registerName,
+            },
+          },
+        }),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(() => {
+            reject(
+              new Error(
+                "Confirmation email request is taking too long. Check Supabase Auth Logs, SMTP settings, and email rate limits before trying again."
+              )
+            );
+          }, 25000);
+        }),
+      ]);
+
+      const { data, error } = signUpResponse;
+
+      if (error) {
+        setConfirmationEmail(registerEmail);
+        showSuccess(
+          formatAuthError(
+            error,
+            "Unable to create account. Check Supabase email confirmation, SMTP, and rate limits."
+          )
+        );
+        return;
+      }
+
+      // If Supabase unexpectedly returns a session, sign it out immediately.
+      // INAMAAD requires email confirmation before the first sign in.
+      if (data?.session) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setDemoSignedIn(false);
+        setDemoUserEmail("");
+      }
+
+      setConfirmationEmail(registerEmail);
       setRegisterForm({ name: "", email: "", password: "" });
-      setModal(null);
-      showSuccess("Demo account created and signed in.");
-      return;
+      setSignInForm({ email: registerEmail, password: "" });
+      setModal("signin");
+
+      // Do not say "account activated" here. Activation only happens after email confirmation.
+      showSuccess("Account created. Check your email inbox or spam folder for the confirmation link before signing in.");
+    } catch (error) {
+      showSuccess(
+        formatAuthError(
+          error,
+          "Create account failed. Check Supabase Auth Logs, SMTP settings, and rate limits."
+        )
+      );
+    } finally {
+      setIsRegistering(false);
     }
-
-    const { error } = await supabase.auth.signUp({
-      email: registerForm.email,
-      password: registerForm.password,
-      options: {
-        data: {
-          full_name: registerForm.name,
-        },
-      },
-    });
-
-    if (error) {
-      showSuccess(error.message);
-      return;
-    }
-
-    setRegisterForm({ name: "", email: "", password: "" });
-    setModal(null);
-    showSuccess("Account created. Check your email if confirmation is required.");
   }
 
   async function unlockAdmin(event: React.FormEvent) {
@@ -4761,7 +4946,7 @@ function InamaadMainApp() {
     });
 
     if (error) {
-      showSuccess(error.message);
+      showSuccess(formatAuthError(error));
       return;
     }
 
@@ -8265,6 +8450,15 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
+                {confirmationEmail && (
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                    <p className="font-black">Email confirmation required</p>
+                    <p className="mt-1">
+                      Confirm <span className="font-black">{confirmationEmail}</span> before signing in.
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <button
                     type="button"
@@ -8285,6 +8479,14 @@ function InamaadMainApp() {
                     Create a new account
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleResendConfirmationEmail}
+                  className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 text-sm font-black text-amber-900 transition hover:bg-amber-100"
+                >
+                  Resend confirmation email
+                </button>
 
                 <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
                   Sign in
@@ -8408,8 +8610,16 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
-                  Create account
+                <div className="rounded-3xl border border-[#C9A227]/25 bg-[#f8f5eb] p-4 text-sm font-bold leading-6 text-slate-700">
+                  Email confirmation is required. After creating your account, check your inbox and confirm your email before signing in.
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isRegistering}
+                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white transition hover:bg-[#13284f] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isRegistering ? "Sending confirmation..." : "Create account"}
                 </button>
               </form>
             )}
@@ -13355,3 +13565,11 @@ export default function App() {
 // INAMAAD_SIGNED_IN_STATUS_AUDIT: navbar now clearly changes after sign in by showing signed-in account badge and sign-out action on desktop and mobile.
 
 // INAMAAD_LOGIN_VISIBLE_STRONG_FIX_AUDIT: login state now switches immediately to Logged in after successful sign in, and footer Access column no longer shows Sign In while logged in.
+
+// INAMAAD_EMAIL_CONFIRMATION_REQUIRED_AUDIT: signup now redirects user to sign in only after email confirmation, sign-in detects unconfirmed emails, and users can resend confirmation email.
+
+// INAMAAD_AUTH_MESSAGE_AND_CONFIRMATION_FIX_AUDIT: signup now shows readable auth errors instead of {}, keeps users logged out until email confirmation, and maps Supabase rate/email errors to clear messages.
+
+// INAMAAD_CREATE_ACCOUNT_BUTTON_FIX_AUDIT: Create account button is now explicit submit, shows loading, prevents double click, and handleRegister always returns readable messages.
+
+// INAMAAD_SIGNUP_EMAIL_CONFIRMATION_DELIVERY_FIX_AUDIT: signup has timeout, never says account activated before confirmation, and guards against unconfirmed sessions.

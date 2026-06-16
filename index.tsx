@@ -1459,6 +1459,38 @@ function InamaadApp() {
     (entry) => Boolean(entry.item.featured)
   ).length;
 
+  const inspectionScheduleInsights = useMemo(
+    () =>
+      [...inspections]
+        .sort((a, b) =>
+          `${a.preferredDate || "9999-12-31"} ${a.preferredTime || "23:59"}`.localeCompare(
+            `${b.preferredDate || "9999-12-31"} ${b.preferredTime || "23:59"}`
+          )
+        )
+        .map((inspection) => ({
+          inspection,
+          isToday: Boolean(inspection.preferredDate) && inspection.preferredDate === todayDate,
+          isOverdue:
+            Boolean(inspection.preferredDate) &&
+            inspection.preferredDate < todayDate &&
+            !["Completed", "Cancelled"].includes(inspection.status),
+          isUpcoming:
+            Boolean(inspection.preferredDate) &&
+            inspection.preferredDate >= todayDate &&
+            !["Completed", "Cancelled"].includes(inspection.status),
+        })),
+    [inspections, todayDate]
+  );
+
+  const todayInspectionCount = inspectionScheduleInsights.filter(
+    (entry) => entry.isToday && !["Completed", "Cancelled"].includes(entry.inspection.status)
+  ).length;
+  const overdueInspectionCount = inspectionScheduleInsights.filter((entry) => entry.isOverdue).length;
+  const upcomingInspectionCount = inspectionScheduleInsights.filter((entry) => entry.isUpcoming).length;
+  const confirmedInspectionCount = inspections.filter(
+    (inspection) => inspection.status === "Confirmed"
+  ).length;
+
   const filteredProperties = useMemo(() => {
     const searchTerm = keyword.trim().toLowerCase();
     const stateTerm = selectedState.trim().toLowerCase();
@@ -1930,6 +1962,117 @@ function InamaadApp() {
       "Admin"
     );
     showMessage("Marketing campaign CSV exported.");
+  }
+
+  function buildInspectionScheduleMessage(inspection: Inspection) {
+    return [
+      "INAMAAD Real Estate Inspection Confirmation",
+      "",
+      `Client: ${inspection.name}`,
+      inspection.listingTitle ? `Property: ${inspection.listingTitle}` : "",
+      `Preferred date: ${inspection.preferredDate || "To be confirmed"}`,
+      `Preferred time: ${inspection.preferredTime || "To be confirmed"}`,
+      `Status: ${inspection.status}`,
+      "",
+      inspection.note ? `Client note: ${inspection.note}` : "",
+      "",
+      "Please confirm availability, inspection location, meeting point, and any required document/site access before the appointment.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  function copyInspectionScheduleMessage(inspection: Inspection) {
+    const message = buildInspectionScheduleMessage(inspection);
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(message);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = message;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+
+      addActivityLog(
+        "Inspection message copied",
+        `Inspection schedule message copied for ${inspection.name}.`,
+        "Inspection"
+      );
+      showMessage("Inspection schedule message copied.");
+    } catch {
+      showMessage("Unable to copy inspection message.");
+    }
+  }
+
+  function createInspectionScheduleTask(inspection: Inspection) {
+    const createdTask: AdminTask = {
+      id: Date.now(),
+      title: `Prepare inspection: ${inspection.listingTitle || inspection.name}`,
+      assignee: "Inspection team",
+      dueDate: inspection.preferredDate || "",
+      priority: inspection.status === "New" ? "High" : "Medium",
+      status: "Open",
+      note: `Client: ${inspection.name}. Phone: ${inspection.phone}. Time: ${inspection.preferredTime || "To confirm"}. ${inspection.note || ""}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    setAdminTasks((currentTasks) => [createdTask, ...currentTasks]);
+
+    addActivityLog(
+      "Inspection task created",
+      `Inspection task created for ${inspection.name}.`,
+      "Inspection"
+    );
+    showMessage("Inspection preparation task created.");
+  }
+
+  function exportInspectionScheduleCsv() {
+    const rows = [
+      [
+        "Client",
+        "Email",
+        "Phone",
+        "Property",
+        "Preferred Date",
+        "Preferred Time",
+        "Status",
+        "Timing",
+        "Note",
+        "Created At",
+      ],
+      ...inspectionScheduleInsights.map((entry) => [
+        entry.inspection.name,
+        entry.inspection.email,
+        entry.inspection.phone,
+        entry.inspection.listingTitle || "",
+        entry.inspection.preferredDate,
+        entry.inspection.preferredTime,
+        entry.inspection.status,
+        entry.isOverdue ? "Overdue" : entry.isToday ? "Today" : entry.isUpcoming ? "Upcoming" : "Past / closed",
+        entry.inspection.note,
+        entry.inspection.createdAt,
+      ]),
+    ];
+
+    downloadTextFile(
+      `inamaad-inspection-schedule-${new Date().toISOString().slice(0, 10)}.csv`,
+      createCsv(rows),
+      "text/csv;charset=utf-8"
+    );
+
+    addActivityLog(
+      "Inspection schedule exported",
+      "Admin exported the inspection schedule as CSV.",
+      "Inspection"
+    );
+    showMessage("Inspection schedule CSV exported.");
   }
 
   function addAdminTask(e: React.FormEvent) {
@@ -6666,6 +6809,165 @@ function InamaadApp() {
                   </div>
                 </div>
 
+                <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
+                  <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Inspection schedule center
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-purple-700">
+                        Manage inspection appointments, overdue follow-ups, confirmation messages, and preparation tasks.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 text-center">
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {todayInspectionCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-purple-700">
+                          Today
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {upcomingInspectionCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-blue-700">
+                          Upcoming
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {confirmedInspectionCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-emerald-700">
+                          Confirmed
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-3 py-2">
+                        <p className="text-lg font-black text-[#0d1c38]">
+                          {overdueInspectionCount}
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-red-600">
+                          Overdue
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={exportInspectionScheduleCsv}
+                      className="rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
+                    >
+                      Export schedule CSV
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextInspection = inspectionScheduleInsights.find(
+                          (entry) => !["Completed", "Cancelled"].includes(entry.inspection.status)
+                        );
+
+                        if (nextInspection) {
+                          createInspectionScheduleTask(nextInspection.inspection);
+                        } else {
+                          showMessage("No open inspection to create a task for.");
+                        }
+                      }}
+                      className="rounded-xl border border-purple-200 bg-white px-3 py-2.5 text-xs font-black text-purple-700 hover:bg-purple-50"
+                    >
+                      Create next task
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {inspectionScheduleInsights.slice(0, 6).map((entry) => (
+                      <div
+                        key={`inspection-schedule-${entry.inspection.id}`}
+                        className="rounded-2xl border border-purple-100 bg-white p-3"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-[#0d1c38]">
+                              {entry.inspection.name}
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                              {entry.inspection.listingTitle || "General inspection"} · {entry.inspection.preferredDate || "Date pending"} · {entry.inspection.preferredTime || "Time pending"}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
+                              entry.isOverdue
+                                ? "bg-red-50 text-red-700"
+                                : entry.isToday
+                                  ? "bg-[#fff7df] text-[#9b6b16]"
+                                  : entry.inspection.status === "Confirmed"
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-purple-50 text-purple-700"
+                            }`}
+                          >
+                            {entry.isOverdue ? "Overdue" : entry.isToday ? "Today" : entry.inspection.status}
+                          </span>
+                        </div>
+
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          Phone: {entry.inspection.phone} {entry.inspection.note ? `· ${entry.inspection.note}` : ""}
+                        </p>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <button
+                            type="button"
+                            onClick={() => updateInspectionStatus(entry.inspection.id, "Confirmed")}
+                            className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50"
+                          >
+                            Confirm
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => updateInspectionStatus(entry.inspection.id, "Completed")}
+                            className="rounded-xl border border-blue-200 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50"
+                          >
+                            Complete
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => copyInspectionScheduleMessage(entry.inspection)}
+                            className="rounded-xl border border-purple-200 px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-50"
+                          >
+                            Copy message
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => createInspectionScheduleTask(entry.inspection)}
+                            className="rounded-xl bg-[#0d1c38] px-3 py-2 text-xs font-black text-white hover:bg-[#162b52]"
+                          >
+                            Task
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {inspectionScheduleInsights.length === 0 ? (
+                      <div className="rounded-2xl bg-white p-4">
+                        <p className="text-sm font-bold leading-6 text-slate-500">
+                          No inspection bookings yet. When buyers book inspections, they will appear here.
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
                   <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
@@ -7220,6 +7522,13 @@ function InamaadApp() {
                       className="rounded-xl border border-pink-200 px-3 py-2.5 text-xs font-black text-pink-700 hover:bg-pink-50"
                     >
                       Export marketing CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportInspectionScheduleCsv}
+                      className="rounded-xl border border-purple-200 px-3 py-2.5 text-xs font-black text-purple-700 hover:bg-purple-50"
+                    >
+                      Export inspection schedule
                     </button>
 
                     <button

@@ -760,6 +760,17 @@ function InamaadApp() {
   const averageListingViews =
     listings.length > 0 ? Math.round(totalListingViews / listings.length) : 0;
 
+  const pendingListingsCount = listings.filter(
+    (item) => item.status !== "Verified"
+  ).length;
+  const unverifiedOwnersCount = listings.filter((item) => !item.ownerVerified).length;
+  const newLeadsCount = leads.filter((lead) => lead.status === "New").length;
+  const newInspectionsCount = inspections.filter(
+    (inspection) => inspection.status === "New"
+  ).length;
+  const adminActionQueueCount =
+    pendingListingsCount + unverifiedOwnersCount + newLeadsCount + newInspectionsCount;
+
   const filteredProperties = useMemo(() => {
     const searchTerm = keyword.trim().toLowerCase();
     const stateTerm = selectedState.trim().toLowerCase();
@@ -2013,6 +2024,131 @@ function InamaadApp() {
       },
     ]);
     showMessage("Local data reset to starter listings.");
+  }
+
+
+  function approveAllPendingListings() {
+    const pendingListings = listings.filter((item) => item.status !== "Verified");
+
+    if (!pendingListings.length) {
+      showMessage("No pending listings to approve.");
+      return;
+    }
+
+    setListings((currentListings) =>
+      currentListings.map((item) =>
+        item.status === "Verified" ? item : { ...item, status: "Verified" }
+      )
+    );
+
+    addActivityLog(
+      "Bulk listings approved",
+      `${pendingListings.length} pending listing${pendingListings.length === 1 ? "" : "s"} approved from follow-up center.`,
+      "Admin"
+    );
+    showMessage(`${pendingListings.length} pending listing${pendingListings.length === 1 ? "" : "s"} approved.`);
+  }
+
+  function verifyAllUnverifiedOwners() {
+    const unverifiedListings = listings.filter((item) => !item.ownerVerified);
+
+    if (!unverifiedListings.length) {
+      showMessage("All owners / agents are already verified.");
+      return;
+    }
+
+    setListings((currentListings) =>
+      currentListings.map((item) =>
+        item.ownerVerified
+          ? item
+          : {
+              ...item,
+              ownerVerified: true,
+              ownerVerificationNote:
+                item.ownerVerificationNote || "Owner / agent checked by INAMAAD admin.",
+            }
+      )
+    );
+
+    addActivityLog(
+      "Bulk owners verified",
+      `${unverifiedListings.length} owner / agent profile${unverifiedListings.length === 1 ? "" : "s"} verified from follow-up center.`,
+      "Admin"
+    );
+    showMessage(`${unverifiedListings.length} owner / agent profile${unverifiedListings.length === 1 ? "" : "s"} verified.`);
+  }
+
+  function markAllNewLeadsContacted() {
+    const newLeads = leads.filter((lead) => lead.status === "New");
+
+    if (!newLeads.length) {
+      showMessage("No new leads to mark as contacted.");
+      return;
+    }
+
+    setLeads((currentLeads) =>
+      currentLeads.map((lead) =>
+        lead.status === "New" ? { ...lead, status: "Contacted" } : lead
+      )
+    );
+
+    addActivityLog(
+      "Bulk leads contacted",
+      `${newLeads.length} new lead${newLeads.length === 1 ? "" : "s"} marked as contacted.`,
+      "Admin"
+    );
+    showMessage(`${newLeads.length} new lead${newLeads.length === 1 ? "" : "s"} marked as contacted.`);
+  }
+
+  function confirmAllNewInspections() {
+    const newInspections = inspections.filter(
+      (inspection) => inspection.status === "New"
+    );
+
+    if (!newInspections.length) {
+      showMessage("No new inspections to confirm.");
+      return;
+    }
+
+    setInspections((currentInspections) =>
+      currentInspections.map((inspection) =>
+        inspection.status === "New"
+          ? { ...inspection, status: "Confirmed" }
+          : inspection
+      )
+    );
+
+    addActivityLog(
+      "Bulk inspections confirmed",
+      `${newInspections.length} inspection request${newInspections.length === 1 ? "" : "s"} confirmed from follow-up center.`,
+      "Admin"
+    );
+    showMessage(`${newInspections.length} inspection request${newInspections.length === 1 ? "" : "s"} confirmed.`);
+  }
+
+  function featureTopViewedFromFollowUp() {
+    const topIds = topViewedListings
+      .filter((item) => Number(item.viewCount || 0) > 0)
+      .slice(0, 3)
+      .map((item) => item.id);
+
+    if (!topIds.length) {
+      showMessage("Open property details first so top-viewed listings can be detected.");
+      return;
+    }
+
+    setListings((currentListings) =>
+      currentListings.map((item) =>
+        topIds.includes(item.id) ? { ...item, featured: true } : item
+      )
+    );
+
+    addActivityLog(
+      "Top viewed listings featured",
+      `${topIds.length} top-viewed listing${topIds.length === 1 ? "" : "s"} marked as featured.`,
+      "Admin"
+    );
+    showMessage("Top viewed listings marked as featured.");
   }
 
 
@@ -4370,6 +4506,102 @@ function InamaadApp() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-[#f0bf3c]/30 bg-[#fff7df] p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-[#0d1c38]">
+                        Admin follow-up command center
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-[#9b6b16]">
+                        One place to handle pending approvals, owner checks, new leads, and inspection requests.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white px-4 py-3 text-center">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {adminActionQueueCount}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
+                        Actions
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {pendingListingsCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
+                        Pending listings
+                      </p>
+                      <button
+                        type="button"
+                        onClick={approveAllPendingListings}
+                        className="mt-3 w-full rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-black text-white hover:bg-[#162b52]"
+                      >
+                        Approve pending
+                      </button>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {unverifiedOwnersCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
+                        Owner checks
+                      </p>
+                      <button
+                        type="button"
+                        onClick={verifyAllUnverifiedOwners}
+                        className="mt-3 w-full rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-black text-white hover:bg-emerald-700"
+                      >
+                        Verify owners
+                      </button>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {newLeadsCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
+                        New leads
+                      </p>
+                      <button
+                        type="button"
+                        onClick={markAllNewLeadsContacted}
+                        className="mt-3 w-full rounded-xl border border-blue-200 px-3 py-2.5 text-xs font-black text-blue-700 hover:bg-blue-50"
+                      >
+                        Mark contacted
+                      </button>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-2xl font-black text-[#0d1c38]">
+                        {newInspectionsCount}
+                      </p>
+                      <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">
+                        New inspections
+                      </p>
+                      <button
+                        type="button"
+                        onClick={confirmAllNewInspections}
+                        className="mt-3 w-full rounded-xl border border-purple-200 px-3 py-2.5 text-xs font-black text-purple-700 hover:bg-purple-50"
+                      >
+                        Confirm inspections
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={featureTopViewedFromFollowUp}
+                    className="mt-3 w-full rounded-xl border border-[#f0bf3c] bg-white px-3 py-2.5 text-xs font-black text-[#9b6b16] hover:bg-[#fff7df]"
+                  >
+                    Feature top viewed listings
+                  </button>
                 </div>
 
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">

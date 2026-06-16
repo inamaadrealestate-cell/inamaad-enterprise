@@ -7685,6 +7685,16 @@ function InamaadMainApp() {
               <a href="#jv">JV Deals</a>
               <a href="#about">About</a>
               <a href="#contact">Contact</a>
+
+              <button
+                onClick={() => {
+                  setAdminPassword("");
+                  setModal("admin");
+                }}
+                className="mt-2 w-fit text-left text-xs text-slate-400 hover:text-slate-700"
+              >
+                Staff Access
+              </button>
             </div>
           </div>
 
@@ -7714,15 +7724,7 @@ function InamaadMainApp() {
                 Investor Access
               </button>
 
-              <button
-                onClick={() => {
-                  setAdminPassword("");
-                  setModal("admin");
-                }}
-                className="w-fit text-left text-xs text-slate-400 hover:text-slate-700"
-              >
-                Staff portal
-              </button>
+
             </div>
           </div>
         </div>
@@ -12957,3 +12959,5 @@ export default function App() {
 // INAMAAD_COPYRIGHT_FOOTER_AUDIT: footer copyright added at the end of the page.
 
 // INAMAAD_MOVABLE_NAVBAR_RESTORE_AUDIT: navbar restored to normal movable/static page flow; fixed top padding removed.
+
+// INAMAAD_STAFF_ACCESS_UNDER_COMPANY_AUDIT: staff portal link moved from Access footer column into Company footer column as small Staff Access link.

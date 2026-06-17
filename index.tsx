@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient, type User } from "@supabase/supabase-js";
 
 type ModalType =
@@ -339,7 +339,7 @@ const navLinks = [
   { label: "Home", href: "#" },
   { label: "Properties", href: "#properties" },
   { label: "Calculator", href: "#calculator" },
-  { label: "JV Deals", href: "#jv" },
+  { label: "JV\u00A0Deals", href: "#jv" },
   { label: "About", href: "#about" },
   { label: "Contact", href: "#contact" },
 ];
@@ -642,11 +642,11 @@ const seedListings: Listing[] = [
     id: 1,
     title: "Luxury Apartments in Abuja",
     location: "Maitama, Abuja",
-    price: "₦450M",
+    price: "NGN 450M",
     value: 450000000,
     type: "Residential",
     category: "For Sale",
-    yieldText: "Premium capital appreciation in Abuja’s prime district",
+    yieldText: "Premium capital appreciation in Abujaâ€™s prime district",
     description:
       "A high-end residential investment opportunity positioned for strong rental income, resale value, and long-term wealth preservation.",
     status: "Verified",
@@ -657,13 +657,13 @@ const seedListings: Listing[] = [
     id: 2,
     title: "Commercial Plaza in Lagos",
     location: "Victoria Island, Lagos",
-    price: "₦1.2B",
+    price: "NGN 1.2B",
     value: 1200000000,
     type: "Commercial",
     category: "Investment",
     yieldText: "Strong commercial rental potential",
     description:
-      "A premium commercial asset located in one of Lagos’ strongest business districts, suitable for corporate tenants and long-term income.",
+      "A premium commercial asset located in one of Lagosâ€™ strongest business districts, suitable for corporate tenants and long-term income.",
     status: "Verified",
     availabilityStatus: "Available",
     createdAt: new Date().toISOString(),
@@ -672,7 +672,7 @@ const seedListings: Listing[] = [
     id: 3,
     title: "Prime Development Land",
     location: "Lekki, Lagos",
-    price: "₦800M",
+    price: "NGN 800M",
     value: 800000000,
     type: "Land",
     category: "Land Banking",
@@ -702,7 +702,7 @@ const seedListings: Listing[] = [
     id: 5,
     title: "Smart Duplex Investment",
     location: "Lekki Phase 1, Lagos",
-    price: "₦185M",
+    price: "NGN 185M",
     value: 185000000,
     type: "Residential",
     category: "For Sale",
@@ -717,7 +717,7 @@ const seedListings: Listing[] = [
     id: 6,
     title: "Serviced Estate Plots",
     location: "Ibeju-Lekki, Lagos",
-    price: "₦18.5M",
+    price: "NGN 18.5M",
     value: 18500000,
     type: "Land",
     category: "Investment",
@@ -731,69 +731,69 @@ const seedListings: Listing[] = [
 ];
 
 const stats = [
-  { value: "2,500+", label: "Verified listings" },
-  { value: "10,000+", label: "Registered users" },
-  { value: "150+", label: "JV opportunities" },
-  { value: "36", label: "States + FCT" },
+  { value: "Verified", label: "Property review flow" },
+  { value: "Secure", label: "Email-confirmed access" },
+  { value: "JV-ready", label: "Partnership submissions" },
+  { value: "36 + FCT", label: "Nigeria coverage" },
 ];
 
 const categoryCards = [
   {
-    title: "Residential",
-    text: "Premium homes, apartments, duplexes, and estate opportunities for buyers and investors.",
+    title: "Buy & Rent",
+    text: "Browse homes, apartments, duplexes, land, and commercial assets with cleaner details and direct enquiry options.",
   },
   {
-    title: "Land & Commercial",
-    text: "Strategic land, commercial plazas, office assets, and long-term real estate opportunities.",
+    title: "Invest & Compare",
+    text: "Use filters, ROI planning, property view insights, and investor requests to find opportunities that match your strategy.",
   },
   {
-    title: "JV Opportunities",
-    text: "Connect landowners, developers, and investors for profitable development partnerships.",
+    title: "Partner Through JV",
+    text: "Submit or apply for structured joint venture deals connecting landowners, developers, and capital partners.",
   },
 ];
 
 const processSteps = [
   {
-    title: "Submit opportunity",
-    text: "Owners, developers, landowners, and agents submit properties, land, or joint venture deals.",
+    title: "Discover",
+    text: "Visitors search verified homes, land, commercial assets, investment listings, and JV opportunities across Nigeria.",
   },
   {
-    title: "Verification review",
-    text: "INAMAAD reviews key details such as ownership, location, value, opportunity strength, and investment fit.",
+    title: "Engage",
+    text: "Users can enquire, book inspections, make offers, request investor guidance, or apply for JV partnerships.",
   },
   {
-    title: "Investor connection",
-    text: "Qualified investors discover opportunities based on budget, location, asset type, and strategy.",
+    title: "Review & manage",
+    text: "INAMAAD staff review listings, applications, documents, leads, property views, and activity inside the admin portal.",
   },
 ];
 
 const verificationItems = [
-  "Property and ownership review",
-  "Market value and location assessment",
-  "Developer, seller, or landowner screening",
-  "Investor risk and opportunity review",
+  "Email-confirmed user access",
+  "Property, ownership, and document review",
+  "Role-based staff/admin control",
+  "Protected public forms and secure storage rules",
 ];
 
 const faqItems = [
   {
-    question: "Is INAMAAD only for buying property?",
+    question: "What can users do on INAMAAD?",
     answer:
-      "No. INAMAAD supports property sales, land investments, commercial assets, joint ventures, and investor matching.",
+      "Users can browse properties and JV deals, view details, submit enquiries, book inspections, make offers, request investor guidance, and apply for JV partnerships.",
   },
   {
-    question: "Can developers post opportunities?",
+    question: "Can property owners and developers submit opportunities?",
     answer:
-      "Yes. Developers can submit projects, JV proposals, off-plan opportunities, and investment-ready real estate deals.",
+      "Yes. Owners, agents, developers, and landowners can submit properties, land, commercial opportunities, and JV deals for review.",
   },
   {
-    question: "Can investors request private deals?",
+    question: "How does INAMAAD support investors?",
     answer:
-      "Yes. Investors can submit their budget and interest so INAMAAD can match them with suitable opportunities.",
+      "Investors can search opportunities, use the ROI calculator, submit their budget and preferred interest, and request deal guidance.",
   },
   {
-    question: "Are all listings verified?",
+    question: "How are listings and leads managed?",
     answer:
-      "Listings marked as verified have passed internal review. New submissions remain pending until admin approval.",
+      "INAMAAD staff can review pending listings, manage enquiries, offers, inspections, JV applications, contact messages, analytics, and activity logs from the admin portal.",
   },
 ];
 
@@ -861,7 +861,7 @@ function formatNairaFull(value: string | number) {
 
   if (!Number.isFinite(numericValue) || numericValue <= 0) return "";
 
-  return `₦${numericValue.toLocaleString("en-NG")}`;
+  return `NGN ${numericValue.toLocaleString("en-NG")}`;
 }
 
 function formatPriceInput(value: string) {
@@ -872,7 +872,7 @@ function formatPriceInput(value: string) {
 function formatPricePreview(value: string) {
   const numericValue = currencyToValue(value);
 
-  if (!Number.isFinite(numericValue) || numericValue <= 0) return "₦0";
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return "NGN 0";
 
   return `${formatNairaFull(numericValue)} (${formatNairaCompact(numericValue)})`;
 }
@@ -954,21 +954,21 @@ function hasPriceBreakdown(listing: Listing) {
 }
 
 function formatNairaCompact(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return "₦0";
+  if (!Number.isFinite(value) || value <= 0) return "NGN 0";
 
   if (value >= 1_000_000_000) {
-    return `₦${(value / 1_000_000_000).toFixed(value % 1_000_000_000 === 0 ? 0 : 1)}B`;
+    return `NGN ${(value / 1_000_000_000).toFixed(value % 1_000_000_000 === 0 ? 0 : 1)}B`;
   }
 
   if (value >= 1_000_000) {
-    return `₦${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 1)}M`;
+    return `NGN ${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 1)}M`;
   }
 
   if (value >= 1_000) {
-    return `₦${(value / 1_000).toFixed(value % 1_000 === 0 ? 0 : 1)}K`;
+    return `NGN ${(value / 1_000).toFixed(value % 1_000 === 0 ? 0 : 1)}K`;
   }
 
-  return `₦${value.toLocaleString("en-NG")}`;
+  return `NGN ${value.toLocaleString("en-NG")}`;
 }
 
 function normalizePhoneForLink(phone: string) {
@@ -6102,7 +6102,7 @@ function InamaadMainApp() {
 
     if (!staffMember) return email;
 
-    return `${staffMember.fullName || staffMember.email} • ${staffMember.role}`;
+    return `${staffMember.fullName || staffMember.email} â€¢ ${staffMember.role}`;
   }
 
   function getLeadKindLabel(kind: LeadKind) {
@@ -6333,7 +6333,7 @@ function InamaadMainApp() {
               <option value="">Unassigned</option>
               {assignableStaffMembers.map((member) => (
                 <option key={member.email} value={member.email}>
-                  {member.fullName || member.email} — {member.role}
+                  {member.fullName || member.email} â€” {member.role}
                 </option>
               ))}
             </select>
@@ -7015,7 +7015,7 @@ function InamaadMainApp() {
       )}
 
       <header className="relative z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-5 lg:px-10">
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4 lg:px-4 xl:px-8">
           <a href="#" className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0d1c38] text-lg font-black text-[#f0bf3c] shadow-sm sm:h-11 sm:w-11 sm:text-xl">
               I
@@ -7031,14 +7031,14 @@ function InamaadMainApp() {
             </div>
           </a>
 
-          <nav className="hidden items-center gap-8 lg:flex">
+          <nav className="hidden flex-none items-center gap-4 whitespace-nowrap lg:flex xl:gap-5">
             {navLinks.map((item, index) => (
               <a
                 key={item.label}
                 href={item.href}
-                className={`text-lg font-medium transition ${
+                className={`whitespace-nowrap text-sm font-semibold leading-5 transition xl:text-[15px] ${
                   index === 0
-                    ? "rounded-xl bg-white px-5 py-3 text-[#0d1c38] shadow-sm"
+                    ? "rounded-xl bg-white px-3 py-2.5 text-[#0d1c38] shadow-sm xl:px-4"
                     : "text-slate-600 hover:text-[#0d1c38]"
                 }`}
               >
@@ -7047,22 +7047,22 @@ function InamaadMainApp() {
             ))}
           </nav>
 
-          <div className="hidden items-center gap-4 lg:flex">
+          <div className="hidden flex-none items-center gap-2 whitespace-nowrap lg:flex xl:gap-3">
             <button
               type="button"
               onClick={openUserGuide}
-              className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
+              className="whitespace-nowrap text-sm font-semibold leading-5 text-slate-700 hover:text-[#0d1c38] xl:text-[15px]"
             >
               Guide
             </button>
 
             {isSignedIn ? (
               <>
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-left shadow-sm">
+                <div className="max-w-[220px] shrink-0 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-left shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
                     Logged in
                   </p>
-                  <p className="max-w-[180px] truncate text-sm font-black text-[#0d1c38]">
+                  <p className="max-w-[160px] truncate text-xs font-black text-[#0d1c38] xl:max-w-[190px] xl:text-sm">
                     {signedInEmail}
                   </p>
                 </div>
@@ -7070,25 +7070,25 @@ function InamaadMainApp() {
                 <button
                   type="button"
                   onClick={handlePublicSignOut}
-                  className="rounded-xl border border-slate-300 px-5 py-3 text-base font-black text-slate-700 transition hover:border-[#0d1c38] hover:text-[#0d1c38]"
+                  className="whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-black leading-5 text-slate-700 transition hover:border-[#0d1c38] hover:text-[#0d1c38] xl:px-5"
                 >
-                  Sign Out
+                  Sign{"\u00A0"}Out
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => setModal("signin")}
-                  className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
+                  className="whitespace-nowrap text-sm font-semibold leading-5 text-slate-700 hover:text-[#0d1c38] xl:text-[15px]"
                 >
-                  Sign In
+                  Sign{"\u00A0"}In
                 </button>
 
                 <button
                   onClick={() => setModal("investor")}
-                  className="rounded-xl bg-[#0d1c38] px-6 py-3 text-lg font-semibold text-white shadow-sm transition hover:bg-[#13284f]"
+                  className="whitespace-nowrap rounded-xl bg-[#0d1c38] px-4 py-2.5 text-sm font-bold leading-5 text-white shadow-sm transition hover:bg-[#13284f] xl:px-5 xl:text-[15px]"
                 >
-                  Get Started
+                  Get{"\u00A0"}Started
                 </button>
               </>
             )}
@@ -7142,8 +7142,8 @@ function InamaadMainApp() {
                     }}
                     className="rounded-xl border border-emerald-200 bg-white px-5 py-3 text-left font-black text-[#0d1c38]"
                   >
-                    Sign Out
-                  </button>
+                  Sign{"\u00A0"}Out
+                </button>
                 </div>
               ) : (
                 <>
@@ -7154,8 +7154,8 @@ function InamaadMainApp() {
                     }}
                     className="rounded-xl border border-slate-200 px-5 py-3 text-left font-black text-[#0d1c38]"
                   >
-                    Sign In
-                  </button>
+                  Sign{"\u00A0"}In
+                </button>
 
                   <button
                     onClick={() => {
@@ -7164,8 +7164,8 @@ function InamaadMainApp() {
                     }}
                     className="rounded-xl bg-[#0d1c38] px-5 py-3 text-left font-black text-white"
                   >
-                    Get Started
-                  </button>
+                  Get{"\u00A0"}Started
+                </button>
                 </>
               )}
             </div>
@@ -7190,21 +7190,21 @@ function InamaadMainApp() {
               <div className="mb-5 flex items-center gap-3">
                 <div className="h-[3px] w-14 bg-[#f0bf3c]" />
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f0bf3c] sm:text-sm">
-                  Nigeria’s premier platform
+                  Launch-ready real estate marketplace
                 </p>
               </div>
 
               <h1 className="max-w-3xl text-3xl font-black leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-[44px]">
-                Connecting Property,
+                Nigeria's trusted hub for
                 <br />
-                <span className="text-[#f0bf3c]">Land</span>, Investors
-                <br />& Opportunities
+                <span className="text-[#f0bf3c]">Property</span>, Land
+                <br />Investment & JV Deals
               </h1>
 
               <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">
-                Discover verified properties, joint venture deals, and
-                investment opportunities across Nigeria. Buy, sell, and invest
-                with confidence.
+                Browse verified homes, land, commercial assets, investor-ready
+                opportunities, and structured JV deals across Nigeria. Enquire,
+                inspect, offer, partner, and manage every lead with confidence.
               </p>
 
               <div className="mt-8 max-w-6xl rounded-[24px] bg-white p-3 shadow-2xl sm:p-4">
@@ -7213,7 +7213,7 @@ function InamaadMainApp() {
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     type="text"
-                    placeholder="Search properties..."
+                    placeholder="Search location, property, JV deal..."
                     className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
                   />
 
@@ -7369,17 +7369,18 @@ function InamaadMainApp() {
                 <div className="mb-4 flex items-center gap-3">
                   <div className="h-[3px] w-14 bg-[#f0bf3c]" />
                   <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
-                    Featured opportunities
+                    Verified opportunities
                   </p>
                 </div>
 
                 <h2 className="max-w-3xl text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
-                  Explore verified properties and investment deals.
+                  Find homes, land, commercial assets and JV deals in one place.
                 </h2>
 
                 <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-                  Browse premium homes, land, commercial assets, and joint
-                  venture opportunities reviewed for serious investors.
+                  Search by location, property type, purpose, budget, availability,
+                  and investment strategy. Open details, submit enquiries, book inspections,
+                  and make offers from one clean platform.
                 </p>
               </div>
 
@@ -7387,7 +7388,7 @@ function InamaadMainApp() {
                 onClick={() => openPostModal("property")}
                 className="w-fit rounded-2xl bg-[#0d1c38] px-7 py-4 text-base font-bold text-white shadow-sm transition hover:bg-[#13284f]"
               >
-                Submit Property
+                Submit Property / JV
               </button>
             </div>
 
@@ -7815,27 +7816,27 @@ function InamaadMainApp() {
               </div>
 
               <h2 className="text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
-                Real estate opportunities with stronger clarity.
+                Built for serious property, investment and JV decisions.
               </h2>
 
               <p className="mt-6 text-lg leading-8 text-slate-600">
-                The goal of INAMAAD is to become a trusted marketplace for
-                verified homes, land, commercial property, and joint venture
-                opportunities across Nigeria.
+                INAMAAD brings buyers, investors, landowners, developers, agents,
+                and JV partners into one professional marketplace for discovery,
+                verification, submissions, lead tracking, and opportunity management.
               </p>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-3xl font-black text-[#0d1c38]">Fast</p>
+                  <p className="text-3xl font-black text-[#0d1c38]">Organized</p>
                   <p className="mt-3 text-slate-600">
-                    Search and filter opportunities quickly.
+                    Browse, filter, submit, enquire, inspect, offer, and apply through clear workflows.
                   </p>
                 </div>
 
                 <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-3xl font-black text-[#0d1c38]">Trusted</p>
+                  <p className="text-3xl font-black text-[#0d1c38]">Protected</p>
                   <p className="mt-3 text-slate-600">
-                    Listings are reviewed before public approval.
+                    Email confirmation, role-based admin access, protected forms, and secure storage rules support safer operations.
                   </p>
                 </div>
               </div>
@@ -7849,18 +7850,18 @@ function InamaadMainApp() {
               <div className="mb-4 flex items-center gap-3">
                 <div className="h-[3px] w-14 bg-[#f0bf3c]" />
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
-                  Joint venture deals
+                  JV partnership marketplace
                 </p>
               </div>
 
               <h2 className="text-4xl font-black tracking-tight md:text-6xl">
-                Connect landowners, investors, and developers.
+                Structure partnerships between landowners, developers and investors.
               </h2>
 
               <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-                INAMAAD helps structure discovery for joint venture
-                opportunities, where landowners, developers, and investors can
-                find better-fit partnerships.
+                INAMAAD helps JV opportunities show the information serious partners need:
+                land contribution, developer requirement, investor requirement, sharing formula,
+                project stage, documents, due diligence status, and application tracking.
               </p>
 
               <div className="mt-9 flex flex-col gap-4 sm:flex-row">
@@ -7888,10 +7889,10 @@ function InamaadMainApp() {
 
                 <div className="mt-6 grid gap-4">
                   {[
-                    ["Landowners", "Submit land for development"],
-                    ["Developers", "Find JV-ready land opportunities"],
-                    ["Investors", "Join structured real estate projects"],
-                    ["Market", "Lagos, Abuja, and emerging corridors"],
+                    ["Landowners", "Submit land for reviewed partnership"],
+                    ["Developers", "Find JV-ready development opportunities"],
+                    ["Investors", "Apply to structured real estate projects"],
+                    ["Coverage", "FCT Abuja, 36 states, and prime corridors"],
                   ].map(([label, value]) => (
                     <div
                       key={label}
@@ -7924,13 +7925,13 @@ function InamaadMainApp() {
                   </div>
 
                   <h2 className="max-w-3xl text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
-                    Access deals that match your capital and strategy.
+                    Request opportunities that match your budget, location and investment strategy.
                   </h2>
 
                   <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">
-                    Tell INAMAAD your preferred location, budget, and
-                    investment interest. Your request is saved for admin review
-                    and follow-up.
+                    Submit your budget, preferred asset type, location interest,
+                    and investment goals. INAMAAD saves your request for staff review,
+                    follow-up, and opportunity matching.
                   </p>
                 </div>
 
@@ -8086,13 +8087,13 @@ function InamaadMainApp() {
                   </div>
 
                   <h2 className="max-w-3xl text-3xl font-black tracking-tight sm:text-5xl lg:text-6xl">
-                    Start a serious real estate conversation.
+                    Speak with INAMAAD about property, investment, land or JV opportunities.
                   </h2>
 
                   <p className="mt-5 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
-                    Whether you are an investor, developer, landowner, JV partner, or property owner,
-                    INAMAAD provides a professional channel for verified opportunities, strategic
-                    partnerships, and investment-led real estate growth.
+                    Whether you want to buy, sell, rent, invest, list land, submit a JV deal,
+                    request inspection, make an offer, or discuss development partnership,
+                    INAMAAD gives you a professional channel for serious real estate decisions.
                   </p>
 
                   <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -8384,15 +8385,15 @@ function InamaadMainApp() {
                     onClick={handlePublicSignOut}
                     className="w-fit text-left font-black text-[#0d1c38]"
                   >
-                    Sign Out
-                  </button>
+                  Sign{"\u00A0"}Out
+                </button>
                 </>
               ) : (
                 <button
                   onClick={() => setModal("signin")}
                   className="w-fit text-left"
                 >
-                  Sign In
+                  Sign{"\u00A0"}In
                 </button>
               )}
 
@@ -8409,7 +8410,7 @@ function InamaadMainApp() {
         </div>
 
         <div className="mx-auto mt-8 max-w-7xl border-t border-slate-200 pt-5 text-center text-xs font-semibold text-slate-500">
-          © 2026 INAMAAD Real Estate. All rights reserved.
+          Â© 2026 INAMAAD Real Estate. All rights reserved.
         </div>
       </footer>
 
@@ -8968,7 +8969,7 @@ function InamaadMainApp() {
                     </label>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
-                        ₦ NGN
+                        NGN  NGN
                       </span>
                       <input
                         required
@@ -9028,7 +9029,7 @@ function InamaadMainApp() {
                           {placeholder.split(",")[0]}
                         </label>
                         <div className="mt-2 flex items-center gap-3">
-                          <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">₦</span>
+                          <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">NGN </span>
                           <input
                             inputMode="numeric"
                             value={postForm[field as keyof typeof postForm] as string}
@@ -9048,7 +9049,7 @@ function InamaadMainApp() {
 
                   <div className="mt-4 rounded-2xl bg-[#0d1c38] p-4 text-white">
                     <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f0bf3c]">Auto total estimated cost</p>
-                    <p className="mt-2 text-2xl font-black">{calculateTotalEstimatedCost(postForm) || "₦0"}</p>
+                    <p className="mt-2 text-2xl font-black">{calculateTotalEstimatedCost(postForm) || "NGN 0"}</p>
                     <p className="mt-1 text-xs text-slate-300">Property price + agency + legal/documentation + service + caution + survey + development fees.</p>
                   </div>
 
@@ -9188,7 +9189,7 @@ function InamaadMainApp() {
                       <input
                         value={postForm.jvEstimatedProjectCost}
                         onChange={(event) => setPostForm({ ...postForm, jvEstimatedProjectCost: formatPriceInput(event.target.value) })}
-                        placeholder="Estimated project cost, e.g. ₦1,500,000,000"
+                        placeholder="Estimated project cost, e.g. NGN 1,500,000,000"
                         className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                       />
                       <input
@@ -9695,7 +9696,7 @@ function InamaadMainApp() {
                 <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
                   <p className="font-black text-[#0d1c38]">Admin writing guide:</p>
                   <p className="mt-2"><span className="font-black">Title:</span> Luxury Apartments in Maitama, Abuja</p>
-                  <p><span className="font-black">Investment highlight:</span> Premium capital appreciation in Abuja’s prime district</p>
+                  <p><span className="font-black">Investment highlight:</span> Premium capital appreciation in Abujaâ€™s prime district</p>
                   <p><span className="font-black">Opportunity:</span> Explain the location, buyer/investor benefit, rental potential, documents, and why the property is valuable.</p>
                 </div>
 
@@ -9822,7 +9823,7 @@ function InamaadMainApp() {
                     </label>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
-                        ₦ NGN
+                        NGN  NGN
                       </span>
                       <input
                         required
@@ -9877,7 +9878,7 @@ function InamaadMainApp() {
                           {placeholder.split(",")[0]}
                         </label>
                         <div className="mt-2 flex items-center gap-3">
-                          <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">₦</span>
+                          <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">NGN </span>
                           <input
                             inputMode="numeric"
                             value={editForm[field as keyof typeof editForm] as string}
@@ -9897,7 +9898,7 @@ function InamaadMainApp() {
 
                   <div className="mt-4 rounded-2xl bg-[#0d1c38] p-4 text-white">
                     <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f0bf3c]">Auto total estimated cost</p>
-                    <p className="mt-2 text-2xl font-black">{calculateTotalEstimatedCost(editForm) || "₦0"}</p>
+                    <p className="mt-2 text-2xl font-black">{calculateTotalEstimatedCost(editForm) || "NGN 0"}</p>
                     <p className="mt-1 text-xs text-slate-300">Property price + agency + legal/documentation + service + caution + survey + development fees.</p>
                   </div>
 
@@ -10039,7 +10040,7 @@ function InamaadMainApp() {
                       <input
                         value={editForm.jvEstimatedProjectCost}
                         onChange={(event) => setEditForm({ ...editForm, jvEstimatedProjectCost: formatPriceInput(event.target.value) })}
-                        placeholder="Estimated project cost, e.g. ₦1,500,000,000"
+                        placeholder="Estimated project cost, e.g. NGN 1,500,000,000"
                         className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                       />
                       <input
@@ -11171,7 +11172,7 @@ function InamaadMainApp() {
                         <div>
                           <p className="text-slate-400">Media</p>
                           <p className="font-black">
-                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join(" • ")}
+                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join(" â€¢ ")}
                           </p>
                         </div>
                       )}
@@ -11180,7 +11181,7 @@ function InamaadMainApp() {
                         <div>
                           <p className="text-slate-400">Specs</p>
                           <p className="font-black">
-                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join(" • ")}
+                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join(" â€¢ ")}
                           </p>
                         </div>
                       )}
@@ -11353,7 +11354,7 @@ function InamaadMainApp() {
                       onChange={(event) =>
                         setJvApplicationForm({ ...jvApplicationForm, budgetCapacity: formatPriceInput(event.target.value) || event.target.value })
                       }
-                      placeholder="Budget / funding capacity e.g. ₦500,000,000"
+                      placeholder="Budget / funding capacity e.g. NGN 500,000,000"
                       className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
 
@@ -11693,7 +11694,7 @@ function InamaadMainApp() {
                           offerAmount: formatPriceInput(event.target.value),
                         })
                       }
-                      placeholder="Offer amount e.g. ₦150,000,000"
+                      placeholder="Offer amount e.g. NGN 150,000,000"
                       className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
 
@@ -11824,7 +11825,7 @@ function InamaadMainApp() {
                       >
                         <div className="flex items-start gap-3">
                           <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${check.passed ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"}`}>
-                            {check.passed ? "✓" : "!"}
+                            {check.passed ? "âœ“" : "!"}
                           </span>
                           <div>
                             <p className="text-sm font-black text-[#0d1c38]">{check.label}</p>
@@ -11837,7 +11838,7 @@ function InamaadMainApp() {
 
                   {failedLaunchFoundationChecks.length > 0 ? (
                     <p className="mt-4 rounded-2xl bg-[#fff7df] p-4 text-sm font-semibold leading-6 text-[#9b6b16]">
-                      Next Phase 1 action: {failedLaunchFoundationChecks[0].label} — {failedLaunchFoundationChecks[0].detail}
+                      Next Phase 1 action: {failedLaunchFoundationChecks[0].label} â€” {failedLaunchFoundationChecks[0].detail}
                     </p>
                   ) : (
                     <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold leading-6 text-emerald-700">
@@ -11928,7 +11929,7 @@ function InamaadMainApp() {
                         Follow-up dashboard
                       </h3>
                       <p className="mt-2 text-sm leading-6 text-slate-500">
-                        Track overdue buyers, today’s follow-ups, urgent leads, and unassigned opportunities in one place.
+                        Track overdue buyers, todayâ€™s follow-ups, urgent leads, and unassigned opportunities in one place.
                       </p>
                     </div>
 
@@ -11982,7 +11983,7 @@ function InamaadMainApp() {
                             <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.title}</p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
-                              Follow-up: {formatDate(item.followUpDate)} • Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                              Follow-up: {formatDate(item.followUpDate)} â€¢ Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
                         ))}
@@ -12011,7 +12012,7 @@ function InamaadMainApp() {
                             <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.title}</p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
-                              Follow-up: {formatDate(item.followUpDate)} • Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                              Follow-up: {formatDate(item.followUpDate)} â€¢ Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
                         ))}
@@ -12156,7 +12157,7 @@ function InamaadMainApp() {
                             </p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
                               {formatDate(log.createdAt)}
-                              {log.targetId ? ` • ID: ${log.targetId}` : ""}
+                              {log.targetId ? ` â€¢ ID: ${log.targetId}` : ""}
                             </p>
                           </div>
                         </div>
@@ -12489,7 +12490,7 @@ function InamaadMainApp() {
                             {listing.title}
                           </p>
                           <p className="mt-1 text-sm text-slate-500">
-                            {listing.location} • {listing.price}
+                            {listing.location} â€¢ {listing.price}
                           </p>
                         </div>
 
@@ -12610,12 +12611,12 @@ function InamaadMainApp() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-500">
-                              {listing.location} • {listing.price}
+                              {listing.location} â€¢ {listing.price}
                             </p>
 
                             <p className="mt-2 text-sm text-slate-500">
-                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"} •{" "}
-                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"} • {listing.mandateStatus || "Not Confirmed"}
+                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"} â€¢{" "}
+                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"} â€¢ {listing.mandateStatus || "Not Confirmed"}
                             </p>
                           </div>
 
@@ -12693,7 +12694,7 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {inquiry.email || "No email"} • {inquiry.phone}
+                                {inquiry.email || "No email"} â€¢ {inquiry.phone}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -12826,11 +12827,11 @@ function InamaadMainApp() {
                               </div>
 
                               <p className="mt-2 font-black text-[#0d1c38]">
-                                {application.applicantName} • {application.applicantRole}
+                                {application.applicantName} â€¢ {application.applicantRole}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {application.companyName || "No company stated"} • {application.applicantEmail || "No email"} • {application.applicantPhone}
+                                {application.companyName || "No company stated"} â€¢ {application.applicantEmail || "No email"} â€¢ {application.applicantPhone}
                               </p>
 
                               {application.budgetCapacity && (
@@ -13180,11 +13181,11 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {offer.buyerEmail || "No email"} • {offer.buyerPhone}
+                                {offer.buyerEmail || "No email"} â€¢ {offer.buyerPhone}
                               </p>
 
                               <p className="mt-2 text-sm font-black text-emerald-700">
-                                Offer: {offer.offerAmount || "Not stated"} • {offer.paymentPlan || "No payment plan"}
+                                Offer: {offer.offerAmount || "Not stated"} â€¢ {offer.paymentPlan || "No payment plan"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13305,11 +13306,11 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {booking.email || "No email"} • {booking.phone}
+                                {booking.email || "No email"} â€¢ {booking.phone}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                Preferred: {booking.preferredDate || "No date"} • {booking.preferredTime || "No time"}
+                                Preferred: {booking.preferredDate || "No date"} â€¢ {booking.preferredTime || "No time"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13452,7 +13453,7 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {message.email || "No email"} • {message.phone || "No phone"}
+                                {message.email || "No email"} â€¢ {message.phone || "No phone"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13589,11 +13590,11 @@ function InamaadMainApp() {
                               </div>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {request.email} • {request.phone}
+                                {request.email} â€¢ {request.phone}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                Budget: {request.budget} • Interest: {request.interest}
+                                Budget: {request.budget} â€¢ Interest: {request.interest}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13715,18 +13716,18 @@ function InamaadMainApp() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-500">
-                              {listing.location} • {listing.price}
+                              {listing.location} â€¢ {listing.price}
                             </p>
 
                             {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
                               <p className="mt-1 text-xs font-bold text-slate-500">
-                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join(" • ")}
+                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join(" â€¢ ")}
                               </p>
                             )}
 
                             <p className="mt-1 text-xs font-black text-slate-400">
-                              {listing.status} • {listing.availabilityStatus || "Available"}
-                              {listing.featured ? ` • Featured rank ${listing.featuredRank || 0}` : ""}
+                              {listing.status} â€¢ {listing.availabilityStatus || "Available"}
+                              {listing.featured ? ` â€¢ Featured rank ${listing.featuredRank || 0}` : ""}
                             </p>
 
                             {listing.availabilityNote && (

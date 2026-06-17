@@ -1994,7 +1994,78 @@ function InamaadMainApp() {
   const [jvProposalDocumentFile, setJvProposalDocumentFile] = useState<File | null>(null);
   const [jvOtherDocumentFile, setJvOtherDocumentFile] = useState<File | null>(null);
 
+  const [publicSubmittingForm, setPublicSubmittingForm] = useState<LeadKind | null>(null);
+  const publicSubmissionLockRef = useRef<LeadKind | null>(null);
+  const [publicFormBotTrap, setPublicFormBotTrap] = useState<Record<LeadKind, string>>({
+    investor_requests: "",
+    property_inquiries: "",
+    property_offers: "",
+    jv_applications: "",
+    contact_messages: "",
+    inspection_bookings: "",
+  });
+
   const usesDatabase = Boolean(supabase);
+
+  function cleanFormText(value?: string | null) {
+    return String(value || "").trim();
+  }
+
+  function hasMinimumText(value: string | undefined, minimumLength: number) {
+    return cleanFormText(value).length >= minimumLength;
+  }
+
+  function optionalEmailIsValid(value?: string) {
+    const email = cleanFormText(value);
+    return !email || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
+  }
+
+  function phoneLooksValid(value?: string) {
+    return cleanFormText(value).replace(/\D/g, "").length >= 7;
+  }
+
+  function isWithinLimit(value: string | undefined, maximumLength: number) {
+    return cleanFormText(value).length <= maximumLength;
+  }
+
+  function beginPublicFormSubmit(
+    formKey: LeadKind,
+    checks: Array<{ ok: boolean; message: string }>
+  ) {
+    if (publicSubmissionLockRef.current) {
+      showSuccess("Please wait, your previous submission is still processing.");
+      return false;
+    }
+
+    if (cleanFormText(publicFormBotTrap[formKey])) {
+      console.warn("INAMAAD bot-trap blocked a public form submission:", formKey);
+      showSuccess("Submission blocked. Please refresh the page and try again.");
+      return false;
+    }
+
+    const failedCheck = checks.find((check) => !check.ok);
+
+    if (failedCheck) {
+      showSuccess(failedCheck.message);
+      return false;
+    }
+
+    publicSubmissionLockRef.current = formKey;
+    setPublicSubmittingForm(formKey);
+    return true;
+  }
+
+  function finishPublicFormSubmit(formKey: LeadKind) {
+    if (publicSubmissionLockRef.current === formKey) {
+      publicSubmissionLockRef.current = null;
+    }
+
+    setPublicSubmittingForm((current) => (current === formKey ? null : current));
+  }
+
+  function resetPublicFormBotTrap(formKey: LeadKind) {
+    setPublicFormBotTrap((current) => ({ ...current, [formKey]: "" }));
+  }
 
   const pendingListings = listings.filter(
     (listing) => listing.status === "Pending Review"
@@ -4280,391 +4351,504 @@ function InamaadMainApp() {
   async function submitInvestorRequest(event: React.FormEvent) {
     event.preventDefault();
 
-    const newRequest: Omit<InvestorRequest, "id"> = {
-      ...investorForm,
-      status: "New",
-      createdAt: new Date().toISOString(),
-    };
+    const formKey: LeadKind = "investor_requests";
 
-    if (supabase) {
-      const { error } = await supabase.from("investor_requests").insert({
-        name: investorForm.name,
-        email: investorForm.email,
-        phone: investorForm.phone,
-        budget: investorForm.budget,
-        interest: investorForm.interest,
-        message: investorForm.message,
-        status: "New",
-      });
-
-      if (error) {
-        console.error(error);
-        showSuccess("Unable to submit investor request. Check database.");
-        return;
-      }
-    } else {
-      setInvestorRequests((current) => [
-        { ...newRequest, id: Date.now() },
-        ...current,
-      ]);
+    if (
+      !beginPublicFormSubmit(formKey, [
+        { ok: hasMinimumText(investorForm.name, 2), message: "Please enter your full name." },
+        { ok: optionalEmailIsValid(investorForm.email) && hasMinimumText(investorForm.email, 6), message: "Please enter a valid email address." },
+        { ok: phoneLooksValid(investorForm.phone), message: "Please enter a valid phone or WhatsApp number." },
+        { ok: hasMinimumText(investorForm.budget, 1), message: "Please enter your investment budget." },
+        { ok: isWithinLimit(investorForm.message, 5000), message: "Your message is too long." },
+      ])
+    ) {
+      return;
     }
 
-    await createStaffNotification(
-      "New investor request",
-      `${investorForm.name} requested ${investorForm.interest} investment support with budget ${investorForm.budget}.`,
-      "Investor Request"
-    );
+    try {
+      const newRequest: Omit<InvestorRequest, "id"> = {
+        ...investorForm,
+        status: "New",
+        createdAt: new Date().toISOString(),
+      };
 
-    setInvestorForm({
-      name: "",
-      email: "",
-      phone: "",
-      budget: "",
-      interest: "Residential",
-      message: "",
-    });
+      if (supabase) {
+        const { error } = await supabase.from("investor_requests").insert({
+          name: cleanFormText(investorForm.name),
+          email: cleanFormText(investorForm.email),
+          phone: cleanFormText(investorForm.phone),
+          budget: cleanFormText(investorForm.budget),
+          interest: investorForm.interest,
+          message: cleanFormText(investorForm.message),
+          status: "New",
+        });
 
-    setModal(null);
-    showSuccess("Investor request saved. INAMAAD will contact you shortly.");
+        if (error) {
+          console.error(error);
+          showSuccess("Unable to submit investor request. Please check your details and try again.");
+          return;
+        }
+      } else {
+        setInvestorRequests((current) => [
+          { ...newRequest, id: Date.now() },
+          ...current,
+        ]);
+      }
+
+      await createStaffNotification(
+        "New investor request",
+        `${investorForm.name} requested ${investorForm.interest} investment support with budget ${investorForm.budget}.`,
+        "Investor Request"
+      );
+
+      setInvestorForm({
+        name: "",
+        email: "",
+        phone: "",
+        budget: "",
+        interest: "Residential",
+        message: "",
+      });
+
+      resetPublicFormBotTrap(formKey);
+      setModal(null);
+      showSuccess("Investor request saved. INAMAAD will contact you shortly.");
+    } finally {
+      finishPublicFormSubmit(formKey);
+    }
   }
-
   async function submitPropertyInquiry(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const newInquiry: Omit<PropertyInquiry, "id"> = {
-      listingId: selectedListing.id,
-      listingTitle: selectedListing.title,
-      name: inquiryForm.name,
-      email: inquiryForm.email,
-      phone: inquiryForm.phone,
-      message: inquiryForm.message,
-      status: "New",
-      createdAt: new Date().toISOString(),
-    };
+    const formKey: LeadKind = "property_inquiries";
 
-    if (supabase) {
-      const { error } = await supabase.from("property_inquiries").insert({
-        listing_id: selectedListing.id,
-        listing_title: selectedListing.title,
-        name: inquiryForm.name,
-        email: inquiryForm.email || null,
-        phone: inquiryForm.phone,
-        message: inquiryForm.message,
-      });
-
-      if (error) {
-        console.error(error);
-        showSuccess("Unable to submit inquiry. Check database settings.");
-        return;
-      }
-    } else {
-      setPropertyInquiries((current) => [
-        { ...newInquiry, id: Date.now() },
-        ...current,
-      ]);
+    if (
+      !beginPublicFormSubmit(formKey, [
+        { ok: hasMinimumText(inquiryForm.name, 2), message: "Please enter your name." },
+        { ok: optionalEmailIsValid(inquiryForm.email), message: "Please enter a valid email address or leave it empty." },
+        { ok: phoneLooksValid(inquiryForm.phone), message: "Please enter a valid phone or WhatsApp number." },
+        { ok: isWithinLimit(inquiryForm.message, 5000), message: "Your message is too long." },
+      ])
+    ) {
+      return;
     }
 
-    await createStaffNotification(
-      "New property inquiry",
-      `${inquiryForm.name} requested access for ${selectedListing.title}.`,
-      "Property Inquiry"
-    );
+    try {
+      const newInquiry: Omit<PropertyInquiry, "id"> = {
+        listingId: selectedListing.id,
+        listingTitle: selectedListing.title,
+        name: cleanFormText(inquiryForm.name),
+        email: cleanFormText(inquiryForm.email),
+        phone: cleanFormText(inquiryForm.phone),
+        message: cleanFormText(inquiryForm.message),
+        status: "New",
+        createdAt: new Date().toISOString(),
+      };
 
-    setInquiryForm({ name: "", email: "", phone: "", message: "" });
-    setModal(null);
-    showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
+      if (supabase) {
+        const { error } = await supabase.from("property_inquiries").insert({
+          listing_id: selectedListing.id,
+          listing_title: selectedListing.title,
+          name: cleanFormText(inquiryForm.name),
+          email: cleanFormText(inquiryForm.email) || null,
+          phone: cleanFormText(inquiryForm.phone),
+          message: cleanFormText(inquiryForm.message) || null,
+        });
+
+        if (error) {
+          console.error(error);
+          showSuccess("Unable to submit inquiry. Please check your details and try again.");
+          return;
+        }
+      } else {
+        setPropertyInquiries((current) => [
+          { ...newInquiry, id: Date.now() },
+          ...current,
+        ]);
+      }
+
+      await createStaffNotification(
+        "New property inquiry",
+        `${inquiryForm.name} requested access for ${selectedListing.title}.`,
+        "Property Inquiry"
+      );
+
+      setInquiryForm({ name: "", email: "", phone: "", message: "" });
+      resetPublicFormBotTrap(formKey);
+      setModal(null);
+      showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
+    } finally {
+      finishPublicFormSubmit(formKey);
+    }
   }
-
   async function submitInspectionBooking(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const newBooking: Omit<InspectionBooking, "id"> = {
-      listingId: selectedListing.id,
-      listingTitle: selectedListing.title,
-      name: inspectionForm.name,
-      email: inspectionForm.email,
-      phone: inspectionForm.phone,
-      preferredDate: inspectionForm.preferredDate,
-      preferredTime: inspectionForm.preferredTime,
-      message: inspectionForm.message,
-      status: "New",
-      createdAt: new Date().toISOString(),
-    };
+    const formKey: LeadKind = "inspection_bookings";
 
-    if (supabase) {
-      const { error } = await supabase.from("inspection_bookings").insert({
-        listing_id: selectedListing.id,
-        listing_title: selectedListing.title,
-        name: inspectionForm.name,
-        email: inspectionForm.email || null,
-        phone: inspectionForm.phone,
-        preferred_date: inspectionForm.preferredDate || null,
-        preferred_time: inspectionForm.preferredTime || null,
-        message: inspectionForm.message || null,
-        status: "New",
-      });
-
-      if (error) {
-        console.error(error);
-        showSuccess("Unable to book inspection. Check database settings.");
-        return;
-      }
-    } else {
-      setInspectionBookings((current) => [
-        { ...newBooking, id: Date.now() },
-        ...current,
-      ]);
+    if (
+      !beginPublicFormSubmit(formKey, [
+        { ok: hasMinimumText(inspectionForm.name, 2), message: "Please enter your name." },
+        { ok: optionalEmailIsValid(inspectionForm.email), message: "Please enter a valid email address or leave it empty." },
+        { ok: phoneLooksValid(inspectionForm.phone), message: "Please enter a valid phone or WhatsApp number." },
+        { ok: isWithinLimit(inspectionForm.message, 5000), message: "Your inspection message is too long." },
+      ])
+    ) {
+      return;
     }
 
-    await createStaffNotification(
-      "New inspection booking",
-      `${inspectionForm.name} booked an inspection for ${selectedListing.title}.`,
-      "Inspection Booking"
-    );
+    try {
+      const newBooking: Omit<InspectionBooking, "id"> = {
+        listingId: selectedListing.id,
+        listingTitle: selectedListing.title,
+        name: cleanFormText(inspectionForm.name),
+        email: cleanFormText(inspectionForm.email),
+        phone: cleanFormText(inspectionForm.phone),
+        preferredDate: inspectionForm.preferredDate,
+        preferredTime: inspectionForm.preferredTime,
+        message: cleanFormText(inspectionForm.message),
+        status: "New",
+        createdAt: new Date().toISOString(),
+      };
 
-    setInspectionForm({
-      name: "",
-      email: "",
-      phone: "",
-      preferredDate: "",
-      preferredTime: "",
-      message: "",
-    });
-    showSuccess("Inspection booking sent. INAMAAD will confirm your appointment.");
+      if (supabase) {
+        const { error } = await supabase.from("inspection_bookings").insert({
+          listing_id: selectedListing.id,
+          listing_title: selectedListing.title,
+          name: cleanFormText(inspectionForm.name),
+          email: cleanFormText(inspectionForm.email) || null,
+          phone: cleanFormText(inspectionForm.phone),
+          preferred_date: inspectionForm.preferredDate || null,
+          preferred_time: inspectionForm.preferredTime || null,
+          message: cleanFormText(inspectionForm.message) || null,
+          status: "New",
+        });
+
+        if (error) {
+          console.error(error);
+          showSuccess("Unable to book inspection. Please check your details and try again.");
+          return;
+        }
+      } else {
+        setInspectionBookings((current) => [
+          { ...newBooking, id: Date.now() },
+          ...current,
+        ]);
+      }
+
+      await createStaffNotification(
+        "New inspection booking",
+        `${inspectionForm.name} booked an inspection for ${selectedListing.title}.`,
+        "Inspection Booking"
+      );
+
+      setInspectionForm({
+        name: "",
+        email: "",
+        phone: "",
+        preferredDate: "",
+        preferredTime: "",
+        message: "",
+      });
+      resetPublicFormBotTrap(formKey);
+      showSuccess("Inspection booking sent. INAMAAD will confirm your appointment.");
+    } finally {
+      finishPublicFormSubmit(formKey);
+    }
   }
-
   async function submitPropertyOffer(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const formattedOfferAmount = formatPriceInput(offerForm.offerAmount) || offerForm.offerAmount;
+    const formKey: LeadKind = "property_offers";
 
-    const newOffer: Omit<PropertyOffer, "id"> = {
-      listingId: selectedListing.id,
-      listingTitle: selectedListing.title,
-      buyerName: offerForm.buyerName,
-      buyerEmail: offerForm.buyerEmail,
-      buyerPhone: offerForm.buyerPhone,
-      offerAmount: formattedOfferAmount,
-      paymentPlan: offerForm.paymentPlan,
-      message: offerForm.message,
-      status: "New",
-      priority: "High",
-      createdAt: new Date().toISOString(),
-    };
-
-    if (supabase) {
-      const { error } = await supabase.from("property_offers").insert({
-        listing_id: selectedListing.id,
-        listing_title: selectedListing.title,
-        buyer_name: offerForm.buyerName,
-        buyer_email: offerForm.buyerEmail || null,
-        buyer_phone: offerForm.buyerPhone,
-        offer_amount: formattedOfferAmount || null,
-        payment_plan: offerForm.paymentPlan || null,
-        message: offerForm.message || null,
-        status: "New",
-        priority: "High",
-      });
-
-      if (error) {
-        console.error(error);
-        showSuccess("Unable to submit offer. Check database settings.");
-        return;
-      }
-    } else {
-      setPropertyOffers((current) => [{ ...newOffer, id: Date.now() }, ...current]);
+    if (
+      !beginPublicFormSubmit(formKey, [
+        { ok: hasMinimumText(offerForm.buyerName, 2), message: "Please enter the buyer name." },
+        { ok: optionalEmailIsValid(offerForm.buyerEmail), message: "Please enter a valid email address or leave it empty." },
+        { ok: phoneLooksValid(offerForm.buyerPhone), message: "Please enter a valid phone or WhatsApp number." },
+        { ok: isWithinLimit(offerForm.message, 5000), message: "Your offer message is too long." },
+      ])
+    ) {
+      return;
     }
 
-    await createStaffNotification(
-      "New property offer",
-      `${offerForm.buyerName} made an offer/reservation request for ${selectedListing.title}${formattedOfferAmount ? ` at ${formattedOfferAmount}` : ""}.`,
-      "Property Offer"
-    );
+    try {
+      const formattedOfferAmount = formatPriceInput(offerForm.offerAmount) || offerForm.offerAmount;
 
-    setOfferForm({
-      buyerName: "",
-      buyerEmail: "",
-      buyerPhone: "",
-      offerAmount: "",
-      paymentPlan: "Full payment",
-      message: "",
-    });
+      const newOffer: Omit<PropertyOffer, "id"> = {
+        listingId: selectedListing.id,
+        listingTitle: selectedListing.title,
+        buyerName: cleanFormText(offerForm.buyerName),
+        buyerEmail: cleanFormText(offerForm.buyerEmail),
+        buyerPhone: cleanFormText(offerForm.buyerPhone),
+        offerAmount: formattedOfferAmount,
+        paymentPlan: offerForm.paymentPlan,
+        message: cleanFormText(offerForm.message),
+        status: "New",
+        priority: "High",
+        createdAt: new Date().toISOString(),
+      };
 
-    showSuccess("Offer/reservation request sent. INAMAAD will review and contact you shortly.");
+      if (supabase) {
+        const { error } = await supabase.from("property_offers").insert({
+          listing_id: selectedListing.id,
+          listing_title: selectedListing.title,
+          buyer_name: cleanFormText(offerForm.buyerName),
+          buyer_email: cleanFormText(offerForm.buyerEmail) || null,
+          buyer_phone: cleanFormText(offerForm.buyerPhone),
+          offer_amount: cleanFormText(formattedOfferAmount) || null,
+          payment_plan: offerForm.paymentPlan || null,
+          message: cleanFormText(offerForm.message) || null,
+          status: "New",
+          priority: "High",
+        });
+
+        if (error) {
+          console.error(error);
+          showSuccess("Unable to submit offer. Please check your details and try again.");
+          return;
+        }
+      } else {
+        setPropertyOffers((current) => [{ ...newOffer, id: Date.now() }, ...current]);
+      }
+
+      await createStaffNotification(
+        "New property offer",
+        `${offerForm.buyerName} made an offer/reservation request for ${selectedListing.title}${formattedOfferAmount ? ` at ${formattedOfferAmount}` : ""}.`,
+        "Property Offer"
+      );
+
+      setOfferForm({
+        buyerName: "",
+        buyerEmail: "",
+        buyerPhone: "",
+        offerAmount: "",
+        paymentPlan: "Full payment",
+        message: "",
+      });
+
+      resetPublicFormBotTrap(formKey);
+      showSuccess("Offer/reservation request sent. INAMAAD will review and contact you shortly.");
+    } finally {
+      finishPublicFormSubmit(formKey);
+    }
   }
-
   async function submitJvApplication(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    let companyProfileUrl = "";
-    let cacCertificateUrl = "";
-    let portfolioUrl = "";
-    let financialProofUrl = "";
-    let proposalDocumentUrl = "";
-    let otherDocumentUrl = "";
+    const formKey: LeadKind = "jv_applications";
 
-    try {
-      if (supabase) {
-        companyProfileUrl = jvCompanyProfileFile
-          ? await uploadJvApplicationDocument(jvCompanyProfileFile, "company-profile")
-          : "";
-        cacCertificateUrl = jvCacCertificateFile
-          ? await uploadJvApplicationDocument(jvCacCertificateFile, "cac-certificate")
-          : "";
-        portfolioUrl = jvPortfolioFile
-          ? await uploadJvApplicationDocument(jvPortfolioFile, "portfolio")
-          : "";
-        financialProofUrl = jvFinancialProofFile
-          ? await uploadJvApplicationDocument(jvFinancialProofFile, "financial-proof")
-          : "";
-        proposalDocumentUrl = jvProposalDocumentFile
-          ? await uploadJvApplicationDocument(jvProposalDocumentFile, "proposal-document")
-          : "";
-        otherDocumentUrl = jvOtherDocumentFile
-          ? await uploadJvApplicationDocument(jvOtherDocumentFile, "other")
-          : "";
-      }
-    } catch (error) {
-      console.error(error);
-      showSuccess("Unable to upload JV application document. Use PDF, JPG, PNG, or WEBP under 20MB.");
+    if (
+      !beginPublicFormSubmit(formKey, [
+        { ok: hasMinimumText(jvApplicationForm.applicantName, 2), message: "Please enter your full name." },
+        { ok: optionalEmailIsValid(jvApplicationForm.applicantEmail), message: "Please enter a valid email address or leave it empty." },
+        { ok: phoneLooksValid(jvApplicationForm.applicantPhone), message: "Please enter a valid phone or WhatsApp number." },
+        { ok: isWithinLimit(jvApplicationForm.companyName, 180), message: "Company name is too long." },
+        { ok: isWithinLimit(jvApplicationForm.experienceSummary, 10000), message: "Experience summary is too long." },
+        { ok: isWithinLimit(jvApplicationForm.proposalMessage, 10000), message: "JV proposal message is too long." },
+      ])
+    ) {
       return;
     }
 
-    const newApplication: Omit<JVApplication, "id"> = {
-      listingId: selectedListing.id,
-      listingTitle: selectedListing.title,
-      applicantName: jvApplicationForm.applicantName,
-      applicantEmail: jvApplicationForm.applicantEmail,
-      applicantPhone: jvApplicationForm.applicantPhone,
-      applicantRole: jvApplicationForm.applicantRole,
-      companyName: jvApplicationForm.companyName,
-      budgetCapacity: jvApplicationForm.budgetCapacity,
-      experienceSummary: jvApplicationForm.experienceSummary,
-      proposalMessage: jvApplicationForm.proposalMessage,
-      companyProfileUrl,
-      cacCertificateUrl,
-      portfolioUrl,
-      financialProofUrl,
-      proposalDocumentUrl,
-      otherDocumentUrl,
-      status: "New",
-      priority: "High",
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      let companyProfileUrl = "";
+      let cacCertificateUrl = "";
+      let portfolioUrl = "";
+      let financialProofUrl = "";
+      let proposalDocumentUrl = "";
+      let otherDocumentUrl = "";
 
-    if (supabase) {
-      const { error } = await supabase.from("jv_applications").insert({
-        listing_id: selectedListing.id,
-        listing_title: selectedListing.title,
-        applicant_name: jvApplicationForm.applicantName,
-        applicant_email: jvApplicationForm.applicantEmail || null,
-        applicant_phone: jvApplicationForm.applicantPhone,
-        applicant_role: jvApplicationForm.applicantRole,
-        company_name: jvApplicationForm.companyName || null,
-        budget_capacity: jvApplicationForm.budgetCapacity || null,
-        experience_summary: jvApplicationForm.experienceSummary || null,
-        proposal_message: jvApplicationForm.proposalMessage || null,
-        company_profile_url: companyProfileUrl || null,
-        cac_certificate_url: cacCertificateUrl || null,
-        portfolio_url: portfolioUrl || null,
-        financial_proof_url: financialProofUrl || null,
-        proposal_document_url: proposalDocumentUrl || null,
-        other_document_url: otherDocumentUrl || null,
-        status: "New",
-        priority: "High",
-      });
-
-      if (error) {
+      try {
+        if (supabase) {
+          companyProfileUrl = jvCompanyProfileFile
+            ? await uploadJvApplicationDocument(jvCompanyProfileFile, "company-profile")
+            : "";
+          cacCertificateUrl = jvCacCertificateFile
+            ? await uploadJvApplicationDocument(jvCacCertificateFile, "cac-certificate")
+            : "";
+          portfolioUrl = jvPortfolioFile
+            ? await uploadJvApplicationDocument(jvPortfolioFile, "portfolio")
+            : "";
+          financialProofUrl = jvFinancialProofFile
+            ? await uploadJvApplicationDocument(jvFinancialProofFile, "financial-proof")
+            : "";
+          proposalDocumentUrl = jvProposalDocumentFile
+            ? await uploadJvApplicationDocument(jvProposalDocumentFile, "proposal-document")
+            : "";
+          otherDocumentUrl = jvOtherDocumentFile
+            ? await uploadJvApplicationDocument(jvOtherDocumentFile, "other")
+            : "";
+        }
+      } catch (error) {
         console.error(error);
-        showSuccess("Unable to submit JV application. Check database settings.");
+        showSuccess("Unable to upload JV application document. Use PDF, JPG, PNG, or WEBP under 20MB.");
         return;
       }
-    } else {
-      setJvApplications((current) => [{ ...newApplication, id: Date.now() }, ...current]);
+
+      const newApplication: Omit<JVApplication, "id"> = {
+        listingId: selectedListing.id,
+        listingTitle: selectedListing.title,
+        applicantName: cleanFormText(jvApplicationForm.applicantName),
+        applicantEmail: cleanFormText(jvApplicationForm.applicantEmail),
+        applicantPhone: cleanFormText(jvApplicationForm.applicantPhone),
+        applicantRole: jvApplicationForm.applicantRole,
+        companyName: cleanFormText(jvApplicationForm.companyName),
+        budgetCapacity: cleanFormText(jvApplicationForm.budgetCapacity),
+        experienceSummary: cleanFormText(jvApplicationForm.experienceSummary),
+        proposalMessage: cleanFormText(jvApplicationForm.proposalMessage),
+        companyProfileUrl,
+        cacCertificateUrl,
+        portfolioUrl,
+        financialProofUrl,
+        proposalDocumentUrl,
+        otherDocumentUrl,
+        status: "New",
+        priority: "High",
+        createdAt: new Date().toISOString(),
+      };
+
+      if (supabase) {
+        const { error } = await supabase.from("jv_applications").insert({
+          listing_id: String(selectedListing.id),
+          listing_title: selectedListing.title,
+          applicant_name: cleanFormText(jvApplicationForm.applicantName),
+          applicant_email: cleanFormText(jvApplicationForm.applicantEmail) || null,
+          applicant_phone: cleanFormText(jvApplicationForm.applicantPhone),
+          applicant_role: jvApplicationForm.applicantRole,
+          company_name: cleanFormText(jvApplicationForm.companyName) || null,
+          budget_capacity: cleanFormText(jvApplicationForm.budgetCapacity) || null,
+          experience_summary: cleanFormText(jvApplicationForm.experienceSummary) || null,
+          proposal_message: cleanFormText(jvApplicationForm.proposalMessage) || null,
+          company_profile_url: companyProfileUrl || null,
+          cac_certificate_url: cacCertificateUrl || null,
+          portfolio_url: portfolioUrl || null,
+          financial_proof_url: financialProofUrl || null,
+          proposal_document_url: proposalDocumentUrl || null,
+          other_document_url: otherDocumentUrl || null,
+          status: "New",
+          priority: "High",
+          document_review_status: "Pending",
+          risk_level: "Not Reviewed",
+        });
+
+        if (error) {
+          console.error(error);
+          showSuccess(error.message || "Unable to submit JV application. Please check your details and try again.");
+          return;
+        }
+      } else {
+        setJvApplications((current) => [{ ...newApplication, id: Date.now() }, ...current]);
+      }
+
+      await createStaffNotification(
+        "New JV partnership application",
+        `${jvApplicationForm.applicantName} applied as ${jvApplicationForm.applicantRole} for ${selectedListing.title}.`,
+        "JV Application"
+      );
+
+      setJvApplicationForm({
+        applicantName: "",
+        applicantEmail: "",
+        applicantPhone: "",
+        applicantRole: "Developer",
+        companyName: "",
+        budgetCapacity: "",
+        experienceSummary: "",
+        proposalMessage: "",
+      });
+      setJvCompanyProfileFile(null);
+      setJvCacCertificateFile(null);
+      setJvPortfolioFile(null);
+      setJvFinancialProofFile(null);
+      setJvProposalDocumentFile(null);
+      setJvOtherDocumentFile(null);
+
+      resetPublicFormBotTrap(formKey);
+      showSuccess("JV partnership application sent. INAMAAD will review and contact you shortly.");
+    } finally {
+      finishPublicFormSubmit(formKey);
     }
-
-    await createStaffNotification(
-      "New JV partnership application",
-      `${jvApplicationForm.applicantName} applied as ${jvApplicationForm.applicantRole} for ${selectedListing.title}.`,
-      "JV Application"
-    );
-
-    setJvApplicationForm({
-      applicantName: "",
-      applicantEmail: "",
-      applicantPhone: "",
-      applicantRole: "Developer",
-      companyName: "",
-      budgetCapacity: "",
-      experienceSummary: "",
-      proposalMessage: "",
-    });
-    setJvCompanyProfileFile(null);
-    setJvCacCertificateFile(null);
-    setJvPortfolioFile(null);
-    setJvFinancialProofFile(null);
-    setJvProposalDocumentFile(null);
-    setJvOtherDocumentFile(null);
-
-    showSuccess("JV partnership application sent with supporting documents. INAMAAD will review and contact you shortly.");
   }
-
   async function submitContactMessage(event: React.FormEvent) {
     event.preventDefault();
 
-    const newMessage: Omit<ContactMessage, "id"> = {
-      ...contactForm,
-      status: "New",
-      createdAt: new Date().toISOString(),
-    };
+    const formKey: LeadKind = "contact_messages";
 
-    if (supabase) {
-      const { error } = await supabase.from("contact_messages").insert({
-        name: contactForm.name,
-        email: contactForm.email || null,
-        phone: contactForm.phone || null,
-        subject: contactForm.subject || "General enquiry",
-        message: contactForm.message,
-        status: "New",
-      });
-
-      if (error) {
-        console.error(error);
-        showSuccess("Unable to send contact message. Check database settings.");
-        return;
-      }
-    } else {
-      setContactMessages((current) => [
-        { ...newMessage, id: Date.now() },
-        ...current,
-      ]);
+    if (
+      !beginPublicFormSubmit(formKey, [
+        { ok: hasMinimumText(contactForm.name, 2), message: "Please enter your full name." },
+        { ok: optionalEmailIsValid(contactForm.email), message: "Please enter a valid email address or leave it empty." },
+        { ok: phoneLooksValid(contactForm.phone) || hasMinimumText(contactForm.email, 6), message: "Please provide either a valid phone number or email address." },
+        { ok: hasMinimumText(contactForm.message, 5), message: "Please enter a message with at least 5 characters." },
+        { ok: isWithinLimit(contactForm.message, 5000), message: "Your message is too long." },
+      ])
+    ) {
+      return;
     }
 
-    await createStaffNotification(
-      "New contact message",
-      `${contactForm.name} sent a contact message: ${contactForm.subject || "General enquiry"}.`,
-      "Contact Message"
-    );
+    try {
+      const newMessage: Omit<ContactMessage, "id"> = {
+        ...contactForm,
+        name: cleanFormText(contactForm.name),
+        email: cleanFormText(contactForm.email),
+        phone: cleanFormText(contactForm.phone),
+        subject: cleanFormText(contactForm.subject),
+        message: cleanFormText(contactForm.message),
+        status: "New",
+        createdAt: new Date().toISOString(),
+      };
 
-    setContactForm({
-      name: "",
-      email: "",
-      phone: "",
-      subject: "",
-      message: "",
-    });
+      if (supabase) {
+        const { error } = await supabase.from("contact_messages").insert({
+          name: cleanFormText(contactForm.name),
+          email: cleanFormText(contactForm.email) || null,
+          phone: cleanFormText(contactForm.phone) || null,
+          subject: cleanFormText(contactForm.subject) || "General enquiry",
+          message: cleanFormText(contactForm.message),
+          status: "New",
+        });
 
-    showSuccess("Contact message sent. INAMAAD will reply shortly.");
+        if (error) {
+          console.error(error);
+          showSuccess("Unable to send contact message. Please check your details and try again.");
+          return;
+        }
+      } else {
+        setContactMessages((current) => [
+          { ...newMessage, id: Date.now() },
+          ...current,
+        ]);
+      }
+
+      await createStaffNotification(
+        "New contact message",
+        `${contactForm.name} sent a contact message: ${contactForm.subject || "General enquiry"}.`,
+        "Contact Message"
+      );
+
+      setContactForm({
+        name: "",
+        email: "",
+        phone: "",
+        subject: "",
+        message: "",
+      });
+
+      resetPublicFormBotTrap(formKey);
+      showSuccess("Contact message sent. INAMAAD will reply shortly.");
+    } finally {
+      finishPublicFormSubmit(formKey);
+    }
   }
-
   async function handleSignIn(event: React.FormEvent) {
     event.preventDefault();
 
@@ -7982,6 +8166,15 @@ function InamaadMainApp() {
 
                   <form onSubmit={submitContactMessage} className="mt-5 grid gap-3">
                     <input
+                      type="text"
+                      value={publicFormBotTrap.contact_messages}
+                      onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, contact_messages: event.target.value })}
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      className="hidden"
+                    />
+                    <input
                       required
                       value={contactForm.name}
                       onChange={(event) =>
@@ -8032,8 +8225,11 @@ function InamaadMainApp() {
                       className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
                     />
 
-                    <button className="rounded-2xl bg-[#0F172A] px-7 py-4 text-sm font-black text-white transition hover:bg-[#1e293b]">
-                      Send Business Inquiry
+                    <button
+                      disabled={publicSubmittingForm === "contact_messages"}
+                      className="rounded-2xl bg-[#0F172A] px-7 py-4 text-sm font-black text-white transition hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {publicSubmittingForm === "contact_messages" ? "Sending inquiry..." : "Send Business Inquiry"}
                     </button>
 
                     <div className="grid gap-3 pt-2 sm:grid-cols-2">
@@ -10512,6 +10708,15 @@ function InamaadMainApp() {
 
             {modal === "investor" && (
               <form onSubmit={submitInvestorRequest} className="grid gap-4">
+                <input
+                  type="text"
+                  value={publicFormBotTrap.investor_requests}
+                  onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, investor_requests: event.target.value })}
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  className="hidden"
+                />
                 <div className="grid gap-4 md:grid-cols-2">
                   <input
                     required
@@ -10597,8 +10802,11 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
-                  Save investor request
+                <button
+                  disabled={publicSubmittingForm === "investor_requests"}
+                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {publicSubmittingForm === "investor_requests" ? "Sending request..." : "Save investor request"}
                 </button>
               </form>
             )}
@@ -11063,6 +11271,15 @@ function InamaadMainApp() {
                     onSubmit={submitJvApplication}
                     className="mt-6 grid gap-4 rounded-[24px] border border-purple-200 bg-purple-50 p-6"
                   >
+                    <input
+                      type="text"
+                      value={publicFormBotTrap.jv_applications}
+                      onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, jv_applications: event.target.value })}
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      className="hidden"
+                    />
                     <div>
                       <p className="text-xl font-black text-[#0d1c38]">
                         Apply for JV partnership
@@ -11231,8 +11448,11 @@ function InamaadMainApp() {
                       </div>
                     </div>
 
-                    <button className="rounded-2xl bg-purple-700 px-6 py-4 text-sm font-black text-white">
-                      Submit JV partnership application
+                    <button
+                      disabled={publicSubmittingForm === "jv_applications"}
+                      className="rounded-2xl bg-purple-700 px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {publicSubmittingForm === "jv_applications" ? "Submitting JV application..." : "Submit JV partnership application"}
                     </button>
                   </form>
                 )}
@@ -11241,6 +11461,15 @@ function InamaadMainApp() {
                   onSubmit={submitPropertyInquiry}
                   className="mt-6 grid gap-4 rounded-[24px] border border-slate-200 bg-white p-6"
                 >
+                  <input
+                    type="text"
+                    value={publicFormBotTrap.property_inquiries}
+                    onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, property_inquiries: event.target.value })}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    className="hidden"
+                  />
                   <div>
                     <p className="text-xl font-black text-[#0d1c38]">
                       Ask about this property
@@ -11301,8 +11530,11 @@ function InamaadMainApp() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
-                    Send property inquiry
+                  <button
+                    disabled={publicSubmittingForm === "property_inquiries"}
+                    className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {publicSubmittingForm === "property_inquiries" ? "Sending inquiry..." : "Send property inquiry"}
                   </button>
                 </form>
 
@@ -11310,6 +11542,15 @@ function InamaadMainApp() {
                   onSubmit={submitInspectionBooking}
                   className="mt-6 grid gap-4 rounded-[24px] border border-[#f0bf3c]/40 bg-[#fffaf0] p-6"
                 >
+                  <input
+                    type="text"
+                    value={publicFormBotTrap.inspection_bookings}
+                    onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, inspection_bookings: event.target.value })}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    className="hidden"
+                  />
                   <div>
                     <p className="text-xl font-black text-[#0d1c38]">
                       Book property inspection
@@ -11381,8 +11622,11 @@ function InamaadMainApp() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <button className="rounded-2xl bg-[#f0bf3c] px-6 py-4 text-sm font-black text-[#0d1c38]">
-                    Book inspection
+                  <button
+                    disabled={publicSubmittingForm === "inspection_bookings"}
+                    className="rounded-2xl bg-[#f0bf3c] px-6 py-4 text-sm font-black text-[#0d1c38] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {publicSubmittingForm === "inspection_bookings" ? "Booking inspection..." : "Book inspection"}
                   </button>
                 </form>
 
@@ -11390,6 +11634,15 @@ function InamaadMainApp() {
                   onSubmit={submitPropertyOffer}
                   className="mt-6 grid gap-4 rounded-[24px] border border-emerald-200 bg-emerald-50 p-6"
                 >
+                  <input
+                    type="text"
+                    value={publicFormBotTrap.property_offers}
+                    onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, property_offers: event.target.value })}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    className="hidden"
+                  />
                   <div>
                     <p className="text-xl font-black text-[#0d1c38]">
                       Make offer / reserve property
@@ -11470,8 +11723,11 @@ function InamaadMainApp() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <button className="rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-black text-white">
-                    Submit offer / reserve interest
+                  <button
+                    disabled={publicSubmittingForm === "property_offers"}
+                    className="rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {publicSubmittingForm === "property_offers" ? "Submitting offer..." : "Submit offer / reserve interest"}
                   </button>
                 </form>
               </div>
@@ -13573,3 +13829,6 @@ export default function App() {
 // INAMAAD_CREATE_ACCOUNT_BUTTON_FIX_AUDIT: Create account button is now explicit submit, shows loading, prevents double click, and handleRegister always returns readable messages.
 
 // INAMAAD_SIGNUP_EMAIL_CONFIRMATION_DELIVERY_FIX_AUDIT: signup has timeout, never says account activated before confirmation, and guards against unconfirmed sessions.
+
+
+// INAMAAD_FRONTEND_FORM_PROTECTION_AUDIT: public forms now use client-side validation, bot-trap fields, and double-submit locks.

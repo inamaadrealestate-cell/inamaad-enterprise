@@ -242,3 +242,221 @@ body {
 }
 
 /* INAMAAD_DESKTOP_FONT_INCREASE_END */
+/* INAMAAD_MOBILE_FONT_BALANCED_START */
+/* Mobile only: balanced bigger font size. Bigger than small, not too large. */
+
+@media (max-width: 768px) {
+  html {
+    font-size: 15px;
+  }
+
+  body {
+    font-size: 0.96rem;
+    line-height: 1.62;
+  }
+
+  #root {
+    font-size: 0.96rem;
+  }
+
+  #root,
+  #root button,
+  #root input,
+  #root textarea,
+  #root select {
+    font-size: 0.96rem;
+  }
+
+  #root p,
+  #root li,
+  #root label,
+  #root span {
+    line-height: 1.62;
+  }
+
+  #root .text-xs { font-size: 0.78rem !important; line-height: 1.12rem !important; }
+  #root .text-sm { font-size: 0.9rem !important; line-height: 1.42rem !important; }
+  #root .text-base { font-size: 0.98rem !important; line-height: 1.6rem !important; }
+  #root .text-lg { font-size: 1.12rem !important; line-height: 1.72rem !important; }
+  #root .text-xl { font-size: 1.25rem !important; line-height: 1.85rem !important; }
+  #root .text-2xl { font-size: 1.42rem !important; line-height: 2rem !important; }
+  #root .text-3xl { font-size: 1.65rem !important; line-height: 2.18rem !important; }
+  #root .text-4xl { font-size: 1.95rem !important; line-height: 2.38rem !important; }
+
+  #root .text-5xl,
+  #root .text-6xl,
+  #root .text-7xl,
+  #root .text-8xl,
+  #root .text-9xl {
+    font-size: clamp(2.15rem, 9vw, 3rem) !important;
+    line-height: 1.08 !important;
+  }
+
+  #root h1 {
+    font-size: clamp(2.05rem, 9vw, 2.95rem) !important;
+    line-height: 1.05 !important;
+  }
+
+  #root h2 {
+    font-size: clamp(1.55rem, 7vw, 2.18rem) !important;
+    line-height: 1.12 !important;
+  }
+
+  #root h3 {
+    font-size: clamp(1.18rem, 5vw, 1.58rem) !important;
+    line-height: 1.18 !important;
+  }
+
+  #root h4,
+  #root h5,
+  #root h6 {
+    font-size: clamp(1.02rem, 4.2vw, 1.25rem) !important;
+    line-height: 1.25 !important;
+  }
+
+  #root nav,
+  #root header,
+  #root footer,
+  #root form,
+  #root .rounded-2xl,
+  #root .rounded-3xl {
+    font-size: 0.93rem;
+  }
+
+  #root button,
+  #root input,
+  #root textarea,
+  #root select {
+    font-size: 0.94rem !important;
+  }
+}
+
+@media (max-width: 420px) {
+  html {
+    font-size: 14px;
+  }
+
+  #root {
+    font-size: 0.92rem;
+  }
+
+  #root .text-xs { font-size: 0.74rem !important; }
+  #root .text-sm { font-size: 0.86rem !important; }
+  #root .text-base { font-size: 0.94rem !important; }
+
+  #root h1 {
+    font-size: clamp(1.82rem, 9vw, 2.48rem) !important;
+  }
+
+  #root h2 {
+    font-size: clamp(1.38rem, 7vw, 1.95rem) !important;
+  }
+}
+
+/* INAMAAD_MOBILE_FONT_BALANCED_END */
+/* INAMAAD_NAVBAR_FONT_MATCH_START */
+/* Navbar font match: clean Bolt-style navbar sizing, only affects the navbar/header area. */
+
+@media (min-width: 769px) {
+  #root header,
+  #root nav {
+    font-size: 16px !important;
+  }
+
+  /* Desktop nav links: Home, Properties, JV Deals, About, Contact */
+  #root header nav a,
+  #root header nav button,
+  #root nav a,
+  #root nav button {
+    font-size: 16px !important;
+    line-height: 24px !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  /* Desktop Sign In / Get Started buttons */
+  #root header > div a,
+  #root header > div button,
+  #root header button,
+  #root header a {
+    font-size: 16px !important;
+    line-height: 24px !important;
+  }
+
+  /* Brand text: INAMAAD */
+  #root header .text-xl,
+  #root header .text-2xl,
+  #root nav .text-xl,
+  #root nav .text-2xl {
+    font-size: 22px !important;
+    line-height: 28px !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  /* Small badge/icon text inside navbar should not shrink too much */
+  #root header .text-xs,
+  #root header .text-sm,
+  #root nav .text-xs,
+  #root nav .text-sm {
+    font-size: 15px !important;
+    line-height: 22px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  #root header,
+  #root nav {
+    font-size: 15px !important;
+  }
+
+  #root header nav a,
+  #root header nav button,
+  #root nav a,
+  #root nav button,
+  #root header button,
+  #root header a {
+    font-size: 15px !important;
+    line-height: 22px !important;
+    font-weight: 650 !important;
+  }
+
+  #root header .text-xl,
+  #root header .text-2xl,
+  #root nav .text-xl,
+  #root nav .text-2xl {
+    font-size: 20px !important;
+    line-height: 26px !important;
+    font-weight: 900 !important;
+  }
+
+  #root header .text-xs,
+  #root header .text-sm,
+  #root nav .text-xs,
+  #root nav .text-sm {
+    font-size: 14px !important;
+    line-height: 20px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  #root header nav a,
+  #root header nav button,
+  #root nav a,
+  #root nav button,
+  #root header button,
+  #root header a {
+    font-size: 14px !important;
+    line-height: 20px !important;
+  }
+
+  #root header .text-xl,
+  #root header .text-2xl,
+  #root nav .text-xl,
+  #root nav .text-2xl {
+    font-size: 18px !important;
+    line-height: 24px !important;
+  }
+}
+
+/* INAMAAD_NAVBAR_FONT_MATCH_END */

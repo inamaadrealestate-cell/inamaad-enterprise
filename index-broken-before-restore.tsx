@@ -1,18 +1,18 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient, type User } from "@supabase/supabase-js";
 
 type ModalType =
   | null
   | "signin"
+  | "forgot_password"
+  | "reset_password"
+  | "resend_confirmation"
   | "register"
   | "post"
   | "investor"
   | "admin"
   | "details"
-  | "edit"
-  | "guide"
-  | "forgotPassword"
-  | "resetPassword";
+  | "edit";
 
 type ListingStatus = "Verified" | "Pending Review";
 type AvailabilityStatus = "Available" | "Reserved" | "Sold" | "Rented" | "Leased" | "Off Market";
@@ -318,6 +318,7 @@ type StaffMember = {
 };
 
 const WHATSAPP_NUMBER = "2348106350486";
+const LOCAL_ADMIN_PASSWORD = "admin123";
 const staffRoleOptions: StaffRole[] = [
   "Super Admin",
   "Admin",
@@ -334,11 +335,48 @@ const SUPABASE_KEY =
 const supabase =
   SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
+const LIVE_SITE_URL = "https://project-65njf.vercel.app";
+
+function getAppBaseUrl() {
+  const configuredUrl =
+    (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) ||
+    (import.meta.env.VITE_APP_URL as string | undefined) ||
+    (import.meta.env.VITE_SITE_URL as string | undefined);
+
+  if (configuredUrl) return configuredUrl.replace(/\/+$/, "");
+
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin;
+
+    if (
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.includes("0.0.0.0")
+    ) {
+      return LIVE_SITE_URL;
+    }
+
+    return origin.replace(/\/+$/, "");
+  }
+
+  return LIVE_SITE_URL;
+}
+
+function getAuthRedirectUrl(authMode: "email-confirmed" | "reset-password") {
+  const baseUrl = getAppBaseUrl();
+  const currentPath =
+    typeof window !== "undefined" ? window.location.pathname || "/" : "/";
+  const cleanPath = currentPath.startsWith("/") ? currentPath : `/${currentPath}`;
+  const redirectUrl = new URL(`${baseUrl}${cleanPath}`);
+  redirectUrl.searchParams.set("auth", authMode);
+  return redirectUrl.toString();
+}
+
 const navLinks = [
   { label: "Home", href: "#" },
   { label: "Properties", href: "#properties" },
   { label: "Calculator", href: "#calculator" },
-  { label: "JV\u00A0Deals", href: "#jv" },
+  { label: "JV Deals", href: "#jv" },
   { label: "About", href: "#about" },
   { label: "Contact", href: "#contact" },
 ];
@@ -645,7 +683,7 @@ const seedListings: Listing[] = [
     value: 450000000,
     type: "Residential",
     category: "For Sale",
-    yieldText: "Premium capital appreciation in Abuja's prime district",
+    yieldText: "Premium capital appreciation in Abuja’s prime district",
     description:
       "A high-end residential investment opportunity positioned for strong rental income, resale value, and long-term wealth preservation.",
     status: "Verified",
@@ -662,7 +700,7 @@ const seedListings: Listing[] = [
     category: "Investment",
     yieldText: "Strong commercial rental potential",
     description:
-      "A premium commercial asset located in one of Lagos' strongest business districts, suitable for corporate tenants and long-term income.",
+      "A premium commercial asset located in one of Lagos’ strongest business districts, suitable for corporate tenants and long-term income.",
     status: "Verified",
     availabilityStatus: "Available",
     createdAt: new Date().toISOString(),
@@ -730,69 +768,69 @@ const seedListings: Listing[] = [
 ];
 
 const stats = [
-  { value: "Verified", label: "Property review flow" },
-  { value: "Secure", label: "Email-confirmed access" },
-  { value: "JV-ready", label: "Partnership submissions" },
-  { value: "36 + FCT", label: "Nigeria coverage" },
+  { value: "2,500+", label: "Verified listings" },
+  { value: "10,000+", label: "Registered users" },
+  { value: "150+", label: "JV opportunities" },
+  { value: "36", label: "States + FCT" },
 ];
 
 const categoryCards = [
   {
-    title: "Buy & Rent",
-    text: "Browse homes, apartments, duplexes, land, and commercial assets with cleaner details and direct enquiry options.",
+    title: "Residential",
+    text: "Premium homes, apartments, duplexes, and estate opportunities for buyers and investors.",
   },
   {
-    title: "Invest & Compare",
-    text: "Use filters, ROI planning, property view insights, and investor requests to find opportunities that match your strategy.",
+    title: "Land & Commercial",
+    text: "Strategic land, commercial plazas, office assets, and long-term real estate opportunities.",
   },
   {
-    title: "Partner Through JV",
-    text: "Submit or apply for structured joint venture deals connecting landowners, developers, and capital partners.",
+    title: "JV Opportunities",
+    text: "Connect landowners, developers, and investors for profitable development partnerships.",
   },
 ];
 
 const processSteps = [
   {
-    title: "Discover",
-    text: "Visitors search verified homes, land, commercial assets, investment listings, and JV opportunities across Nigeria.",
+    title: "Submit opportunity",
+    text: "Owners, developers, landowners, and agents submit properties, land, or joint venture deals.",
   },
   {
-    title: "Engage",
-    text: "Users can enquire, book inspections, make offers, request investor guidance, or apply for JV partnerships.",
+    title: "Verification review",
+    text: "INAMAAD reviews key details such as ownership, location, value, opportunity strength, and investment fit.",
   },
   {
-    title: "Review & manage",
-    text: "INAMAAD staff review listings, applications, documents, leads, property views, and activity inside the admin portal.",
+    title: "Investor connection",
+    text: "Qualified investors discover opportunities based on budget, location, asset type, and strategy.",
   },
 ];
 
 const verificationItems = [
-  "Email-confirmed user access",
-  "Property, ownership, and document review",
-  "Role-based staff/admin control",
-  "Protected public forms and secure storage rules",
+  "Property and ownership review",
+  "Market value and location assessment",
+  "Developer, seller, or landowner screening",
+  "Investor risk and opportunity review",
 ];
 
 const faqItems = [
   {
-    question: "What can users do on INAMAAD?",
+    question: "Is INAMAAD only for buying property?",
     answer:
-      "Users can browse properties and JV deals, view details, submit enquiries, book inspections, make offers, request investor guidance, and apply for JV partnerships.",
+      "No. INAMAAD supports property sales, land investments, commercial assets, joint ventures, and investor matching.",
   },
   {
-    question: "Can property owners and developers submit opportunities?",
+    question: "Can developers post opportunities?",
     answer:
-      "Yes. Owners, agents, developers, and landowners can submit properties, land, commercial opportunities, and JV deals for review.",
+      "Yes. Developers can submit projects, JV proposals, off-plan opportunities, and investment-ready real estate deals.",
   },
   {
-    question: "How does INAMAAD support investors?",
+    question: "Can investors request private deals?",
     answer:
-      "Investors can search opportunities, use the ROI calculator, submit their budget and preferred interest, and request deal guidance.",
+      "Yes. Investors can submit their budget and interest so INAMAAD can match them with suitable opportunities.",
   },
   {
-    question: "How are listings and leads managed?",
+    question: "Are all listings verified?",
     answer:
-      "INAMAAD staff can review pending listings, manage enquiries, offers, inspections, JV applications, contact messages, analytics, and activity logs from the admin portal.",
+      "Listings marked as verified have passed internal review. New submissions remain pending until admin approval.",
   },
 ];
 
@@ -874,44 +912,6 @@ function formatPricePreview(value: string) {
   if (!Number.isFinite(numericValue) || numericValue <= 0) return "₦0";
 
   return `${formatNairaFull(numericValue)} (${formatNairaCompact(numericValue)})`;
-}
-
-type UploadFileCategory = "image" | "document";
-
-function validateUploadFile(file: File, category: UploadFileCategory) {
-  const fileName = file.name || "Selected file";
-  const extension = fileName.split(".").pop()?.toLowerCase() || "";
-  const maxImageSize = 5 * 1024 * 1024;
-  const maxDocumentSize = 10 * 1024 * 1024;
-  const allowedImageExtensions = ["jpg", "jpeg", "png", "webp"];
-  const allowedDocumentExtensions = ["pdf", "jpg", "jpeg", "png", "webp"];
-  const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
-  const allowedDocumentTypes = ["application/pdf", ...allowedImageTypes];
-
-  const maxSize = category === "image" ? maxImageSize : maxDocumentSize;
-  const allowedExtensions =
-    category === "image" ? allowedImageExtensions : allowedDocumentExtensions;
-  const allowedTypes = category === "image" ? allowedImageTypes : allowedDocumentTypes;
-
-  if (file.size > maxSize) {
-    throw new Error(
-      `${fileName} is too large. ${category === "image" ? "Images" : "Documents"} must be ${
-        category === "image" ? "5MB" : "10MB"
-      } or less.`
-    );
-  }
-
-  if (extension && !allowedExtensions.includes(extension)) {
-    throw new Error(
-      `${fileName} is not supported. Use ${allowedExtensions.join(", ").toUpperCase()}.`
-    );
-  }
-
-  if (file.type && !allowedTypes.includes(file.type)) {
-    throw new Error(`${fileName} has an unsupported file type.`);
-  }
-
-  return true;
 }
 
 type PriceBreakdownInput = {
@@ -1564,66 +1564,1261 @@ function verificationSummary(listing: Listing | Omit<Listing, "id">) {
   return `${completed}/5 checks complete`;
 }
 
-class InamaadErrorBoundary extends React.Component<
-  { children?: React.ReactNode },
-  { hasError: boolean; errorMessage: string }
-> {
-  constructor(props: { children?: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, errorMessage: "" };
-  }
+function getUserDisplayName(sessionUser: User | null) {
+  if (!sessionUser) return "";
 
-  static getDerivedStateFromError(error: Error) {
-    return {
-      hasError: true,
-      errorMessage: error?.message || "The app stopped unexpectedly.",
-    };
-  }
+  const metadata = sessionUser.user_metadata || {};
+  const possibleName =
+    metadata.full_name ||
+    metadata.name ||
+    metadata.display_name ||
+    sessionUser.email?.split("@")[0] ||
+    "INAMAAD user";
 
-  componentDidCatch(error: Error) {
-    console.error("INAMAAD safe crash guard:", error);
-  }
-
-  resetApp = () => {
-    this.setState({ hasError: false, errorMessage: "" });
-  };
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex min-h-screen items-center justify-center bg-[#0d1c38] px-4 py-10 text-white">
-          <div className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-white p-6 text-[#0d1c38] shadow-2xl">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#d39b19]">
-              INAMAAD protection
-            </p>
-            <h1 className="mt-3 text-2xl font-black">
-              The page was protected from a blank screen.
-            </h1>
-            <p className="mt-3 text-sm leading-7 text-slate-600">
-              A temporary display error was caught before it could crash the whole website.
-            </p>
-            {this.state.errorMessage ? (
-              <p className="mt-3 rounded-2xl bg-red-50 p-3 text-xs font-semibold text-red-700">
-                {this.state.errorMessage}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              onClick={this.resetApp}
-              className="mt-5 rounded-xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#13284f]"
-            >
-              Reload safe view
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
+  return String(possibleName);
 }
 
-function InamaadMainApp() {
+function getUserInitials(nameOrEmail: string) {
+  const cleaned = nameOrEmail.trim();
+
+  if (!cleaned) return "IN";
+
+  const namePart = cleaned.includes("@") ? cleaned.split("@")[0] : cleaned;
+  const parts = namePart.split(/[\s._-]+/).filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0][0] || "I"}${parts[1][0] || "N"}`.toUpperCase();
+  }
+
+  return namePart.slice(0, 2).toUpperCase();
+}
+
+
+function MobileUsabilityStyles() {
+  return (
+    <style>{`
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        overflow-x: hidden;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      img,
+      video,
+      iframe {
+        max-width: 100%;
+      }
+
+      input,
+      select,
+      textarea,
+      button {
+        font: inherit;
+      }
+
+      @media (max-width: 768px) {
+        html,
+        body,
+        #root {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
+        body {
+          -webkit-text-size-adjust: 100%;
+        }
+
+        section {
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
+        h1 {
+          font-size: clamp(2.05rem, 10vw, 3rem) !important;
+          line-height: 1.05 !important;
+          letter-spacing: -0.045em !important;
+        }
+
+        h2 {
+          font-size: clamp(1.75rem, 8vw, 2.45rem) !important;
+          line-height: 1.1 !important;
+        }
+
+        h3 {
+          font-size: clamp(1.25rem, 6vw, 1.8rem) !important;
+          line-height: 1.15 !important;
+        }
+
+        p {
+          overflow-wrap: anywhere;
+        }
+
+        a,
+        button {
+          min-height: 44px;
+          touch-action: manipulation;
+        }
+
+        input,
+        select,
+        textarea {
+          width: 100%;
+          min-height: 48px;
+          font-size: 16px !important;
+        }
+
+        textarea {
+          min-height: 120px;
+        }
+
+        .mobile-tap-target {
+          min-height: 52px;
+        }
+
+        [class*="max-w-7xl"],
+        [class*="max-w-6xl"],
+        [class*="max-w-5xl"],
+        [class*="max-w-4xl"],
+        [class*="max-w-3xl"],
+        [class*="max-w-2xl"],
+        [class*="max-w-xl"] {
+          max-width: 100% !important;
+        }
+
+        [class*="px-10"] {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+        }
+
+        [class*="px-8"] {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+        }
+
+        [class*="px-6"] {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+        }
+
+        [class*="p-10"] {
+          padding: 1.25rem !important;
+        }
+
+        [class*="p-8"] {
+          padding: 1.1rem !important;
+        }
+
+        [class*="rounded-[32px]"],
+        [class*="rounded-[30px]"],
+        [class*="rounded-[28px]"] {
+          border-radius: 1.35rem !important;
+        }
+
+        [class*="fixed"][class*="inset-0"] {
+          align-items: flex-start !important;
+          justify-content: center !important;
+          padding: 0.75rem !important;
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        [class*="max-h-[90vh]"] {
+          max-height: calc(100dvh - 1.5rem) !important;
+        }
+
+        [class*="w-[90%]"] {
+          width: calc(100% - 1rem) !important;
+        }
+
+        [class*="h-72"] {
+          height: 14rem !important;
+        }
+
+        [class*="h-80"] {
+          height: 16rem !important;
+        }
+
+        [class*="grid-cols-2"]:not([class*="lg:grid-cols"]):not([class*="md:grid-cols"]) {
+          grid-template-columns: 1fr !important;
+        }
+
+        table {
+          display: block;
+          width: 100%;
+          overflow-x: auto;
+          white-space: nowrap;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .inamaad-mobile-bottom-nav {
+          position: fixed;
+          left: 0.75rem;
+          right: 0.75rem;
+          bottom: calc(0.75rem + env(safe-area-inset-bottom));
+          z-index: 120;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0.45rem;
+          border: 1px solid rgba(15, 23, 42, 0.1);
+          border-radius: 1.35rem;
+          background: rgba(255, 255, 255, 0.96);
+          padding: 0.55rem;
+          box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+          backdrop-filter: blur(18px);
+        }
+
+        .inamaad-mobile-bottom-nav a,
+        .inamaad-mobile-bottom-nav button {
+          display: flex;
+          min-width: 0;
+          min-height: 48px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 1rem;
+          padding: 0.65rem 0.35rem;
+          text-align: center;
+          font-size: 0.72rem;
+          font-weight: 900;
+          color: #0d1c38;
+          background: #f7f8fb;
+        }
+
+        .inamaad-mobile-bottom-nav .primary {
+          color: white;
+          background: #0d1c38;
+        }
+
+        .inamaad-mobile-bottom-nav .gold {
+          color: #0d1c38;
+          background: #f0bf3c;
+        }
+      }
+
+      @media (min-width: 769px) {
+        .inamaad-mobile-bottom-nav {
+          display: none;
+        }
+      }
+    `}</style>
+  );
+}
+
+function MobileBottomNavigation({
+  setModal,
+}: {
+  setModal: React.Dispatch<React.SetStateAction<ModalType>>;
+}) {
+  return (
+    <div className="inamaad-mobile-bottom-nav lg:hidden">
+      <a href="#properties">Properties</a>
+      <a href="#jv">JV Deals</a>
+      <button
+        type="button"
+        onClick={() => setModal("post")}
+        className="gold"
+      >
+        Post
+      </button>
+      <button
+        type="button"
+        onClick={() => setModal("signin")}
+        className="primary"
+      >
+        Account
+      </button>
+    </div>
+  );
+}
+
+
+
+function ClassicResponsiveWebsiteStyles() {
+  return (
+    <style>{`
+      :root {
+        --inamaad-navy: #0d1c38;
+        --inamaad-navy-soft: #13284f;
+        --inamaad-gold: #f0bf3c;
+        --inamaad-bg: #f6f7fb;
+        --inamaad-card: #ffffff;
+        --inamaad-muted: #64748b;
+        --inamaad-border: rgba(15, 23, 42, 0.1);
+      }
+
+      body {
+        background:
+          radial-gradient(circle at top left, rgba(240, 191, 60, 0.13), transparent 32rem),
+          radial-gradient(circle at top right, rgba(13, 28, 56, 0.08), transparent 30rem),
+          var(--inamaad-bg);
+      }
+
+      .inamaad-classic-card {
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(15, 23, 42, 0.09);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(14px);
+      }
+
+      header {
+        box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      }
+
+      header nav a {
+        position: relative;
+      }
+
+      header nav a::after {
+        content: "";
+        position: absolute;
+        left: 1rem;
+        right: 1rem;
+        bottom: 0.55rem;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--inamaad-gold);
+        transform: scaleX(0);
+        transform-origin: center;
+        transition: transform 180ms ease;
+      }
+
+      header nav a:hover::after {
+        transform: scaleX(1);
+      }
+
+      main section:first-child {
+        border-bottom-left-radius: 2.8rem;
+        border-bottom-right-radius: 2.8rem;
+        box-shadow: 0 35px 90px rgba(13, 28, 56, 0.18);
+      }
+
+      #properties article,
+      #jv article {
+        transform: translateZ(0);
+      }
+
+      #properties article:hover,
+      #jv article:hover {
+        border-color: rgba(240, 191, 60, 0.65);
+      }
+
+      #properties article img {
+        filter: saturate(1.08) contrast(1.03);
+      }
+
+      #properties article h4,
+      #jv article h4 {
+        letter-spacing: -0.025em;
+      }
+
+      #properties select,
+      #properties input,
+      #jv select,
+      #jv input,
+      textarea {
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+      }
+
+      .classic-floating-search {
+        margin-top: -2.5rem;
+        position: relative;
+        z-index: 10;
+      }
+
+      .inamaad-category-strip > div,
+      .inamaad-property-grid > article,
+      .inamaad-jv-grid > article {
+        will-change: transform;
+      }
+
+      .inamaad-sync-hidden {
+        display: none !important;
+      }
+
+      @media (min-width: 1024px) {
+        .inamaad-property-grid,
+        .inamaad-jv-grid {
+          align-items: stretch;
+        }
+
+        .inamaad-property-grid > article:nth-child(3n + 2) {
+          transform: translateY(1rem);
+        }
+
+        .inamaad-jv-grid > article:nth-child(3n + 2) {
+          transform: translateY(0.75rem);
+        }
+
+        .inamaad-property-grid > article:nth-child(3n + 2):hover,
+        .inamaad-jv-grid > article:nth-child(3n + 2):hover {
+          transform: translateY(0.25rem);
+        }
+      }
+
+      @media (max-width: 768px) {
+        main {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.74) 18rem),
+            var(--inamaad-bg);
+        }
+
+        header {
+          position: sticky;
+          top: 0;
+          border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+          background: rgba(255,255,255,0.94) !important;
+          backdrop-filter: blur(18px);
+        }
+
+        header > div:first-child {
+          padding-top: 0.85rem !important;
+          padding-bottom: 0.85rem !important;
+        }
+
+        header [class*="h-11"][class*="w-11"] {
+          width: 2.65rem !important;
+          height: 2.65rem !important;
+          border-radius: 1rem !important;
+          box-shadow: 0 12px 22px rgba(13, 28, 56, 0.16);
+        }
+
+        header a[href="#"] > div:last-child > div:first-child {
+          font-size: 0.9rem !important;
+          letter-spacing: 0.06em !important;
+        }
+
+        header a[href="#"] > div:last-child > div:last-child {
+          font-size: 0.68rem !important;
+        }
+
+        header button[class*="lg:hidden"] {
+          border-radius: 999px !important;
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+          background: var(--inamaad-navy) !important;
+          box-shadow: 0 12px 25px rgba(13, 28, 56, 0.22);
+        }
+
+        header > div:nth-child(2) {
+          margin: 0 0.75rem 0.75rem !important;
+          border: 1px solid rgba(15,23,42,0.08) !important;
+          border-radius: 1.4rem;
+          background: rgba(255,255,255,0.98) !important;
+          box-shadow: 0 20px 50px rgba(15, 23, 42, 0.14);
+        }
+
+        header > div:nth-child(2) .grid a,
+        header > div:nth-child(2) .grid button {
+          min-height: 52px;
+          display: flex;
+          align-items: center;
+          border-radius: 1rem;
+          background: #f8fafc;
+          padding: 0.95rem 1rem;
+          font-weight: 900;
+        }
+
+        main section:first-child {
+          border-bottom-left-radius: 2rem;
+          border-bottom-right-radius: 2rem;
+        }
+
+        main section:first-child > div.relative {
+          padding-top: 2rem !important;
+          padding-bottom: 2.5rem !important;
+        }
+
+        main section:first-child h1 {
+          max-width: 100% !important;
+          font-size: clamp(2.35rem, 11.5vw, 3.65rem) !important;
+          line-height: 0.98 !important;
+        }
+
+        main section:first-child p {
+          font-size: 0.98rem !important;
+          line-height: 1.75 !important;
+        }
+
+        main section:first-child .grid.gap-10 {
+          gap: 1.35rem !important;
+        }
+
+        main section:first-child .grid.gap-3.sm\:grid-cols-2.lg\:grid-cols-4 {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 0.7rem !important;
+        }
+
+        main section:first-child .grid.gap-3.sm\:grid-cols-2.lg\:grid-cols-4 a,
+        main section:first-child .grid.gap-3.sm\:grid-cols-2.lg\:grid-cols-4 button {
+          min-height: 54px;
+          border-radius: 1.05rem !important;
+          padding: 0.8rem 0.7rem !important;
+          font-size: 0.78rem !important;
+          line-height: 1.25 !important;
+          box-shadow: 0 12px 28px rgba(13, 28, 56, 0.16);
+        }
+
+        main section:first-child [class*="rounded-[32px]"][class*="bg-white"] {
+          border-radius: 1.65rem !important;
+          padding: 0.8rem !important;
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
+        }
+
+        main section:first-child [class*="rounded-[26px]"] {
+          border-radius: 1.35rem !important;
+          padding: 1rem !important;
+        }
+
+        main section:first-child input,
+        main section:first-child select {
+          height: 3.35rem !important;
+          border-radius: 1rem !important;
+        }
+
+        main section:first-child .mt-5.grid.gap-3.sm\:grid-cols-2 {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 0.7rem !important;
+        }
+
+        main section:first-child .mt-5.grid.gap-3.sm\:grid-cols-2 > div {
+          border-radius: 1.25rem !important;
+          padding: 1rem !important;
+          min-height: 8rem;
+        }
+
+        main section:nth-of-type(2) > div {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 0.75rem !important;
+          padding-top: 1.5rem !important;
+          padding-bottom: 1.5rem !important;
+        }
+
+        main section:nth-of-type(2) > div > div {
+          border-radius: 1.35rem;
+          background: #fff;
+          padding: 1rem 0.75rem;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+        }
+
+        main section:nth-of-type(2) [class*="text-4xl"] {
+          font-size: 1.7rem !important;
+        }
+
+        .inamaad-category-strip {
+          display: grid !important;
+          grid-auto-flow: column;
+          grid-auto-columns: 84%;
+          grid-template-columns: none !important;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          padding-bottom: 0.35rem;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .inamaad-category-strip::-webkit-scrollbar {
+          display: none;
+        }
+
+        .inamaad-category-strip > div {
+          scroll-snap-align: start;
+          min-height: 15rem;
+          border-radius: 1.55rem !important;
+          padding: 1.35rem !important;
+          box-shadow: 0 18px 36px rgba(15, 23, 42, 0.09);
+        }
+
+        #properties,
+        #jv {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+          padding-top: 3rem !important;
+          padding-bottom: 3.5rem !important;
+        }
+
+        #properties > div > div:first-child,
+        #jv > div > div:first-child {
+          gap: 1rem !important;
+        }
+
+        #properties h2,
+        #jv h2 {
+          font-size: clamp(2rem, 9vw, 2.7rem) !important;
+          letter-spacing: -0.055em !important;
+        }
+
+        #properties button,
+        #jv button,
+        #properties a,
+        #jv a {
+          min-height: 48px;
+        }
+
+        #properties .mt-10.flex.flex-wrap {
+          flex-wrap: nowrap !important;
+          overflow-x: auto;
+          padding-bottom: 0.35rem;
+          margin-left: -1rem;
+          margin-right: -1rem;
+          padding-left: 1rem;
+          padding-right: 1rem;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        #properties .mt-10.flex.flex-wrap::-webkit-scrollbar {
+          display: none;
+        }
+
+        #properties .mt-10.flex.flex-wrap button {
+          flex: 0 0 auto;
+          white-space: nowrap;
+          border-radius: 999px !important;
+          box-shadow: 0 10px 20px rgba(15, 23, 42, 0.07);
+        }
+
+        #properties [class*="rounded-[28px]"][class*="bg-white"],
+        #jv [class*="rounded-[28px]"][class*="bg-white"] {
+          border-radius: 1.55rem !important;
+        }
+
+        .inamaad-property-grid {
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 1rem !important;
+          margin-top: 1.5rem !important;
+        }
+
+        .inamaad-property-grid > article {
+          border-radius: 1.55rem !important;
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1) !important;
+          overflow: hidden;
+        }
+
+        .inamaad-property-grid > article [class*="relative h-72"] {
+          height: 13.5rem !important;
+        }
+
+        .inamaad-property-grid > article > div:not(:first-child) {
+          padding: 1rem !important;
+        }
+
+        .inamaad-property-grid h3,
+        .inamaad-property-grid h4 {
+          font-size: 1.18rem !important;
+          line-height: 1.2 !important;
+        }
+
+        .inamaad-property-grid [class*="grid-cols-3"] {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 0.45rem !important;
+        }
+
+        .inamaad-property-grid [class*="grid-cols-3"] > div {
+          border-radius: 0.95rem !important;
+          padding: 0.65rem 0.35rem !important;
+          text-align: center;
+        }
+
+        .inamaad-jv-grid {
+          display: grid !important;
+          grid-auto-flow: column;
+          grid-auto-columns: 88%;
+          grid-template-columns: none !important;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          gap: 1rem !important;
+          padding-bottom: 0.35rem;
+          margin-left: -1rem;
+          margin-right: -1rem;
+          padding-left: 1rem;
+          padding-right: 1rem;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .inamaad-jv-grid::-webkit-scrollbar {
+          display: none;
+        }
+
+        .inamaad-jv-grid > article {
+          scroll-snap-align: start;
+          border-radius: 1.55rem !important;
+          padding: 1.1rem !important;
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18) !important;
+        }
+
+        .inamaad-mobile-bottom-nav {
+          left: 0.65rem !important;
+          right: 0.65rem !important;
+          bottom: calc(0.65rem + env(safe-area-inset-bottom)) !important;
+          border-radius: 1.55rem !important;
+          padding: 0.45rem !important;
+          box-shadow: 0 22px 55px rgba(13, 28, 56, 0.28) !important;
+        }
+
+        .inamaad-mobile-bottom-nav a,
+        .inamaad-mobile-bottom-nav button {
+          min-height: 49px !important;
+          border-radius: 1.2rem !important;
+          font-size: 0.68rem !important;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+        }
+      }
+
+      @media (max-width: 430px) {
+        main section:first-child .grid.gap-3.sm\:grid-cols-2.lg\:grid-cols-4 {
+          grid-template-columns: 1fr 1fr !important;
+        }
+
+        main section:first-child .mt-5.grid.gap-3.sm\:grid-cols-2 {
+          grid-template-columns: 1fr !important;
+        }
+
+        .inamaad-category-strip {
+          grid-auto-columns: 88%;
+        }
+
+        .inamaad-jv-grid {
+          grid-auto-columns: 90%;
+        }
+      }
+    `}</style>
+  );
+}
+
+
+
+function CompactPropertyCardStyles() {
+  return (
+    <style>{`
+      /* Extra compact property cards, safely inserted once to avoid build errors */
+      .inamaad-property-grid {
+        gap: 1rem !important;
+      }
+
+      .inamaad-property-grid > article {
+        min-height: auto !important;
+        overflow: hidden !important;
+        border-radius: 1.15rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="relative h-72"],
+      .inamaad-property-grid > article [class*="h-72"],
+      .inamaad-property-grid > article [class*="h-80"] {
+        height: 9rem !important;
+        min-height: 9rem !important;
+        max-height: 9rem !important;
+      }
+
+      .inamaad-property-grid > article > div:not(:first-child) {
+        padding: 0.7rem !important;
+      }
+
+      .inamaad-property-grid > article h3,
+      .inamaad-property-grid > article h4 {
+        font-size: 0.92rem !important;
+        line-height: 1.1 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0.18rem !important;
+        letter-spacing: -0.02em !important;
+      }
+
+      .inamaad-property-grid > article p {
+        display: -webkit-box !important;
+        -webkit-box-orient: vertical !important;
+        -webkit-line-clamp: 1 !important;
+        overflow: hidden !important;
+        font-size: 0.72rem !important;
+        line-height: 1.3 !important;
+        margin-top: 0.2rem !important;
+      }
+
+      .inamaad-property-grid > article span,
+      .inamaad-property-grid > article div,
+      .inamaad-property-grid > article a,
+      .inamaad-property-grid > article button {
+        font-size: 0.72rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="text-3xl"],
+      .inamaad-property-grid > article [class*="text-2xl"],
+      .inamaad-property-grid > article [class*="text-xl"] {
+        font-size: 0.95rem !important;
+        line-height: 1.1 !important;
+      }
+
+      .inamaad-property-grid > article [class*="text-lg"] {
+        font-size: 0.84rem !important;
+        line-height: 1.12 !important;
+      }
+
+      .inamaad-property-grid > article [class*="text-sm"] {
+        font-size: 0.67rem !important;
+        line-height: 1.22 !important;
+      }
+
+      .inamaad-property-grid > article [class*="text-xs"] {
+        font-size: 0.58rem !important;
+        line-height: 1.15 !important;
+      }
+
+      .inamaad-property-grid > article [class*="mt-6"],
+      .inamaad-property-grid > article [class*="mt-5"],
+      .inamaad-property-grid > article [class*="mt-4"],
+      .inamaad-property-grid > article [class*="mt-3"] {
+        margin-top: 0.35rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="mb-4"],
+      .inamaad-property-grid > article [class*="mb-3"] {
+        margin-bottom: 0.28rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="gap-4"] {
+        gap: 0.42rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="gap-3"] {
+        gap: 0.35rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="gap-2"] {
+        gap: 0.25rem !important;
+      }
+
+      .inamaad-property-grid > article [class*="grid-cols-3"] {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      }
+
+      .inamaad-property-grid > article [class*="grid-cols-3"] > div {
+        min-height: auto !important;
+        padding: 0.34rem 0.14rem !important;
+        border-radius: 0.58rem !important;
+      }
+
+      .inamaad-property-grid > article a,
+      .inamaad-property-grid > article button {
+        min-height: 32px !important;
+        padding: 0.38rem 0.45rem !important;
+        border-radius: 0.62rem !important;
+        line-height: 1.1 !important;
+      }
+
+      .inamaad-property-grid > article img {
+        object-fit: cover !important;
+      }
+
+      @media (min-width: 1024px) {
+        .inamaad-property-grid {
+          gap: 0.95rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="relative h-72"],
+        .inamaad-property-grid > article [class*="h-72"],
+        .inamaad-property-grid > article [class*="h-80"] {
+          height: 8.6rem !important;
+          min-height: 8.6rem !important;
+          max-height: 8.6rem !important;
+        }
+
+        .inamaad-property-grid > article > div:not(:first-child) {
+          padding: 0.68rem !important;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .inamaad-property-grid {
+          gap: 0.65rem !important;
+        }
+
+        .inamaad-property-grid > article {
+          border-radius: 1rem !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.09) !important;
+        }
+
+        .inamaad-property-grid > article [class*="relative h-72"],
+        .inamaad-property-grid > article [class*="h-72"],
+        .inamaad-property-grid > article [class*="h-80"] {
+          height: 7.75rem !important;
+          min-height: 7.75rem !important;
+          max-height: 7.75rem !important;
+        }
+
+        .inamaad-property-grid > article > div:not(:first-child) {
+          padding: 0.55rem !important;
+        }
+
+        .inamaad-property-grid > article h3,
+        .inamaad-property-grid > article h4 {
+          font-size: 0.82rem !important;
+          line-height: 1.08 !important;
+          margin-bottom: 0.12rem !important;
+        }
+
+        .inamaad-property-grid > article p {
+          -webkit-line-clamp: 1 !important;
+          font-size: 0.64rem !important;
+          line-height: 1.22 !important;
+        }
+
+        .inamaad-property-grid > article span,
+        .inamaad-property-grid > article div,
+        .inamaad-property-grid > article a,
+        .inamaad-property-grid > article button {
+          font-size: 0.65rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="text-3xl"],
+        .inamaad-property-grid > article [class*="text-2xl"],
+        .inamaad-property-grid > article [class*="text-xl"] {
+          font-size: 0.82rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="text-lg"] {
+          font-size: 0.76rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="text-sm"] {
+          font-size: 0.62rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="text-xs"] {
+          font-size: 0.55rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="mt-6"],
+        .inamaad-property-grid > article [class*="mt-5"],
+        .inamaad-property-grid > article [class*="mt-4"],
+        .inamaad-property-grid > article [class*="mt-3"] {
+          margin-top: 0.25rem !important;
+        }
+
+        .inamaad-property-grid > article [class*="grid-cols-3"] > div {
+          padding: 0.28rem 0.1rem !important;
+          border-radius: 0.5rem !important;
+        }
+
+        .inamaad-property-grid > article a,
+        .inamaad-property-grid > article button {
+          min-height: 30px !important;
+          padding: 0.32rem 0.38rem !important;
+          border-radius: 0.55rem !important;
+          font-size: 0.62rem !important;
+        }
+      }
+
+      @media (max-width: 430px) {
+        .inamaad-property-grid > article [class*="relative h-72"],
+        .inamaad-property-grid > article [class*="h-72"],
+        .inamaad-property-grid > article [class*="h-80"] {
+          height: 7.15rem !important;
+          min-height: 7.15rem !important;
+          max-height: 7.15rem !important;
+        }
+
+        .inamaad-property-grid > article > div:not(:first-child) {
+          padding: 0.5rem !important;
+        }
+
+        .inamaad-property-grid > article h3,
+        .inamaad-property-grid > article h4 {
+          font-size: 0.78rem !important;
+        }
+
+        .inamaad-property-grid > article p {
+          font-size: 0.6rem !important;
+        }
+      }
+    `}</style>
+  );
+}
+
+
+
+function ReliablePropertyAccessStyles() {
+  return (
+    <style>{`
+      .inamaad-reliable-property-access {
+        margin-top: 0.7rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(240, 191, 60, 0.35);
+        background: linear-gradient(180deg, #fff8e6 0%, #ffffff 70%);
+        padding: 0.75rem;
+      }
+
+      .inamaad-reliable-property-access-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+        margin-bottom: 0.6rem;
+      }
+
+      .inamaad-reliable-property-access-title p:first-child {
+        font-size: 0.62rem !important;
+        line-height: 1.1 !important;
+        font-weight: 1000 !important;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #9b6b16 !important;
+      }
+
+      .inamaad-reliable-property-access-title p:last-child {
+        border-radius: 999px;
+        background: #0d1c38;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.58rem !important;
+        line-height: 1 !important;
+        font-weight: 1000 !important;
+        color: white !important;
+        white-space: nowrap;
+      }
+
+      .inamaad-reliable-property-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+      }
+
+      .inamaad-reliable-property-item {
+        min-width: 0;
+        border-radius: 0.75rem;
+        background: #f8fafc;
+        padding: 0.5rem;
+      }
+
+      .inamaad-reliable-property-label {
+        font-size: 0.52rem !important;
+        line-height: 1.1 !important;
+        font-weight: 1000 !important;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b !important;
+      }
+
+      .inamaad-reliable-property-value {
+        margin-top: 0.18rem;
+        font-size: 0.68rem !important;
+        line-height: 1.25 !important;
+        font-weight: 1000 !important;
+        color: #0d1c38 !important;
+        overflow-wrap: anywhere;
+      }
+
+      .inamaad-reliable-property-description {
+        margin-top: 0.55rem;
+        display: block !important;
+        border-radius: 0.75rem;
+        background: white;
+        padding: 0.6rem;
+        font-size: 0.66rem !important;
+        line-height: 1.45 !important;
+        color: #475569 !important;
+        -webkit-line-clamp: unset !important;
+        overflow: visible !important;
+      }
+
+      .inamaad-reliable-property-actions {
+        margin-top: 0.6rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+      }
+
+      .inamaad-reliable-property-actions a,
+      .inamaad-reliable-property-actions button {
+        min-height: 34px !important;
+        border-radius: 0.7rem !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.4rem 0.45rem !important;
+        font-size: 0.62rem !important;
+        font-weight: 1000 !important;
+        line-height: 1.1 !important;
+        text-align: center;
+      }
+
+      .inamaad-reliable-primary {
+        background: #0d1c38 !important;
+        color: white !important;
+      }
+
+      .inamaad-reliable-gold {
+        background: #f0bf3c !important;
+        color: #0d1c38 !important;
+      }
+
+      .inamaad-reliable-outline {
+        border: 1px solid #0d1c38 !important;
+        background: white !important;
+        color: #0d1c38 !important;
+      }
+
+      .inamaad-reliable-whatsapp {
+        background: #22c55e !important;
+        color: white !important;
+      }
+
+      @media (min-width: 1024px) {
+        .inamaad-reliable-property-access {
+          padding: 0.68rem;
+        }
+
+        .inamaad-reliable-property-actions a,
+        .inamaad-reliable-property-actions button {
+          min-height: 32px !important;
+          font-size: 0.6rem !important;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .inamaad-reliable-property-access {
+          margin-top: 0.55rem;
+          padding: 0.58rem;
+          border-radius: 0.85rem;
+        }
+
+        .inamaad-reliable-property-grid {
+          gap: 0.35rem;
+        }
+
+        .inamaad-reliable-property-item {
+          padding: 0.42rem;
+          border-radius: 0.62rem;
+        }
+
+        .inamaad-reliable-property-label {
+          font-size: 0.48rem !important;
+        }
+
+        .inamaad-reliable-property-value {
+          font-size: 0.6rem !important;
+        }
+
+        .inamaad-reliable-property-description {
+          padding: 0.5rem;
+          font-size: 0.6rem !important;
+          line-height: 1.35 !important;
+        }
+
+        .inamaad-reliable-property-actions {
+          gap: 0.35rem;
+        }
+
+        .inamaad-reliable-property-actions a,
+        .inamaad-reliable-property-actions button {
+          min-height: 31px !important;
+          border-radius: 0.55rem !important;
+          padding: 0.32rem 0.35rem !important;
+          font-size: 0.55rem !important;
+        }
+      }
+    `}</style>
+  );
+}
+
+function ReliablePropertyAccess({
+  listing,
+  galleryImages,
+  onOpenModal,
+  onShare,
+}: {
+  listing: Listing;
+  galleryImages: string[];
+  onOpenModal: () => void;
+  onShare: () => void;
+}) {
+  const isJV = isJointVentureListing(listing);
+  const whatsappPhone =
+    normalizeNigeriaWhatsApp(listing.contactWhatsapp || listing.ownerPhone) ||
+    WHATSAPP_NUMBER;
+
+  const enquiryMessage = `Hello INAMAAD Real Estate, I want full details about ${listing.title} (${buildListingReference(
+    listing.id
+  )}) in ${listing.location}.`;
+
+  const detailItems = isJV
+    ? [
+        ["Ref", buildListingReference(listing.id)],
+        ["Location", buildPublicLocationText(listing)],
+        ["Land size", listing.landSize || "Not stated"],
+        ["JV type", listing.jvStructure || listing.type || "JV deal"],
+        ["Stage", listing.jvProjectStage || "Not stated"],
+        ["Title", listing.jvLandTitleStatus || listing.documentStatus || "Review"],
+      ]
+    : [
+        ["Ref", buildListingReference(listing.id)],
+        ["Location", buildPublicLocationText(listing)],
+        ["Price", listing.price],
+        ["Purpose", listing.category || "Property"],
+        ["Beds", listing.bedrooms ? `${listing.bedrooms}` : "N/A"],
+        ["Baths", listing.bathrooms ? `${listing.bathrooms}` : "N/A"],
+      ];
+
+  return (
+    <div id={`property-full-${listing.id}`} className="inamaad-reliable-property-access">
+      <div className="inamaad-reliable-property-access-title">
+        <p>Property details</p>
+        <p>{galleryImages.length ? `${galleryImages.length} Photos` : "Verified"}</p>
+      </div>
+
+      <div className="inamaad-reliable-property-grid">
+        {detailItems.map(([label, value]) => (
+          <div key={label} className="inamaad-reliable-property-item">
+            <p className="inamaad-reliable-property-label">{label}</p>
+            <p className="inamaad-reliable-property-value">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="inamaad-reliable-property-description">
+        {listing.description || "No description provided yet."}
+      </p>
+
+      <div className="inamaad-reliable-property-actions">
+        <a
+          href={`#property-full-${listing.id}`}
+          className="inamaad-reliable-gold"
+        >
+          View Here
+        </a>
+
+        <button
+          type="button"
+          onClick={onOpenModal}
+          className="inamaad-reliable-primary"
+        >
+          Open Modal
+        </button>
+
+        <a
+          href={createWhatsAppLeadLink(whatsappPhone, enquiryMessage)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inamaad-reliable-whatsapp"
+        >
+          WhatsApp
+        </a>
+
+        <button
+          type="button"
+          onClick={onShare}
+          className="inamaad-reliable-outline"
+        >
+          Share
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+export default function App() {
   const [listings, setListings] = useState<Listing[]>(seedListings);
   const [investorRequests, setInvestorRequests] = useState<InvestorRequest[]>(
     []
@@ -1644,13 +2839,6 @@ function InamaadMainApp() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [showNewUserGuideNotice, setShowNewUserGuideNotice] = useState(() => {
-    try {
-      return localStorage.getItem("inamaad_user_guide_seen") !== "true";
-    } catch {
-      return true;
-    }
-  });
   const [query, setQuery] = useState("");
   const [propertyType, setPropertyType] = useState("All");
   const [listingPurpose, setListingPurpose] = useState("All Purposes");
@@ -1670,18 +2858,9 @@ function InamaadMainApp() {
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const autoRefreshTimerRef = useRef<number | null>(null);
   const [sharedListingOpened, setSharedListingOpened] = useState(false);
-  const [recentListingIds, setRecentListingIds] = useState<number[]>(() => {
-    try {
-      const savedIds = JSON.parse(localStorage.getItem("inamaad_recent_listing_ids") || "[]");
-      return Array.isArray(savedIds)
-        ? savedIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)).slice(0, 6)
-        : [];
-    } catch {
-      return [];
-    }
-  });
 
   const [user, setUser] = useState<User | null>(null);
+  const [demoAuthenticated, setDemoAuthenticated] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
@@ -1696,11 +2875,14 @@ function InamaadMainApp() {
     password: "",
   });
 
-  const [demoSignedIn, setDemoSignedIn] = useState(false);
-  const [demoUserEmail, setDemoUserEmail] = useState("");
+  const [forgotPasswordForm, setForgotPasswordForm] = useState({
+    email: "",
+  });
 
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  const [confirmationEmail, setConfirmationEmail] = useState("");
+  const [confirmEmailForm, setConfirmEmailForm] = useState({
+    email: "",
+  });
+
   const [resetPasswordForm, setResetPasswordForm] = useState({
     password: "",
     confirmPassword: "",
@@ -1711,7 +2893,6 @@ function InamaadMainApp() {
     email: "",
     password: "",
   });
-  const [isRegistering, setIsRegistering] = useState(false);
 
   const [postForm, setPostForm] = useState({
     title: "",
@@ -1993,78 +3174,7 @@ function InamaadMainApp() {
   const [jvProposalDocumentFile, setJvProposalDocumentFile] = useState<File | null>(null);
   const [jvOtherDocumentFile, setJvOtherDocumentFile] = useState<File | null>(null);
 
-  const [publicSubmittingForm, setPublicSubmittingForm] = useState<LeadKind | null>(null);
-  const publicSubmissionLockRef = useRef<LeadKind | null>(null);
-  const [publicFormBotTrap, setPublicFormBotTrap] = useState<Record<LeadKind, string>>({
-    investor_requests: "",
-    property_inquiries: "",
-    property_offers: "",
-    jv_applications: "",
-    contact_messages: "",
-    inspection_bookings: "",
-  });
-
   const usesDatabase = Boolean(supabase);
-
-  function cleanFormText(value?: string | null) {
-    return String(value || "").trim();
-  }
-
-  function hasMinimumText(value: string | undefined, minimumLength: number) {
-    return cleanFormText(value).length >= minimumLength;
-  }
-
-  function optionalEmailIsValid(value?: string) {
-    const email = cleanFormText(value);
-    return !email || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
-  }
-
-  function phoneLooksValid(value?: string) {
-    return cleanFormText(value).replace(/\D/g, "").length >= 7;
-  }
-
-  function isWithinLimit(value: string | undefined, maximumLength: number) {
-    return cleanFormText(value).length <= maximumLength;
-  }
-
-  function beginPublicFormSubmit(
-    formKey: LeadKind,
-    checks: Array<{ ok: boolean; message: string }>
-  ) {
-    if (publicSubmissionLockRef.current) {
-      showSuccess("Please wait, your previous submission is still processing.");
-      return false;
-    }
-
-    if (cleanFormText(publicFormBotTrap[formKey])) {
-      console.warn("INAMAAD bot-trap blocked a public form submission:", formKey);
-      showSuccess("Submission blocked. Please refresh the page and try again.");
-      return false;
-    }
-
-    const failedCheck = checks.find((check) => !check.ok);
-
-    if (failedCheck) {
-      showSuccess(failedCheck.message);
-      return false;
-    }
-
-    publicSubmissionLockRef.current = formKey;
-    setPublicSubmittingForm(formKey);
-    return true;
-  }
-
-  function finishPublicFormSubmit(formKey: LeadKind) {
-    if (publicSubmissionLockRef.current === formKey) {
-      publicSubmissionLockRef.current = null;
-    }
-
-    setPublicSubmittingForm((current) => (current === formKey ? null : current));
-  }
-
-  function resetPublicFormBotTrap(formKey: LeadKind) {
-    setPublicFormBotTrap((current) => ({ ...current, [formKey]: "" }));
-  }
 
   const pendingListings = listings.filter(
     (listing) => listing.status === "Pending Review"
@@ -2087,14 +3197,35 @@ function InamaadMainApp() {
   const totalLeads = investorRequests.length + propertyInquiries.length + propertyOffers.length + jvApplications.length + contactMessages.length + inspectionBookings.length;
   const conversionReadyLeads = propertyInquiries.length + propertyOffers.length + jvApplications.length + contactMessages.length + inspectionBookings.length;
   const unreadNotifications = staffNotifications.filter((notification) => !notification.isRead).length;
-  const isSignedIn = Boolean(user) || demoSignedIn;
-  const signedInEmail = user?.email || demoUserEmail || "INAMAAD Account";
   const currentStaffMember = staffMembers.find((member) => member.email === user?.email);
   const currentStaffRole: StaffRole = usesDatabase
     ? currentStaffMember?.role || "Viewer"
-    : "Viewer";
+    : "Super Admin";
+  const isAuthenticated = Boolean(user) || demoAuthenticated || adminUnlocked;
+  const sessionDisplayName = user
+    ? getUserDisplayName(user)
+    : demoAuthenticated
+    ? "Demo user"
+    : adminUnlocked
+    ? "Local admin"
+    : "Guest visitor";
+  const sessionEmail = user?.email || (adminUnlocked && adminEmail ? adminEmail : demoAuthenticated ? "Demo mode" : "Not signed in");
+  const sessionInitials = getUserInitials(sessionDisplayName || sessionEmail);
+  const sessionRoleText = user
+    ? currentStaffMember
+      ? currentStaffRole
+      : "Signed-in user"
+    : adminUnlocked
+    ? currentStaffRole
+    : demoAuthenticated
+    ? "Demo account"
+    : "Guest";
+  const sessionStatusText = isAuthenticated ? "Logged in" : "Not logged in";
+  const sessionStatusDescription = isAuthenticated
+    ? `Active session: ${sessionEmail}`
+    : "Sign in or create an account to see your account status here.";
   const hasAnyStaffRole = (allowedRoles: StaffRole[]) =>
-    usesDatabase && allowedRoles.includes(currentStaffRole);
+    !usesDatabase || allowedRoles.includes(currentStaffRole);
 
   const isSuperAdmin = hasAnyStaffRole(["Super Admin"]);
   const canManageStaff = hasAnyStaffRole(["Super Admin"]);
@@ -2109,61 +3240,6 @@ function InamaadMainApp() {
     (member) => member.isActive && member.role !== "Viewer"
   );
   const activeStaffCount = staffMembers.filter((member) => member.isActive).length;
-  const publicListingsWithContactCount = verifiedListings.filter(
-    (listing) => listing.ownerPhone || listing.contactWhatsapp || listing.contactEmail
-  ).length;
-  const listingsWithImagesCount = listings.filter((listing) => listing.imageUrl).length;
-
-  const launchFoundationChecks = [
-    {
-      label: "Database connection",
-      passed: usesDatabase,
-      detail: usesDatabase
-        ? "Supabase environment variables are detected."
-        : "Supabase is not connected yet; local storage is still being used.",
-    },
-    {
-      label: "Public property browsing",
-      passed: verifiedListings.length > 0,
-      detail: `${verifiedListings.length} verified listing${verifiedListings.length === 1 ? "" : "s"} available to visitors.`,
-    },
-    {
-      label: "Property/JV detail opening",
-      passed: true,
-      detail: "Property and JV cards use the protected click handler so details open without refresh conflict.",
-    },
-    {
-      label: "Upload guard",
-      passed: true,
-      detail: "Images and documents are checked for file type and size before upload.",
-    },
-    {
-      label: "Admin approval flow",
-      passed: true,
-      detail: `${pendingListings.length} listing${pendingListings.length === 1 ? "" : "s"} currently waiting for review.`,
-    },
-    {
-      label: "Contact channels",
-      passed: publicListingsWithContactCount > 0 || Boolean(WHATSAPP_NUMBER),
-      detail: `${publicListingsWithContactCount} verified listing${publicListingsWithContactCount === 1 ? "" : "s"} include direct listing contact details. Global WhatsApp is available.`,
-    },
-    {
-      label: "Listing media readiness",
-      passed: listings.length === 0 || listingsWithImagesCount > 0,
-      detail: `${listingsWithImagesCount} listing${listingsWithImagesCount === 1 ? "" : "s"} currently have image/gallery media.`,
-    },
-    {
-      label: "Lead capture forms",
-      passed: true,
-      detail: "Investor requests, property inquiries, offers, inspections, and contact messages are available.",
-    },
-  ];
-  const launchFoundationScore = Math.round(
-    (launchFoundationChecks.filter((check) => check.passed).length /
-      launchFoundationChecks.length) *
-      100
-  );
-  const failedLaunchFoundationChecks = launchFoundationChecks.filter((check) => !check.passed);
   const todayKey = new Date().toISOString().slice(0, 10);
 
   const leadFollowUpItems = useMemo(() => {
@@ -2434,17 +3510,16 @@ function InamaadMainApp() {
     sortMode,
   ]);
 
-  const recentlyViewedListings = useMemo(
-    () =>
-      recentListingIds
-        .map((id) => listings.find((listing) => Number(listing.id) === Number(id)))
-        .filter((listing): listing is Listing => Boolean(listing)),
-    [recentListingIds, listings]
+  const filteredPropertyListings = useMemo(
+    () => filteredListings.filter((listing) => !isJointVentureListing(listing)),
+    [filteredListings]
   );
 
-  useEffect(() => {
-    localStorage.setItem("inamaad_recent_listing_ids", JSON.stringify(recentListingIds));
-  }, [recentListingIds]);
+  const filteredJvListings = useMemo(
+    () => filteredListings.filter((listing) => isJointVentureListing(listing)),
+    [filteredListings]
+  );
+
 
   useEffect(() => {
     if (!supabase) {
@@ -2454,10 +3529,12 @@ function InamaadMainApp() {
 
     loadDatabaseListings();
     loadDatabasePropertyImages();
+    handleIncomingAuthRedirect();
 
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
       if (data.user) {
+        setDemoAuthenticated(false);
         checkAdminAccess();
       }
     });
@@ -2466,28 +3543,14 @@ function InamaadMainApp() {
       (event, session) => {
         setUser(session?.user ?? null);
 
-        if (session?.user) {
-          const emailConfirmedAt = session.user.email_confirmed_at;
-
-          if (!emailConfirmedAt && event === "SIGNED_IN") {
-            setConfirmationEmail(session.user.email ?? "");
-            supabase.auth.signOut();
-            setUser(null);
-            setDemoSignedIn(false);
-            setDemoUserEmail("");
-            showSuccess("Email confirmation is required before signing in. Check your inbox and confirm your email first.");
-            return;
-          }
-
-          setDemoSignedIn(false);
-          setDemoUserEmail("");
-        }
-
         if (event === "PASSWORD_RECOVERY") {
-          setModal("resetPassword");
-          showSuccess("Enter your new password to complete account recovery.");
+          setModal("reset_password");
+          showSuccess("Password recovery verified. Enter a new password to finish.");
         }
 
+        if (session?.user) {
+          setDemoAuthenticated(false);
+        }
         if (!session?.user) {
           setAdminUnlocked(false);
           setInvestorRequests([]);
@@ -2572,29 +3635,30 @@ function InamaadMainApp() {
   useEffect(() => {
     if (!supabase) return;
 
-    const handleBackgroundClickRefresh = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-
-      // Mobile scroll stability:
-      // Do not refresh on touchstart, pointerdown, mousedown, wheel, or scroll.
-      // Refreshing while a finger-scroll is starting can re-render the listing
-      // area and make the page jump to the footer/end unexpectedly.
-      if (
-        event.defaultPrevented ||
-        target?.closest(
-          '[data-inamaad-open-listing="true"], [data-inamaad-no-refresh="true"], [role="dialog"], form, input, textarea, select, button, a'
-        )
-      ) {
-        return;
-      }
-
-      scheduleAutoRefresh(1200);
+    const handleAnyWebsiteClick = () => {
+      // Refresh after ANY click/tap, including disabled buttons, modal clicks,
+      // empty space clicks, touch taps, and clicks where React handlers stop bubbling.
+      // Capture-phase pointer events make this stronger than a normal onClick.
+      scheduleAutoRefresh(0);
     };
 
-    document.addEventListener("click", handleBackgroundClickRefresh, true);
+    const clickEvents: Array<keyof WindowEventMap> = [
+      "pointerdown",
+      "mousedown",
+      "touchstart",
+      "click",
+    ];
+
+    clickEvents.forEach((eventName) => {
+      window.addEventListener(eventName, handleAnyWebsiteClick, true);
+      document.addEventListener(eventName, handleAnyWebsiteClick, true);
+    });
 
     return () => {
-      document.removeEventListener("click", handleBackgroundClickRefresh, true);
+      clickEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, handleAnyWebsiteClick, true);
+        document.removeEventListener(eventName, handleAnyWebsiteClick, true);
+      });
 
       if (autoRefreshTimerRef.current) {
         window.clearTimeout(autoRefreshTimerRef.current);
@@ -2666,80 +3730,13 @@ function InamaadMainApp() {
     }, delay);
   }
 
-  function formatAuthError(error: unknown, fallback = "Unable to complete request. Please try again."): string {
-    if (!error) return fallback;
-
-    if (typeof error === "string") {
-      return error.trim() && error !== "{}" ? error : fallback;
-    }
-
-    if (error instanceof Error) {
-      return error.message || fallback;
-    }
-
-    if (typeof error === "object") {
-      const value = error as { message?: unknown; error_description?: unknown; error?: unknown; status?: unknown };
-
-      const rawMessage =
-        typeof value.message === "string"
-          ? value.message
-          : typeof value.error_description === "string"
-            ? value.error_description
-            : typeof value.error === "string"
-              ? value.error
-              : "";
-
-      const message = rawMessage.trim();
-
-      if (!message || message === "{}") {
-        return fallback;
-      }
-
-      const lowerMessage = message.toLowerCase();
-
-      if (lowerMessage.includes("rate limit")) {
-        return "Request rate limit reached. Please wait a few minutes before trying again. If this continues, check Supabase SMTP and email rate limits.";
-      }
-
-      if (lowerMessage.includes("error sending confirmation email")) {
-        return "Confirmation email could not be sent. Check Supabase SMTP settings or wait for the email limit to reset.";
-      }
-
-      if (lowerMessage.includes("email not confirmed")) {
-        return "Please confirm your email before signing in. Check your inbox or resend the confirmation email.";
-      }
-
-      return message;
-    }
-
-    return fallback;
-  }
-
-  function showSuccess(message: unknown) {
-    const readableMessage = formatAuthError(message, "Action completed.");
-
-    setSuccessMessage(readableMessage);
+  function showSuccess(message: string) {
+    setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(""), 4500);
 
     if (supabase) {
       scheduleAutoRefresh(1100);
     }
-  }
-
-  function markUserGuideSeen() {
-    try {
-      localStorage.setItem("inamaad_user_guide_seen", "true");
-    } catch {
-      // Ignore storage errors so the guide never breaks browsing.
-    }
-
-    setShowNewUserGuideNotice(false);
-  }
-
-  function openUserGuide() {
-    markUserGuideSeen();
-    setMobileOpen(false);
-    setModal("guide");
   }
 
   function loadLocalData() {
@@ -3010,9 +4007,6 @@ function InamaadMainApp() {
   async function refreshAllData() {
     if (!supabase) return;
 
-    const savedScrollX = window.scrollX;
-    const savedScrollY = window.scrollY;
-
     setIsRefreshingData(true);
 
     try {
@@ -3037,16 +4031,6 @@ function InamaadMainApp() {
       }
     } finally {
       setIsRefreshingData(false);
-
-      // Keep background sync invisible and stable. Data can refresh, but the
-      // page must not jump while the user is browsing properties/JV deals.
-      window.requestAnimationFrame(() => {
-        window.scrollTo({
-          left: savedScrollX,
-          top: savedScrollY,
-          behavior: "auto",
-        });
-      });
     }
   }
 
@@ -3080,8 +4064,6 @@ function InamaadMainApp() {
   }
 
   async function uploadPropertyImage(file: File) {
-    validateUploadFile(file, "image");
-
     if (!supabase) return "";
 
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
@@ -3138,7 +4120,7 @@ function InamaadMainApp() {
       files.map(async (file, index) => ({
         id: Date.now() + index,
         listingId,
-        imageUrl: await imageFileToBase64(file, "image"),
+        imageUrl: await imageFileToBase64(file),
         caption: file.name,
         displayOrder: startOrder + index,
         isMain: false,
@@ -3150,8 +4132,6 @@ function InamaadMainApp() {
   }
 
   async function uploadPropertyDocument(file: File) {
-    validateUploadFile(file, "document");
-
     if (!supabase) return "";
 
     const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
@@ -3217,8 +4197,6 @@ function InamaadMainApp() {
   }
 
   async function uploadVerificationDocument(file: File, folder: string) {
-    validateUploadFile(file, "document");
-
     if (!supabase) return "";
 
     if (!canOpenDocuments) {
@@ -3289,8 +4267,6 @@ function InamaadMainApp() {
   }
 
   async function uploadJvDocument(file: File, folder: string) {
-    validateUploadFile(file, "document");
-
     if (!supabase) return "";
 
     if (!canOpenDocuments) {
@@ -3361,8 +4337,6 @@ function InamaadMainApp() {
   }
 
   async function uploadJvApplicationDocument(file: File, folder: string) {
-    validateUploadFile(file, "document");
-
     if (!supabase) return "";
 
     const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
@@ -3427,9 +4401,7 @@ function InamaadMainApp() {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
-  function imageFileToBase64(file: File, category: UploadFileCategory = "document") {
-    validateUploadFile(file, category);
-
+  function imageFileToBase64(file: File) {
     return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
@@ -3439,20 +4411,7 @@ function InamaadMainApp() {
   }
 
   async function openListing(listing: Listing) {
-    const latestListing =
-      listings.find((currentListing) => Number(currentListing.id) === Number(listing.id)) ||
-      listing;
-
-    if (autoRefreshTimerRef.current) {
-      window.clearTimeout(autoRefreshTimerRef.current);
-      autoRefreshTimerRef.current = null;
-    }
-
-    setSelectedListing(latestListing);
-    setRecentListingIds((currentIds) => [
-      latestListing.id,
-      ...currentIds.filter((id) => Number(id) !== Number(latestListing.id)),
-    ].slice(0, 6));
+    setSelectedListing(listing);
     setInquiryForm({ name: "", email: "", phone: "", message: "" });
     setInspectionForm({
       name: "",
@@ -3465,32 +4424,28 @@ function InamaadMainApp() {
     setModal("details");
 
     const newView: Omit<PropertyView, "id"> = {
-      listingId: latestListing.id,
-      listingTitle: latestListing.title,
+      listingId: listing.id,
+      listingTitle: listing.title,
       viewedAt: new Date().toISOString(),
     };
 
-    try {
-      if (supabase) {
-        const { error } = await supabase.from("property_views").insert({
-          listing_id: latestListing.id,
-          listing_title: latestListing.title,
-        });
+    if (supabase) {
+      const { error } = await supabase.from("property_views").insert({
+        listing_id: listing.id,
+        listing_title: listing.title,
+      });
 
-        if (error) {
-          console.error(error);
-          return;
-        }
-
-        if (adminUnlocked) {
-          await Promise.all([loadDatabasePropertyViews(), loadDatabasePropertyImages()]);
-        }
-      } else {
-        setPropertyViews((current) => [{ ...newView, id: Date.now() }, ...current]);
+      if (error) {
+        console.error(error);
+        return;
       }
-    } catch (error) {
-      // Viewing analytics must never stop property/JV details from opening.
-      console.error(error);
+
+      if (adminUnlocked) {
+        await loadDatabasePropertyViews();
+      await loadDatabasePropertyImages();
+      }
+    } else {
+      setPropertyViews((current) => [{ ...newView, id: Date.now() }, ...current]);
     }
   }
 
@@ -3732,7 +4687,7 @@ function InamaadMainApp() {
       const imageUrl = postImageFile
         ? supabase
           ? await uploadPropertyImage(postImageFile)
-          : await imageFileToBase64(postImageFile, "image")
+          : await imageFileToBase64(postImageFile)
         : "";
 
       const documentFileUrl = postDocumentFile
@@ -3929,17 +4884,6 @@ function InamaadMainApp() {
         jvEstimatedProjectCost: "",
         jvCompletionTimeline: "",
         jvTerms: "",
-        jvFeasibilityStudyUrl: "",
-        jvArchitecturalConceptUrl: "",
-        jvEstateLayoutUrl: "",
-        jvBoqUrl: "",
-        jvProposalDocumentUrl: "",
-        jvLandTitleStatus: "Not Reviewed",
-        jvDevelopmentApprovalStatus: "Not Reviewed",
-        jvDealStatus: "New JV" as JVDealStatus,
-        jvNextAction: "",
-        jvNextActionDate: "",
-        jvInternalNotes: "",
         neighborhoodOverview: "",
         roadAccess: "",
         powerSupply: "",
@@ -3971,15 +4915,6 @@ function InamaadMainApp() {
         contactAddress: "",
         publicContactVisibility: "Hide Phone",
         mandateStatus: "Not Confirmed",
-        identityType: "Not Provided",
-        identityNumber: "",
-        companyRegistrationNumber: "",
-        mandateDocumentStatus: "Not Provided",
-        contactProfileVerified: false,
-        contactVerificationNotes: "",
-        identityDocumentUrl: "",
-        cacDocumentUrl: "",
-        mandateDocumentUrl: "",
       });
       setPostMode("property");
       setPostFormRenderKey((current) => current + 1);
@@ -3991,11 +4926,7 @@ function InamaadMainApp() {
       showSuccess("Opportunity submitted successfully. Admin review is pending.");
     } catch (error) {
       console.error(error);
-      showSuccess(
-        error instanceof Error
-          ? error.message
-          : "Upload failed. Please check image/document size and try again."
-      );
+      showSuccess("Upload failed. Please try a smaller image/document file.");
     } finally {
       setIsLoading(false);
     }
@@ -4017,7 +4948,7 @@ function InamaadMainApp() {
       const imageUrl = editImageFile
         ? supabase
           ? await uploadPropertyImage(editImageFile)
-          : await imageFileToBase64(editImageFile, "image")
+          : await imageFileToBase64(editImageFile)
         : editForm.imageUrl;
 
       const documentFileUrl = editDocumentFile
@@ -4350,637 +5281,532 @@ function InamaadMainApp() {
   async function submitInvestorRequest(event: React.FormEvent) {
     event.preventDefault();
 
-    const formKey: LeadKind = "investor_requests";
+    const newRequest: Omit<InvestorRequest, "id"> = {
+      ...investorForm,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(investorForm.name, 2), message: "Please enter your full name." },
-        { ok: optionalEmailIsValid(investorForm.email) && hasMinimumText(investorForm.email, 6), message: "Please enter a valid email address." },
-        { ok: phoneLooksValid(investorForm.phone), message: "Please enter a valid phone or WhatsApp number." },
-        { ok: hasMinimumText(investorForm.budget, 1), message: "Please enter your investment budget." },
-        { ok: isWithinLimit(investorForm.message, 5000), message: "Your message is too long." },
-      ])
-    ) {
-      return;
-    }
-
-    try {
-      const newRequest: Omit<InvestorRequest, "id"> = {
-        ...investorForm,
+    if (supabase) {
+      const { error } = await supabase.from("investor_requests").insert({
+        name: investorForm.name,
+        email: investorForm.email,
+        phone: investorForm.phone,
+        budget: investorForm.budget,
+        interest: investorForm.interest,
+        message: investorForm.message,
         status: "New",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("investor_requests").insert({
-          name: cleanFormText(investorForm.name),
-          email: cleanFormText(investorForm.email),
-          phone: cleanFormText(investorForm.phone),
-          budget: cleanFormText(investorForm.budget),
-          interest: investorForm.interest,
-          message: cleanFormText(investorForm.message),
-          status: "New",
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess("Unable to submit investor request. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setInvestorRequests((current) => [
-          { ...newRequest, id: Date.now() },
-          ...current,
-        ]);
-      }
-
-      await createStaffNotification(
-        "New investor request",
-        `${investorForm.name} requested ${investorForm.interest} investment support with budget ${investorForm.budget}.`,
-        "Investor Request"
-      );
-
-      setInvestorForm({
-        name: "",
-        email: "",
-        phone: "",
-        budget: "",
-        interest: "Residential",
-        message: "",
       });
 
-      resetPublicFormBotTrap(formKey);
-      setModal(null);
-      showSuccess("Investor request saved. INAMAAD will contact you shortly.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit investor request. Check database.");
+        return;
+      }
+    } else {
+      setInvestorRequests((current) => [
+        { ...newRequest, id: Date.now() },
+        ...current,
+      ]);
     }
+
+    await createStaffNotification(
+      "New investor request",
+      `${investorForm.name} requested ${investorForm.interest} investment support with budget ${investorForm.budget}.`,
+      "Investor Request"
+    );
+
+    setInvestorForm({
+      name: "",
+      email: "",
+      phone: "",
+      budget: "",
+      interest: "Residential",
+      message: "",
+    });
+
+    setModal(null);
+    showSuccess("Investor request saved. INAMAAD will contact you shortly.");
   }
+
   async function submitPropertyInquiry(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const formKey: LeadKind = "property_inquiries";
+    const newInquiry: Omit<PropertyInquiry, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      name: inquiryForm.name,
+      email: inquiryForm.email,
+      phone: inquiryForm.phone,
+      message: inquiryForm.message,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(inquiryForm.name, 2), message: "Please enter your name." },
-        { ok: optionalEmailIsValid(inquiryForm.email), message: "Please enter a valid email address or leave it empty." },
-        { ok: phoneLooksValid(inquiryForm.phone), message: "Please enter a valid phone or WhatsApp number." },
-        { ok: isWithinLimit(inquiryForm.message, 5000), message: "Your message is too long." },
-      ])
-    ) {
-      return;
-    }
+    if (supabase) {
+      const { error } = await supabase.from("property_inquiries").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        name: inquiryForm.name,
+        email: inquiryForm.email || null,
+        phone: inquiryForm.phone,
+        message: inquiryForm.message,
+      });
 
-    try {
-      const newInquiry: Omit<PropertyInquiry, "id"> = {
-        listingId: selectedListing.id,
-        listingTitle: selectedListing.title,
-        name: cleanFormText(inquiryForm.name),
-        email: cleanFormText(inquiryForm.email),
-        phone: cleanFormText(inquiryForm.phone),
-        message: cleanFormText(inquiryForm.message),
-        status: "New",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("property_inquiries").insert({
-          listing_id: selectedListing.id,
-          listing_title: selectedListing.title,
-          name: cleanFormText(inquiryForm.name),
-          email: cleanFormText(inquiryForm.email) || null,
-          phone: cleanFormText(inquiryForm.phone),
-          message: cleanFormText(inquiryForm.message) || null,
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess("Unable to submit inquiry. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setPropertyInquiries((current) => [
-          { ...newInquiry, id: Date.now() },
-          ...current,
-        ]);
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit inquiry. Check database settings.");
+        return;
       }
-
-      await createStaffNotification(
-        "New property inquiry",
-        `${inquiryForm.name} requested access for ${selectedListing.title}.`,
-        "Property Inquiry"
-      );
-
-      setInquiryForm({ name: "", email: "", phone: "", message: "" });
-      resetPublicFormBotTrap(formKey);
-      setModal(null);
-      showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+    } else {
+      setPropertyInquiries((current) => [
+        { ...newInquiry, id: Date.now() },
+        ...current,
+      ]);
     }
+
+    await createStaffNotification(
+      "New property inquiry",
+      `${inquiryForm.name} requested access for ${selectedListing.title}.`,
+      "Property Inquiry"
+    );
+
+    setInquiryForm({ name: "", email: "", phone: "", message: "" });
+    setModal(null);
+    showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
   }
+
   async function submitInspectionBooking(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const formKey: LeadKind = "inspection_bookings";
+    const newBooking: Omit<InspectionBooking, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      name: inspectionForm.name,
+      email: inspectionForm.email,
+      phone: inspectionForm.phone,
+      preferredDate: inspectionForm.preferredDate,
+      preferredTime: inspectionForm.preferredTime,
+      message: inspectionForm.message,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(inspectionForm.name, 2), message: "Please enter your name." },
-        { ok: optionalEmailIsValid(inspectionForm.email), message: "Please enter a valid email address or leave it empty." },
-        { ok: phoneLooksValid(inspectionForm.phone), message: "Please enter a valid phone or WhatsApp number." },
-        { ok: isWithinLimit(inspectionForm.message, 5000), message: "Your inspection message is too long." },
-      ])
-    ) {
-      return;
-    }
-
-    try {
-      const newBooking: Omit<InspectionBooking, "id"> = {
-        listingId: selectedListing.id,
-        listingTitle: selectedListing.title,
-        name: cleanFormText(inspectionForm.name),
-        email: cleanFormText(inspectionForm.email),
-        phone: cleanFormText(inspectionForm.phone),
-        preferredDate: inspectionForm.preferredDate,
-        preferredTime: inspectionForm.preferredTime,
-        message: cleanFormText(inspectionForm.message),
+    if (supabase) {
+      const { error } = await supabase.from("inspection_bookings").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        name: inspectionForm.name,
+        email: inspectionForm.email || null,
+        phone: inspectionForm.phone,
+        preferred_date: inspectionForm.preferredDate || null,
+        preferred_time: inspectionForm.preferredTime || null,
+        message: inspectionForm.message || null,
         status: "New",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("inspection_bookings").insert({
-          listing_id: selectedListing.id,
-          listing_title: selectedListing.title,
-          name: cleanFormText(inspectionForm.name),
-          email: cleanFormText(inspectionForm.email) || null,
-          phone: cleanFormText(inspectionForm.phone),
-          preferred_date: inspectionForm.preferredDate || null,
-          preferred_time: inspectionForm.preferredTime || null,
-          message: cleanFormText(inspectionForm.message) || null,
-          status: "New",
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess("Unable to book inspection. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setInspectionBookings((current) => [
-          { ...newBooking, id: Date.now() },
-          ...current,
-        ]);
-      }
-
-      await createStaffNotification(
-        "New inspection booking",
-        `${inspectionForm.name} booked an inspection for ${selectedListing.title}.`,
-        "Inspection Booking"
-      );
-
-      setInspectionForm({
-        name: "",
-        email: "",
-        phone: "",
-        preferredDate: "",
-        preferredTime: "",
-        message: "",
       });
-      resetPublicFormBotTrap(formKey);
-      showSuccess("Inspection booking sent. INAMAAD will confirm your appointment.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to book inspection. Check database settings.");
+        return;
+      }
+    } else {
+      setInspectionBookings((current) => [
+        { ...newBooking, id: Date.now() },
+        ...current,
+      ]);
     }
+
+    await createStaffNotification(
+      "New inspection booking",
+      `${inspectionForm.name} booked an inspection for ${selectedListing.title}.`,
+      "Inspection Booking"
+    );
+
+    setInspectionForm({
+      name: "",
+      email: "",
+      phone: "",
+      preferredDate: "",
+      preferredTime: "",
+      message: "",
+    });
+    showSuccess("Inspection booking sent. INAMAAD will confirm your appointment.");
   }
+
   async function submitPropertyOffer(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const formKey: LeadKind = "property_offers";
+    const formattedOfferAmount = formatPriceInput(offerForm.offerAmount) || offerForm.offerAmount;
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(offerForm.buyerName, 2), message: "Please enter the buyer name." },
-        { ok: optionalEmailIsValid(offerForm.buyerEmail), message: "Please enter a valid email address or leave it empty." },
-        { ok: phoneLooksValid(offerForm.buyerPhone), message: "Please enter a valid phone or WhatsApp number." },
-        { ok: isWithinLimit(offerForm.message, 5000), message: "Your offer message is too long." },
-      ])
-    ) {
-      return;
-    }
+    const newOffer: Omit<PropertyOffer, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      buyerName: offerForm.buyerName,
+      buyerEmail: offerForm.buyerEmail,
+      buyerPhone: offerForm.buyerPhone,
+      offerAmount: formattedOfferAmount,
+      paymentPlan: offerForm.paymentPlan,
+      message: offerForm.message,
+      status: "New",
+      priority: "High",
+      createdAt: new Date().toISOString(),
+    };
 
-    try {
-      const formattedOfferAmount = formatPriceInput(offerForm.offerAmount) || offerForm.offerAmount;
-
-      const newOffer: Omit<PropertyOffer, "id"> = {
-        listingId: selectedListing.id,
-        listingTitle: selectedListing.title,
-        buyerName: cleanFormText(offerForm.buyerName),
-        buyerEmail: cleanFormText(offerForm.buyerEmail),
-        buyerPhone: cleanFormText(offerForm.buyerPhone),
-        offerAmount: formattedOfferAmount,
-        paymentPlan: offerForm.paymentPlan,
-        message: cleanFormText(offerForm.message),
+    if (supabase) {
+      const { error } = await supabase.from("property_offers").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        buyer_name: offerForm.buyerName,
+        buyer_email: offerForm.buyerEmail || null,
+        buyer_phone: offerForm.buyerPhone,
+        offer_amount: formattedOfferAmount || null,
+        payment_plan: offerForm.paymentPlan || null,
+        message: offerForm.message || null,
         status: "New",
         priority: "High",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("property_offers").insert({
-          listing_id: selectedListing.id,
-          listing_title: selectedListing.title,
-          buyer_name: cleanFormText(offerForm.buyerName),
-          buyer_email: cleanFormText(offerForm.buyerEmail) || null,
-          buyer_phone: cleanFormText(offerForm.buyerPhone),
-          offer_amount: cleanFormText(formattedOfferAmount) || null,
-          payment_plan: offerForm.paymentPlan || null,
-          message: cleanFormText(offerForm.message) || null,
-          status: "New",
-          priority: "High",
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess("Unable to submit offer. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setPropertyOffers((current) => [{ ...newOffer, id: Date.now() }, ...current]);
-      }
-
-      await createStaffNotification(
-        "New property offer",
-        `${offerForm.buyerName} made an offer/reservation request for ${selectedListing.title}${formattedOfferAmount ? ` at ${formattedOfferAmount}` : ""}.`,
-        "Property Offer"
-      );
-
-      setOfferForm({
-        buyerName: "",
-        buyerEmail: "",
-        buyerPhone: "",
-        offerAmount: "",
-        paymentPlan: "Full payment",
-        message: "",
       });
 
-      resetPublicFormBotTrap(formKey);
-      showSuccess("Offer/reservation request sent. INAMAAD will review and contact you shortly.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit offer. Check database settings.");
+        return;
+      }
+    } else {
+      setPropertyOffers((current) => [{ ...newOffer, id: Date.now() }, ...current]);
     }
+
+    await createStaffNotification(
+      "New property offer",
+      `${offerForm.buyerName} made an offer/reservation request for ${selectedListing.title}${formattedOfferAmount ? ` at ${formattedOfferAmount}` : ""}.`,
+      "Property Offer"
+    );
+
+    setOfferForm({
+      buyerName: "",
+      buyerEmail: "",
+      buyerPhone: "",
+      offerAmount: "",
+      paymentPlan: "Full payment",
+      message: "",
+    });
+
+    showSuccess("Offer/reservation request sent. INAMAAD will review and contact you shortly.");
   }
+
   async function submitJvApplication(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const formKey: LeadKind = "jv_applications";
+    let companyProfileUrl = "";
+    let cacCertificateUrl = "";
+    let portfolioUrl = "";
+    let financialProofUrl = "";
+    let proposalDocumentUrl = "";
+    let otherDocumentUrl = "";
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(jvApplicationForm.applicantName, 2), message: "Please enter your full name." },
-        { ok: optionalEmailIsValid(jvApplicationForm.applicantEmail), message: "Please enter a valid email address or leave it empty." },
-        { ok: phoneLooksValid(jvApplicationForm.applicantPhone), message: "Please enter a valid phone or WhatsApp number." },
-        { ok: isWithinLimit(jvApplicationForm.companyName, 180), message: "Company name is too long." },
-        { ok: isWithinLimit(jvApplicationForm.experienceSummary, 10000), message: "Experience summary is too long." },
-        { ok: isWithinLimit(jvApplicationForm.proposalMessage, 10000), message: "JV proposal message is too long." },
-      ])
-    ) {
+    try {
+      if (supabase) {
+        companyProfileUrl = jvCompanyProfileFile
+          ? await uploadJvApplicationDocument(jvCompanyProfileFile, "company-profile")
+          : "";
+        cacCertificateUrl = jvCacCertificateFile
+          ? await uploadJvApplicationDocument(jvCacCertificateFile, "cac-certificate")
+          : "";
+        portfolioUrl = jvPortfolioFile
+          ? await uploadJvApplicationDocument(jvPortfolioFile, "portfolio")
+          : "";
+        financialProofUrl = jvFinancialProofFile
+          ? await uploadJvApplicationDocument(jvFinancialProofFile, "financial-proof")
+          : "";
+        proposalDocumentUrl = jvProposalDocumentFile
+          ? await uploadJvApplicationDocument(jvProposalDocumentFile, "proposal-document")
+          : "";
+        otherDocumentUrl = jvOtherDocumentFile
+          ? await uploadJvApplicationDocument(jvOtherDocumentFile, "other")
+          : "";
+      }
+    } catch (error) {
+      console.error(error);
+      showSuccess("Unable to upload JV application document. Use PDF, JPG, PNG, or WEBP under 20MB.");
       return;
     }
 
-    try {
-      let companyProfileUrl = "";
-      let cacCertificateUrl = "";
-      let portfolioUrl = "";
-      let financialProofUrl = "";
-      let proposalDocumentUrl = "";
-      let otherDocumentUrl = "";
+    const newApplication: Omit<JVApplication, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      applicantName: jvApplicationForm.applicantName,
+      applicantEmail: jvApplicationForm.applicantEmail,
+      applicantPhone: jvApplicationForm.applicantPhone,
+      applicantRole: jvApplicationForm.applicantRole,
+      companyName: jvApplicationForm.companyName,
+      budgetCapacity: jvApplicationForm.budgetCapacity,
+      experienceSummary: jvApplicationForm.experienceSummary,
+      proposalMessage: jvApplicationForm.proposalMessage,
+      companyProfileUrl,
+      cacCertificateUrl,
+      portfolioUrl,
+      financialProofUrl,
+      proposalDocumentUrl,
+      otherDocumentUrl,
+      status: "New",
+      priority: "High",
+      createdAt: new Date().toISOString(),
+    };
 
-      try {
-        if (supabase) {
-          companyProfileUrl = jvCompanyProfileFile
-            ? await uploadJvApplicationDocument(jvCompanyProfileFile, "company-profile")
-            : "";
-          cacCertificateUrl = jvCacCertificateFile
-            ? await uploadJvApplicationDocument(jvCacCertificateFile, "cac-certificate")
-            : "";
-          portfolioUrl = jvPortfolioFile
-            ? await uploadJvApplicationDocument(jvPortfolioFile, "portfolio")
-            : "";
-          financialProofUrl = jvFinancialProofFile
-            ? await uploadJvApplicationDocument(jvFinancialProofFile, "financial-proof")
-            : "";
-          proposalDocumentUrl = jvProposalDocumentFile
-            ? await uploadJvApplicationDocument(jvProposalDocumentFile, "proposal-document")
-            : "";
-          otherDocumentUrl = jvOtherDocumentFile
-            ? await uploadJvApplicationDocument(jvOtherDocumentFile, "other")
-            : "";
-        }
-      } catch (error) {
-        console.error(error);
-        showSuccess("Unable to upload JV application document. Use PDF, JPG, PNG, or WEBP under 20MB.");
-        return;
-      }
-
-      const newApplication: Omit<JVApplication, "id"> = {
-        listingId: selectedListing.id,
-        listingTitle: selectedListing.title,
-        applicantName: cleanFormText(jvApplicationForm.applicantName),
-        applicantEmail: cleanFormText(jvApplicationForm.applicantEmail),
-        applicantPhone: cleanFormText(jvApplicationForm.applicantPhone),
-        applicantRole: jvApplicationForm.applicantRole,
-        companyName: cleanFormText(jvApplicationForm.companyName),
-        budgetCapacity: cleanFormText(jvApplicationForm.budgetCapacity),
-        experienceSummary: cleanFormText(jvApplicationForm.experienceSummary),
-        proposalMessage: cleanFormText(jvApplicationForm.proposalMessage),
-        companyProfileUrl,
-        cacCertificateUrl,
-        portfolioUrl,
-        financialProofUrl,
-        proposalDocumentUrl,
-        otherDocumentUrl,
+    if (supabase) {
+      const { error } = await supabase.from("jv_applications").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        applicant_name: jvApplicationForm.applicantName,
+        applicant_email: jvApplicationForm.applicantEmail || null,
+        applicant_phone: jvApplicationForm.applicantPhone,
+        applicant_role: jvApplicationForm.applicantRole,
+        company_name: jvApplicationForm.companyName || null,
+        budget_capacity: jvApplicationForm.budgetCapacity || null,
+        experience_summary: jvApplicationForm.experienceSummary || null,
+        proposal_message: jvApplicationForm.proposalMessage || null,
+        company_profile_url: companyProfileUrl || null,
+        cac_certificate_url: cacCertificateUrl || null,
+        portfolio_url: portfolioUrl || null,
+        financial_proof_url: financialProofUrl || null,
+        proposal_document_url: proposalDocumentUrl || null,
+        other_document_url: otherDocumentUrl || null,
         status: "New",
         priority: "High",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("jv_applications").insert({
-          listing_id: String(selectedListing.id),
-          listing_title: selectedListing.title,
-          applicant_name: cleanFormText(jvApplicationForm.applicantName),
-          applicant_email: cleanFormText(jvApplicationForm.applicantEmail) || null,
-          applicant_phone: cleanFormText(jvApplicationForm.applicantPhone),
-          applicant_role: jvApplicationForm.applicantRole,
-          company_name: cleanFormText(jvApplicationForm.companyName) || null,
-          budget_capacity: cleanFormText(jvApplicationForm.budgetCapacity) || null,
-          experience_summary: cleanFormText(jvApplicationForm.experienceSummary) || null,
-          proposal_message: cleanFormText(jvApplicationForm.proposalMessage) || null,
-          company_profile_url: companyProfileUrl || null,
-          cac_certificate_url: cacCertificateUrl || null,
-          portfolio_url: portfolioUrl || null,
-          financial_proof_url: financialProofUrl || null,
-          proposal_document_url: proposalDocumentUrl || null,
-          other_document_url: otherDocumentUrl || null,
-          status: "New",
-          priority: "High",
-          document_review_status: "Pending",
-          risk_level: "Not Reviewed",
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess(error.message || "Unable to submit JV application. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setJvApplications((current) => [{ ...newApplication, id: Date.now() }, ...current]);
-      }
-
-      await createStaffNotification(
-        "New JV partnership application",
-        `${jvApplicationForm.applicantName} applied as ${jvApplicationForm.applicantRole} for ${selectedListing.title}.`,
-        "JV Application"
-      );
-
-      setJvApplicationForm({
-        applicantName: "",
-        applicantEmail: "",
-        applicantPhone: "",
-        applicantRole: "Developer",
-        companyName: "",
-        budgetCapacity: "",
-        experienceSummary: "",
-        proposalMessage: "",
       });
-      setJvCompanyProfileFile(null);
-      setJvCacCertificateFile(null);
-      setJvPortfolioFile(null);
-      setJvFinancialProofFile(null);
-      setJvProposalDocumentFile(null);
-      setJvOtherDocumentFile(null);
 
-      resetPublicFormBotTrap(formKey);
-      showSuccess("JV partnership application sent. INAMAAD will review and contact you shortly.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit JV application. Check database settings.");
+        return;
+      }
+    } else {
+      setJvApplications((current) => [{ ...newApplication, id: Date.now() }, ...current]);
     }
+
+    await createStaffNotification(
+      "New JV partnership application",
+      `${jvApplicationForm.applicantName} applied as ${jvApplicationForm.applicantRole} for ${selectedListing.title}.`,
+      "JV Application"
+    );
+
+    setJvApplicationForm({
+      applicantName: "",
+      applicantEmail: "",
+      applicantPhone: "",
+      applicantRole: "Developer",
+      companyName: "",
+      budgetCapacity: "",
+      experienceSummary: "",
+      proposalMessage: "",
+    });
+    setJvCompanyProfileFile(null);
+    setJvCacCertificateFile(null);
+    setJvPortfolioFile(null);
+    setJvFinancialProofFile(null);
+    setJvProposalDocumentFile(null);
+    setJvOtherDocumentFile(null);
+
+    showSuccess("JV partnership application sent with supporting documents. INAMAAD will review and contact you shortly.");
   }
+
   async function submitContactMessage(event: React.FormEvent) {
     event.preventDefault();
 
-    const formKey: LeadKind = "contact_messages";
+    const newMessage: Omit<ContactMessage, "id"> = {
+      ...contactForm,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(contactForm.name, 2), message: "Please enter your full name." },
-        { ok: optionalEmailIsValid(contactForm.email), message: "Please enter a valid email address or leave it empty." },
-        { ok: phoneLooksValid(contactForm.phone) || hasMinimumText(contactForm.email, 6), message: "Please provide either a valid phone number or email address." },
-        { ok: hasMinimumText(contactForm.message, 5), message: "Please enter a message with at least 5 characters." },
-        { ok: isWithinLimit(contactForm.message, 5000), message: "Your message is too long." },
-      ])
-    ) {
-      return;
-    }
-
-    try {
-      const newMessage: Omit<ContactMessage, "id"> = {
-        ...contactForm,
-        name: cleanFormText(contactForm.name),
-        email: cleanFormText(contactForm.email),
-        phone: cleanFormText(contactForm.phone),
-        subject: cleanFormText(contactForm.subject),
-        message: cleanFormText(contactForm.message),
+    if (supabase) {
+      const { error } = await supabase.from("contact_messages").insert({
+        name: contactForm.name,
+        email: contactForm.email || null,
+        phone: contactForm.phone || null,
+        subject: contactForm.subject || "General enquiry",
+        message: contactForm.message,
         status: "New",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("contact_messages").insert({
-          name: cleanFormText(contactForm.name),
-          email: cleanFormText(contactForm.email) || null,
-          phone: cleanFormText(contactForm.phone) || null,
-          subject: cleanFormText(contactForm.subject) || "General enquiry",
-          message: cleanFormText(contactForm.message),
-          status: "New",
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess("Unable to send contact message. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setContactMessages((current) => [
-          { ...newMessage, id: Date.now() },
-          ...current,
-        ]);
-      }
-
-      await createStaffNotification(
-        "New contact message",
-        `${contactForm.name} sent a contact message: ${contactForm.subject || "General enquiry"}.`,
-        "Contact Message"
-      );
-
-      setContactForm({
-        name: "",
-        email: "",
-        phone: "",
-        subject: "",
-        message: "",
       });
 
-      resetPublicFormBotTrap(formKey);
-      showSuccess("Contact message sent. INAMAAD will reply shortly.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to send contact message. Check database settings.");
+        return;
+      }
+    } else {
+      setContactMessages((current) => [
+        { ...newMessage, id: Date.now() },
+        ...current,
+      ]);
+    }
+
+    await createStaffNotification(
+      "New contact message",
+      `${contactForm.name} sent a contact message: ${contactForm.subject || "General enquiry"}.`,
+      "Contact Message"
+    );
+
+    setContactForm({
+      name: "",
+      email: "",
+      phone: "",
+      subject: "",
+      message: "",
+    });
+
+    showSuccess("Contact message sent. INAMAAD will reply shortly.");
+  }
+
+  function handleIncomingAuthRedirect() {
+    if (typeof window === "undefined") return;
+
+    const currentUrl = new URL(window.location.href);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const authMode = currentUrl.searchParams.get("auth");
+    const authType = hashParams.get("type") || currentUrl.searchParams.get("type");
+    const authError =
+      hashParams.get("error_description") ||
+      currentUrl.searchParams.get("error_description") ||
+      hashParams.get("error") ||
+      currentUrl.searchParams.get("error");
+
+    if (authError) {
+      showSuccess(decodeURIComponent(authError));
+    } else if (authMode === "reset-password" || authType === "recovery") {
+      setModal("reset_password");
+      showSuccess("Reset link verified. Create a new password to finish.");
+    } else if (authMode === "email-confirmed" || authType === "signup") {
+      showSuccess("Email confirmed successfully. You can now sign in and use your INAMAAD account.");
+    }
+
+    if (authMode || authType || authError || window.location.hash) {
+      currentUrl.searchParams.delete("auth");
+      currentUrl.searchParams.delete("type");
+      currentUrl.searchParams.delete("error");
+      currentUrl.searchParams.delete("error_description");
+      window.history.replaceState(
+        {},
+        document.title,
+        `${currentUrl.pathname}${currentUrl.search}${currentUrl.search ? "" : ""}`
+      );
     }
   }
+
   async function handleSignIn(event: React.FormEvent) {
     event.preventDefault();
 
     if (!supabase) {
-      setDemoSignedIn(true);
-      setDemoUserEmail(signInForm.email || "Demo account");
-      setSignInForm({ email: "", password: "" });
+      setDemoAuthenticated(true);
       setModal(null);
-      showSuccess("Logged in successfully. Your account status is now visible.");
+      showSuccess("Demo sign in completed. You are logged in in local demo mode.");
       return;
     }
 
-    const loginEmail = signInForm.email.trim();
-
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: loginEmail,
+      email: signInForm.email,
       password: signInForm.password,
     });
 
     if (error) {
-      const message = formatAuthError(error, "Unable to sign in. Please check your email and password.");
-
-      if (message.toLowerCase().includes("confirm your email") || message.toLowerCase().includes("email not confirmed")) {
-        setConfirmationEmail(loginEmail);
-        showSuccess("Please confirm your email before signing in. Check your inbox or resend the confirmation email.");
-        return;
-      }
-
-      showSuccess(message);
+      showSuccess(error.message);
       return;
     }
 
-    const signedInUser = data.user ?? data.session?.user ?? null;
-
-    if (signedInUser) {
-      setUser(signedInUser);
-      setDemoSignedIn(false);
-      setDemoUserEmail("");
-    } else {
-      // Fallback: show the logged-in state immediately after a successful login.
-      // The Supabase auth listener will replace this with the real user session.
-      setDemoSignedIn(true);
-      setDemoUserEmail(loginEmail || "INAMAAD Account");
-    }
-
+    setUser(data.user);
+    setDemoAuthenticated(false);
     setSignInForm({ email: "", password: "" });
     setModal(null);
-    showSuccess("Logged in successfully.");
-  }
-
-  async function handleResendConfirmationEmail() {
-    const email = (signInForm.email || confirmationEmail || registerForm.email).trim();
-
-    if (!email) {
-      showSuccess("Enter your email address first, then resend confirmation.");
-      return;
-    }
-
-    setConfirmationEmail(email);
-
-    if (!supabase) {
-      showSuccess("Demo mode: confirmation email would be sent when Supabase is connected.");
-      return;
-    }
-
-    const redirectTo = `${window.location.origin}${window.location.pathname}`;
-
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
-    });
-
-    if (error) {
-      showSuccess(formatAuthError(error));
-      return;
-    }
-
-    showSuccess("Confirmation email sent. Check your inbox and spam folder.");
+    showSuccess(`Logged in successfully as ${data.user?.email || signInForm.email}.`);
   }
 
   async function handleForgotPassword(event: React.FormEvent) {
     event.preventDefault();
 
-    const email = forgotPasswordEmail.trim();
+    const email = (forgotPasswordForm.email || signInForm.email).trim();
 
     if (!email) {
-      showSuccess("Enter your email address first.");
+      showSuccess("Enter your email address first so INAMAAD can send the reset link.");
       return;
     }
 
     if (!supabase) {
-      setForgotPasswordEmail("");
-      setModal("signin");
-      showSuccess("Demo mode: password reset email would be sent when Supabase is connected.");
+      showSuccess("Password reset needs Supabase. In local demo mode, you can sign in with any email and password.");
       return;
     }
 
-    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const redirectTo = getAuthRedirectUrl("reset-password");
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
     });
 
     if (error) {
-      showSuccess(formatAuthError(error));
+      showSuccess(error.message);
       return;
     }
 
-    setForgotPasswordEmail("");
+    setForgotPasswordForm({ email: "" });
     setModal("signin");
-    showSuccess("Password reset link sent. Check your email inbox.");
+    showSuccess("Password reset link sent. Check your email, open the link, then set a new password.");
   }
 
-  async function handleResetPassword(event: React.FormEvent) {
+  async function handleResendConfirmation(event: React.FormEvent) {
+    event.preventDefault();
+
+    const email = (confirmEmailForm.email || signInForm.email || registerForm.email).trim();
+
+    if (!email) {
+      showSuccess("Enter the email address you used to create your INAMAAD account.");
+      return;
+    }
+
+    if (!supabase) {
+      showSuccess("Email confirmation needs Supabase. Local demo mode does not send confirmation emails.");
+      return;
+    }
+
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: getAuthRedirectUrl("email-confirmed"),
+      },
+    });
+
+    if (error) {
+      showSuccess(error.message);
+      return;
+    }
+
+    setConfirmEmailForm({ email: "" });
+    setModal("signin");
+    showSuccess("Confirmation email sent again. Open the link from the same browser or device.");
+  }
+
+  async function handleUpdatePassword(event: React.FormEvent) {
     event.preventDefault();
 
     if (!supabase) {
-      setResetPasswordForm({ password: "", confirmPassword: "" });
-      setModal("signin");
-      showSuccess("Demo mode: password would be updated when Supabase is connected.");
+      showSuccess("Password update needs Supabase authentication.");
       return;
     }
 
     if (resetPasswordForm.password.length < 6) {
-      showSuccess("Password must be at least 6 characters.");
+      showSuccess("Your new password must be at least 6 characters.");
       return;
     }
 
     if (resetPasswordForm.password !== resetPasswordForm.confirmPassword) {
-      showSuccess("Passwords do not match.");
+      showSuccess("The two passwords do not match.");
       return;
     }
 
@@ -4989,159 +5815,85 @@ function InamaadMainApp() {
     });
 
     if (error) {
-      showSuccess(formatAuthError(error));
+      showSuccess(error.message);
       return;
     }
 
     setResetPasswordForm({ password: "", confirmPassword: "" });
-    setModal("signin");
-    showSuccess("Password updated successfully. You can now sign in.");
+    setModal(null);
+    showSuccess("Password updated successfully. You are logged in.");
   }
 
   async function handleRegister(event: React.FormEvent) {
     event.preventDefault();
 
-    if (isRegistering) {
+    if (!supabase) {
+      setDemoAuthenticated(true);
+      setModal(null);
+      showSuccess("Demo account created. You are logged in in local demo mode.");
       return;
     }
 
-    const registerEmail = registerForm.email.trim().toLowerCase();
-    const registerName = registerForm.name.trim();
-    const registerPassword = registerForm.password;
+    const { data, error } = await supabase.auth.signUp({
+      email: registerForm.email,
+      password: registerForm.password,
+      options: {
+        emailRedirectTo: getAuthRedirectUrl("email-confirmed"),
+        data: {
+          full_name: registerForm.name,
+        },
+      },
+    });
 
-    if (!registerName) {
-      showSuccess("Enter your full name first.");
+    if (error) {
+      showSuccess(error.message);
       return;
     }
 
-    if (!registerEmail) {
-      showSuccess("Enter your email address first.");
-      return;
+    if (data.session && data.user) {
+      setUser(data.user);
+      setDemoAuthenticated(false);
+      showSuccess(`Account created and logged in as ${data.user.email || registerForm.email}.`);
+    } else {
+      setUser(null);
+      showSuccess("Account created. Check your email and click Confirm. If the link still fails, fix Supabase Site URL and Redirect URLs as shown in the steps below.");
     }
 
-    if (!registerEmail.includes("@") || !registerEmail.includes(".")) {
-      showSuccess("Enter a valid email address.");
-      return;
-    }
-
-    if (registerPassword.length < 6) {
-      showSuccess("Password must be at least 6 characters.");
-      return;
-    }
-
-    setIsRegistering(true);
-    showSuccess("Creating your account and requesting confirmation email...");
-
-    try {
-      if (!supabase) {
-        setDemoSignedIn(false);
-        setDemoUserEmail("");
-        setConfirmationEmail(registerEmail);
-        setRegisterForm({ name: "", email: "", password: "" });
-        setSignInForm({ email: registerEmail, password: "" });
-        setModal("signin");
-        showSuccess("Demo mode: account created. Email confirmation would be required when Supabase is connected.");
-        return;
-      }
-
-      const redirectTo = `${window.location.origin}${window.location.pathname}`;
-
-      const signUpResponse = await Promise.race([
-        supabase.auth.signUp({
-          email: registerEmail,
-          password: registerPassword,
-          options: {
-            emailRedirectTo: redirectTo,
-            data: {
-              full_name: registerName,
-            },
-          },
-        }),
-        new Promise<never>((_, reject) => {
-          window.setTimeout(() => {
-            reject(
-              new Error(
-                "Confirmation email request is taking too long. Check Supabase Auth Logs, SMTP settings, and email rate limits before trying again."
-              )
-            );
-          }, 25000);
-        }),
-      ]);
-
-      const { data, error } = signUpResponse;
-
-      if (error) {
-        setConfirmationEmail(registerEmail);
-        showSuccess(
-          formatAuthError(
-            error,
-            "Unable to create account. Check Supabase email confirmation, SMTP, and rate limits."
-          )
-        );
-        return;
-      }
-
-      // If Supabase unexpectedly returns a session, sign it out immediately.
-      // INAMAAD requires email confirmation before the first sign in.
-      if (data?.session) {
-        await supabase.auth.signOut();
-        setUser(null);
-        setDemoSignedIn(false);
-        setDemoUserEmail("");
-      }
-
-      setConfirmationEmail(registerEmail);
-      setRegisterForm({ name: "", email: "", password: "" });
-      setSignInForm({ email: registerEmail, password: "" });
-      setModal("signin");
-
-      // Do not say "account activated" here. Activation only happens after email confirmation.
-      showSuccess("Account created. Check your email inbox or spam folder for the confirmation link before signing in.");
-    } catch (error) {
-      showSuccess(
-        formatAuthError(
-          error,
-          "Create account failed. Check Supabase Auth Logs, SMTP settings, and rate limits."
-        )
-      );
-    } finally {
-      setIsRegistering(false);
-    }
+    setRegisterForm({ name: "", email: "", password: "" });
+    setModal(null);
   }
 
   async function unlockAdmin(event: React.FormEvent) {
     event.preventDefault();
 
     if (!supabase) {
-      showSuccess("Supabase Auth is required for staff access. Configure Supabase and sign in with an authorized staff account.");
+      if (adminPassword === LOCAL_ADMIN_PASSWORD) {
+        setAdminUnlocked(true);
+        setDemoAuthenticated(false);
+        setAdminPassword("");
+        showSuccess("Local staff session unlocked. You are logged in as demo admin.");
+      } else {
+        showSuccess("Wrong admin password.");
+      }
+
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: adminEmail,
       password: adminPassword,
     });
 
     if (error) {
-      showSuccess(formatAuthError(error));
+      showSuccess(error.message);
       return;
     }
 
+    setUser(data.user);
+    setDemoAuthenticated(false);
     setAdminPassword("");
     await checkAdminAccess();
-  }
-
-  async function handlePublicSignOut() {
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
-
-    setUser(null);
-    setDemoSignedIn(false);
-    setDemoUserEmail("");
-    setAdminUnlocked(false);
-    setModal(null);
-    showSuccess("Signed out successfully.");
+    showSuccess(`Staff logged in as ${data.user?.email || adminEmail}.`);
   }
 
   async function logoutAdmin() {
@@ -5150,9 +5902,8 @@ function InamaadMainApp() {
     }
 
     setAdminUnlocked(false);
+    setDemoAuthenticated(false);
     setUser(null);
-    setDemoSignedIn(false);
-    setDemoUserEmail("");
     setInvestorRequests([]);
     setPropertyInquiries([]);
     setPropertyViews([]);
@@ -5172,7 +5923,7 @@ function InamaadMainApp() {
     details = ""
   ) {
     const newLog: Omit<AdminActivityLog, "id"> = {
-      adminEmail: user?.email || adminEmail || "Staff user",
+      adminEmail: user?.email || adminEmail || "Local demo admin",
       action,
       targetType,
       targetId,
@@ -6095,7 +6846,7 @@ function InamaadMainApp() {
 
     if (!staffMember) return email;
 
-    return `${staffMember.fullName || staffMember.email}  -  ${staffMember.role}`;
+    return `${staffMember.fullName || staffMember.email} • ${staffMember.role}`;
   }
 
   function getLeadKindLabel(kind: LeadKind) {
@@ -6326,7 +7077,7 @@ function InamaadMainApp() {
               <option value="">Unassigned</option>
               {assignableStaffMembers.map((member) => (
                 <option key={member.email} value={member.email}>
-                  {member.fullName || member.email} Ã¢â‚¬â€ {member.role}
+                  {member.fullName || member.email} — {member.role}
                 </option>
               ))}
             </select>
@@ -6777,261 +7528,44 @@ function InamaadMainApp() {
   }
 
   return (
-    <div className="inamaad-mobile-shell min-h-screen overflow-x-hidden bg-[#f7f8fb] text-slate-950 antialiased">
+    <div className="min-h-screen bg-[#f6f7fb] pb-24 text-slate-950 lg:pb-0">
       <datalist id="nigeria-location-options">
         {nigeriaLocationLabels.map((location) => (
           <option key={location} value={location} />
         ))}
       </datalist>
 
-      <style>{`
-        html,
-        body,
-        #root {
-          width: 100%;
-          max-width: 100%;
-          overflow-x: hidden;
-        }
+      <MobileUsabilityStyles />
+      <ClassicResponsiveWebsiteStyles />
+      <CompactPropertyCardStyles />
+      <ReliablePropertyAccessStyles />
+      <MobileBottomNavigation setModal={setModal} />
 
-        *,
-        *::before,
-        *::after {
-          box-sizing: border-box;
-        }
-
-        .inamaad-mobile-shell {
-          width: 100%;
-          max-width: 100vw;
-          overflow-x: hidden;
-        }
-
-        .inamaad-mobile-shell img,
-        .inamaad-mobile-shell video,
-        .inamaad-mobile-shell iframe,
-        .inamaad-mobile-shell canvas,
-        .inamaad-mobile-shell svg {
-          max-width: 100%;
-        }
-
-        .inamaad-mobile-shell input,
-        .inamaad-mobile-shell select,
-        .inamaad-mobile-shell textarea,
-        .inamaad-mobile-shell button {
-          max-width: 100%;
-        }
-
-        .inamaad-mobile-shell table {
-          width: 100%;
-          max-width: 100%;
-        }
-
-        @media (max-width: 640px) {
-          .inamaad-mobile-shell {
-            -webkit-text-size-adjust: 100%;
-          }
-
-          .inamaad-mobile-shell section,
-          .inamaad-mobile-shell header,
-          .inamaad-mobile-shell footer {
-            max-width: 100vw;
-          }
-
-          .inamaad-mobile-shell h1 {
-            font-size: clamp(1.75rem, 8vw, 2.45rem) !important;
-            line-height: 1.05 !important;
-            overflow-wrap: anywhere;
-          }
-
-          .inamaad-mobile-shell h2 {
-            font-size: clamp(1.35rem, 6.2vw, 1.95rem) !important;
-            line-height: 1.12 !important;
-            overflow-wrap: anywhere;
-          }
-
-          .inamaad-mobile-shell h3 {
-            font-size: clamp(1.05rem, 5vw, 1.45rem) !important;
-            line-height: 1.18 !important;
-            overflow-wrap: anywhere;
-          }
-
-          .inamaad-mobile-shell p,
-          .inamaad-mobile-shell a,
-          .inamaad-mobile-shell button,
-          .inamaad-mobile-shell span,
-          .inamaad-mobile-shell div {
-            overflow-wrap: anywhere;
-          }
-
-          .inamaad-mobile-shell input,
-          .inamaad-mobile-shell select,
-          .inamaad-mobile-shell textarea {
-            min-height: 46px;
-            font-size: 16px !important;
-          }
-
-          .inamaad-mobile-shell button,
-          .inamaad-mobile-shell a {
-            touch-action: manipulation;
-          }
-
-          .inamaad-mobile-shell .overflow-x-auto {
-            -webkit-overflow-scrolling: touch;
-          }
-
-          .inamaad-mobile-shell [class*="rounded-["] {
-            border-radius: 1.25rem;
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-horizontal {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            gap: 0.85rem !important;
-            scroll-snap-type: x mandatory;
-            padding-bottom: 0.75rem;
-            -webkit-overflow-scrolling: touch;
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-horizontal > * {
-            scroll-snap-align: start;
-            flex: 0 0 auto;
-          }
-
-          .inamaad-mobile-shell .inamaad-listing-card-mobile {
-            width: 82vw;
-            min-width: 82vw;
-            max-width: 82vw;
-          }
-
-          .inamaad-mobile-shell .inamaad-profile-action-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-chip-row {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            gap: 0.55rem !important;
-            padding-bottom: 0.55rem;
-            -webkit-overflow-scrolling: touch;
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-chip-row > * {
-            flex: 0 0 auto;
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-profile-strip {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            gap: 0.5rem !important;
-            padding-bottom: 0.25rem;
-            -webkit-overflow-scrolling: touch;
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-profile-strip > * {
-            flex: 0 0 auto;
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-muted-text {
-            font-size: 0.82rem !important;
-            line-height: 1.45rem !important;
-          }
-
-          .inamaad-mobile-shell #properties,
-          .inamaad-mobile-shell #jv {
-            scroll-margin-top: 5.5rem;
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-horizontal {
-            overscroll-behavior-x: contain;
-          }
-        }
-
-        @media (min-width: 641px) {
-          .inamaad-mobile-shell .inamaad-listing-card-mobile {
-            width: auto;
-            min-width: 0;
-            max-width: none;
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-horizontal {
-            display: grid !important;
-            overflow: visible !important;
-            padding-bottom: 0;
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-chip-row {
-            flex-wrap: wrap !important;
-            overflow: visible !important;
-            padding-bottom: 0;
-          }
-
-          .inamaad-mobile-shell .inamaad-mobile-profile-strip {
-            flex-wrap: wrap !important;
-            overflow: visible !important;
-            padding-bottom: 0;
-          }
-        }
-      `}</style>
-
-      {showNewUserGuideNotice && (
-        <div
-          data-inamaad-no-refresh="true"
-          className="relative z-[60] border-b border-[#f0bf3c]/30 bg-[#0d1c38] px-3 py-2 text-white shadow-sm sm:px-4"
-        >
-          <div className="mx-auto flex max-w-7xl flex-col items-center justify-center gap-2 text-center text-[11px] leading-5 sm:flex-row sm:justify-between sm:text-left sm:text-xs">
-            <p className="font-semibold">
-              New here? See how to browse, inspect, contact, and post property on INAMAAD.
-            </p>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={openUserGuide}
-                className="rounded-full bg-[#f0bf3c] px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-[#0d1c38]"
-              >
-                Quick guide
-              </button>
-
-              <button
-                type="button"
-                onClick={markUserGuideSeen}
-                aria-label="Hide new user guide notice"
-                className="rounded-full border border-white/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-white/90 hover:bg-white/10"
-              >
-                Hide
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <header className="relative z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4 lg:px-4 xl:px-8">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
           <a href="#" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0d1c38] text-lg font-black text-[#f0bf3c] shadow-sm sm:h-11 sm:w-11 sm:text-xl">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0d1c38] text-xl font-black text-[#f0bf3c] shadow-sm">
               I
             </div>
 
             <div>
-              <div className="text-sm font-black uppercase tracking-wide text-[#0d1c38] sm:text-[15px]">
+              <div className="text-[15px] font-black uppercase tracking-wide text-[#0d1c38]">
                 INAMAAD
               </div>
-              <div className="text-[11px] text-slate-500 sm:text-xs">
+              <div className="text-xs text-slate-500">
                 Real Estate Enterprise
               </div>
             </div>
           </a>
 
-          <nav className="hidden flex-none items-center gap-4 whitespace-nowrap lg:flex xl:gap-5">
+          <nav className="hidden items-center gap-8 lg:flex">
             {navLinks.map((item, index) => (
               <a
                 key={item.label}
                 href={item.href}
-                className={`whitespace-nowrap text-sm font-semibold leading-5 transition xl:text-[15px] ${
+                className={`text-lg font-medium transition ${
                   index === 0
-                    ? "rounded-xl bg-white px-3 py-2.5 text-[#0d1c38] shadow-sm xl:px-4"
+                    ? "rounded-xl bg-white px-5 py-3 text-[#0d1c38] shadow-sm"
                     : "text-slate-600 hover:text-[#0d1c38]"
                 }`}
               >
@@ -7040,63 +7574,124 @@ function InamaadMainApp() {
             ))}
           </nav>
 
-          <div className="hidden flex-none items-center gap-2 whitespace-nowrap lg:flex xl:gap-3">
-            <button
-              type="button"
-              onClick={openUserGuide}
-              className="whitespace-nowrap text-sm font-semibold leading-5 text-slate-700 hover:text-[#0d1c38] xl:text-[15px]"
+          <div className="hidden items-center gap-4 lg:flex">
+            <div
+              className={`flex items-center gap-3 rounded-2xl border px-4 py-2 shadow-sm ${
+                isAuthenticated
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-amber-200 bg-amber-50"
+              }`}
             >
-              Guide
-            </button>
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-black ${
+                  isAuthenticated
+                    ? "bg-emerald-700 text-white"
+                    : "bg-amber-400 text-[#0d1c38]"
+                }`}
+              >
+                {isAuthenticated ? sessionInitials : "?"}
+              </div>
 
-            {isSignedIn ? (
-              <>
-                <div className="max-w-[220px] shrink-0 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-left shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
-                    Logged in
-                  </p>
-                  <p className="max-w-[160px] truncate text-xs font-black text-[#0d1c38] xl:max-w-[190px] xl:text-sm">
-                    {signedInEmail}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handlePublicSignOut}
-                  className="whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-black leading-5 text-slate-700 transition hover:border-[#0d1c38] hover:text-[#0d1c38] xl:px-5"
+              <div className="min-w-0">
+                <div
+                  className={`flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] ${
+                    isAuthenticated ? "text-emerald-700" : "text-amber-700"
+                  }`}
                 >
-                  Sign{"\u00A0"}Out
-                </button>
-              </>
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      isAuthenticated ? "bg-emerald-500" : "bg-amber-500"
+                    }`}
+                  />
+                  {sessionStatusText}
+                </div>
+                <p className="max-w-[210px] truncate text-sm font-black text-[#0d1c38]">
+                  {sessionDisplayName}
+                </p>
+                <p className="max-w-[210px] truncate text-xs font-semibold text-slate-500">
+                  {sessionRoleText}
+                </p>
+              </div>
+            </div>
+
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={logoutAdmin}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+              >
+                Sign Out
+              </button>
             ) : (
               <>
                 <button
                   onClick={() => setModal("signin")}
-                  className="whitespace-nowrap text-sm font-semibold leading-5 text-slate-700 hover:text-[#0d1c38] xl:text-[15px]"
+                  className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
                 >
-                  Sign{"\u00A0"}In
+                  Sign In
                 </button>
 
                 <button
-                  onClick={() => setModal("investor")}
-                  className="whitespace-nowrap rounded-xl bg-[#0d1c38] px-4 py-2.5 text-sm font-bold leading-5 text-white shadow-sm transition hover:bg-[#13284f] xl:px-5 xl:text-[15px]"
+                  onClick={() => setModal("register")}
+                  className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-black text-[#0d1c38] shadow-sm transition hover:border-[#0d1c38]"
                 >
-                  Get{"\u00A0"}Started
+                  Sign Up
                 </button>
               </>
             )}
+
+            <button
+              onClick={() => setModal("investor")}
+              className="rounded-xl bg-[#0d1c38] px-6 py-3 text-lg font-semibold text-white shadow-sm transition hover:bg-[#13284f]"
+            >
+              Get Started
+            </button>
           </div>
 
           <button
             onClick={() => setMobileOpen((current) => !current)}
-            className="shrink-0 rounded-xl bg-[#0d1c38] px-3 py-2.5 text-xs font-bold text-white sm:px-4 sm:py-3 sm:text-sm lg:hidden"
+            className="mobile-tap-target rounded-xl bg-[#0d1c38] px-4 py-3 text-sm font-bold text-white lg:hidden"
           >
             Menu
           </button>
         </div>
 
         {mobileOpen && (
-          <div className="max-h-[calc(100vh-72px)] overflow-y-auto border-t border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5 lg:hidden">
+          <div className="border-t border-slate-200 bg-white px-6 py-5 lg:hidden">
+            <div className="mb-5 rounded-3xl border border-slate-200 bg-[#f7f8fb] p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-black ${
+                    isAuthenticated
+                      ? "bg-emerald-700 text-white"
+                      : "bg-amber-400 text-[#0d1c38]"
+                  }`}
+                >
+                  {isAuthenticated ? sessionInitials : "?"}
+                </div>
+
+                <div className="min-w-0">
+                  <p
+                    className={`text-xs font-black uppercase tracking-[0.16em] ${
+                      isAuthenticated ? "text-emerald-700" : "text-amber-700"
+                    }`}
+                  >
+                    {sessionStatusText}
+                  </p>
+                  <p className="truncate text-sm font-black text-[#0d1c38]">
+                    {sessionDisplayName}
+                  </p>
+                  <p className="truncate text-xs text-slate-500">
+                    {sessionEmail}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs leading-5 text-slate-600">
+                {sessionStatusDescription}
+              </p>
+            </div>
+
             <div className="grid gap-4 text-sm font-semibold text-slate-700">
               {navLinks.map((item) => (
                 <a
@@ -7108,164 +7703,317 @@ function InamaadMainApp() {
                 </a>
               ))}
 
-              <button
-                type="button"
-                onClick={openUserGuide}
-                className="rounded-xl border border-slate-200 px-5 py-3 text-left font-black text-[#0d1c38]"
-              >
-                How to use
-              </button>
-
-              {isSignedIn ? (
-                <div className="grid gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
-                      Logged in
-                    </p>
-                    <p className="truncate text-sm font-black text-[#0d1c38]">
-                      {signedInEmail}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileOpen(false);
-                      handlePublicSignOut();
-                    }}
-                    className="rounded-xl border border-emerald-200 bg-white px-5 py-3 text-left font-black text-[#0d1c38]"
-                  >
-                  Sign{"\u00A0"}Out
+              {isAuthenticated ? (
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    logoutAdmin();
+                  }}
+                  className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-left font-black text-red-700"
+                >
+                  Sign Out
                 </button>
-                </div>
               ) : (
-                <>
+                <div className="grid gap-3 sm:grid-cols-2">
                   <button
                     onClick={() => {
                       setMobileOpen(false);
                       setModal("signin");
                     }}
-                    className="rounded-xl border border-slate-200 px-5 py-3 text-left font-black text-[#0d1c38]"
+                    className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-left font-black text-[#0d1c38]"
                   >
-                  Sign{"\u00A0"}In
-                </button>
+                    Sign In
+                  </button>
 
                   <button
                     onClick={() => {
                       setMobileOpen(false);
-                      setModal("investor");
+                      setModal("register");
                     }}
-                    className="rounded-xl bg-[#0d1c38] px-5 py-3 text-left font-black text-white"
+                    className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-left font-black text-[#0d1c38]"
                   >
-                  Get{"\u00A0"}Started
-                </button>
-                </>
+                    Sign Up
+                  </button>
+                </div>
               )}
+
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  setModal("investor");
+                }}
+                className="rounded-xl bg-[#0d1c38] px-5 py-3 text-left font-black text-white"
+              >
+                Get Started
+              </button>
             </div>
           </div>
         )}
       </header>
 
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+          <div className="flex items-center gap-4">
+            <div
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-black shadow-sm ${
+                isAuthenticated
+                  ? "bg-emerald-700 text-white"
+                  : "bg-amber-400 text-[#0d1c38]"
+              }`}
+            >
+              {isAuthenticated ? sessionInitials : "?"}
+            </div>
+
+            <div>
+              <p
+                className={`text-xs font-black uppercase tracking-[0.18em] ${
+                  isAuthenticated ? "text-emerald-700" : "text-amber-700"
+                }`}
+              >
+                {sessionStatusText}
+              </p>
+              <h2 className="text-base font-black text-[#0d1c38]">
+                {isAuthenticated
+                  ? `Welcome, ${sessionDisplayName}`
+                  : "You are browsing as a guest"}
+              </h2>
+              <p className="text-sm leading-6 text-slate-500">
+                {sessionStatusDescription}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.16em] ${
+                isAuthenticated
+                  ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                  : "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+              }`}
+            >
+              {sessionRoleText}
+            </span>
+
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={logoutAdmin}
+                className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setModal("signin")}
+                  className="rounded-xl bg-[#0d1c38] px-4 py-2 text-sm font-black text-white hover:bg-[#13284f]"
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModal("register")}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-black text-[#0d1c38] hover:border-[#0d1c38]"
+                >
+                  Create Account
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
       <main>
-        <section className="relative overflow-hidden bg-[#0d1c38]">
+        <section className="relative overflow-hidden bg-[#0d1c38] text-white">
           <div
-            className="absolute inset-0 bg-cover bg-left-center"
+            className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage:
-                "linear-gradient(rgba(13,28,56,0.78), rgba(13,28,56,0.78)), url('/hero-building.jpg')",
+                "linear-gradient(135deg, rgba(13,28,56,0.92), rgba(13,28,56,0.82)), url('/hero-building.jpg')",
             }}
           />
 
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.22),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.1),transparent_35%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.30),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.13),transparent_38%)]" />
 
-          <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-10 lg:py-14">
-            <div className="max-w-5xl">
-              <div className="mb-5 flex items-center gap-3">
-                <div className="h-[3px] w-14 bg-[#f0bf3c]" />
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f0bf3c] sm:text-sm">
-                  Launch-ready real estate marketplace
+          <div className="relative mx-auto max-w-7xl px-6 py-12 lg:px-10 lg:py-16">
+            <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+              <div>
+                <div className="mb-5 inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-2 backdrop-blur">
+                  <span className="h-2 w-2 rounded-full bg-[#f0bf3c]" />
+                  <span className="text-xs font-black uppercase tracking-[0.16em] text-[#f0bf3c]">
+                    Verified properties • JV deals • Nigeria
+                  </span>
+                </div>
+
+                <h1 className="max-w-4xl text-4xl font-black leading-[1.04] tracking-tight sm:text-5xl lg:text-[58px]">
+                  Real estate made simple, trusted, and easy to use.
+                </h1>
+
+                <p className="mt-6 max-w-2xl text-base leading-8 text-slate-200 sm:text-lg">
+                  Find verified homes, land, commercial properties, and joint venture opportunities
+                  with clear details, simple filters, and fast contact options.
                 </p>
-              </div>
 
-              <h1 className="max-w-3xl text-3xl font-black leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-[44px]">
-                Nigeria's trusted hub for
-                <br />
-                <span className="text-[#f0bf3c]">Property</span>, Land
-                <br />Investment & JV Deals
-              </h1>
-
-              <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">
-                Browse verified homes, land, commercial assets, investor-ready
-                opportunities, and structured JV deals across Nigeria. Enquire,
-                inspect, offer, partner, and manage every lead with confidence.
-              </p>
-
-              <div className="mt-8 max-w-6xl rounded-[24px] bg-white p-3 shadow-2xl sm:p-4">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1.1fr]">
-                  <input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    type="text"
-                    placeholder="Search location, property, JV deal..."
-                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
-                  />
-
-                  <select
-                    value={propertyType}
-                    onChange={(event) => setPropertyType(event.target.value)}
-                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
-                  >
-                    <option>All</option>
-                    {propertyTypeOptions.map((type) => (
-                      <option key={type}>{type}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={listingPurpose}
-                    onChange={(event) => setListingPurpose(event.target.value)}
-                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
-                    aria-label="Listing purpose"
-                  >
-                    <option>All Purposes</option>
-                    {listingPurposeOptions.map((purpose) => (
-                      <option key={purpose}>{purpose}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={locationFilter}
-                    onChange={(event) => setLocationFilter(event.target.value)}
-                    className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
-                  >
-                    <option value="All Locations">All Locations</option>
-                    {nigeriaLocationOptions.map((location) => (
-                      <option key={location.label} value={location.value}>
-                        {location.label}
-                      </option>
-                    ))}
-                  </select>
-
+                <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <a
                     href="#properties"
-                    className="flex h-14 items-center justify-center rounded-2xl bg-[#0d1c38] px-6 text-lg font-semibold text-white transition hover:bg-[#13284f]"
+                    onClick={() => {
+                      setPropertyType("All");
+                      setListingPurpose("All Purposes");
+                    }}
+                    className="rounded-2xl bg-[#f0bf3c] px-5 py-4 text-center text-sm font-black text-[#0d1c38] shadow-sm transition hover:bg-[#ffd45a]"
                   >
-                    Search
+                    Browse Properties
                   </a>
+
+                  <a
+                    href="#jv"
+                    onClick={() => {
+                      setPropertyType("All");
+                      setListingPurpose("All Purposes");
+                    }}
+                    className="rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-center text-sm font-black text-white backdrop-blur transition hover:bg-white/20"
+                  >
+                    View JV Deals
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => openPostModal("property")}
+                    className="rounded-2xl bg-white px-5 py-4 text-sm font-black text-[#0d1c38] shadow-sm transition hover:bg-slate-100"
+                  >
+                    List Property
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openPostModal("jv")}
+                    className="rounded-2xl border border-[#f0bf3c]/50 px-5 py-4 text-sm font-black text-[#f0bf3c] transition hover:bg-[#f0bf3c] hover:text-[#0d1c38]"
+                  >
+                    Post JV Deal
+                  </button>
                 </div>
+
+                {!usesDatabase && (
+                  <p className="mt-5 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-xs font-semibold text-slate-200 backdrop-blur">
+                    Database not connected yet. Forms will use local demo storage until Supabase environment variables are added.
+                  </p>
+                )}
               </div>
 
-              {!usesDatabase && (
-                <p className="mt-4 text-xs font-semibold text-slate-300">
-                  Database not connected yet. Forms will use local demo storage until Supabase environment variables are added.
-                </p>
-              )}
+              <div className="inamaad-classic-card rounded-[32px] border border-white/10 bg-white p-5 text-[#0d1c38] shadow-2xl">
+                <div className="rounded-[26px] bg-[#f7f8fb] p-5">
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                        Smart search
+                      </p>
+                      <h2 className="mt-1 text-2xl font-black">
+                        What are you looking for?
+                      </h2>
+                    </div>
+
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
+                      User friendly
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-3">
+                    <input
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      type="text"
+                      placeholder="Search by title, location, type, document..."
+                      className="h-14 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                    />
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <select
+                        value={propertyType}
+                        onChange={(event) => setPropertyType(event.target.value)}
+                        className="h-14 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                      >
+                        <option>All</option>
+                        {propertyTypeOptions
+                          .filter((type) => type !== "Joint Venture" && type !== "Estate Development")
+                          .map((type) => (
+                            <option key={type}>{type}</option>
+                          ))}
+                      </select>
+
+                      <select
+                        value={locationFilter}
+                        onChange={(event) => setLocationFilter(event.target.value)}
+                        className="h-14 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold outline-none transition focus:border-[#0d1c38]"
+                      >
+                        <option value="All Locations">All Locations</option>
+                        {nigeriaLocationOptions.map((location) => (
+                          <option key={location.label} value={location.value}>
+                            {location.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <a
+                        href="#properties"
+                        className="flex h-14 items-center justify-center rounded-2xl bg-[#0d1c38] px-5 text-sm font-black text-white transition hover:bg-[#13284f]"
+                      >
+                        Search Properties
+                      </a>
+
+                      <a
+                        href="#jv"
+                        onClick={() => {
+                          setPropertyType("All");
+                          setListingPurpose("All Purposes");
+                        }}
+                        className="flex h-14 items-center justify-center rounded-2xl border border-[#0d1c38] bg-white px-5 text-sm font-black text-[#0d1c38] transition hover:bg-slate-50"
+                      >
+                        See JV Deals
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">Properties show</p>
+                    <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600">
+                      <span>Bedrooms • Bathrooms • Toilets</span>
+                      <span>Price • Location • Images</span>
+                      <span>Inspection • Offer • Contact</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-sm font-black text-[#0d1c38]">JV deals show</p>
+                    <div className="mt-3 grid gap-2 text-xs font-bold text-amber-900">
+                      <span>Land size • Title status</span>
+                      <span>Structure • Sharing formula</span>
+                      <span>Developer/investor requirement</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-3xl bg-[#0d1c38] p-5 text-white">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
+                    Important rule
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">
+                    JV deals are separated from normal property listings. They will not use bedroom,
+                    bathroom, toilet, furnishing, or amenity fields unless the JV is already a developed property.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         <section className="bg-white">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-5 px-4 py-10 sm:gap-8 sm:px-6 sm:py-12 lg:grid-cols-4 lg:px-10">
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-6 py-12 lg:grid-cols-4 lg:px-10">
             {stats.map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="mb-2 text-4xl font-black text-[#0d1c38] lg:text-5xl">
@@ -7280,9 +8028,8 @@ function InamaadMainApp() {
           </div>
         </section>
 
-
-        <section className="bg-[#f7f8fb] px-4 py-12 sm:px-6 sm:py-16 lg:px-10">
-          <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
+        <section className="bg-[#f7f8fb] px-6 py-16 lg:px-10">
+          <div className="inamaad-category-strip mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
             {categoryCards.map((card) => (
               <div
                 key={card.title}
@@ -7304,76 +8051,24 @@ function InamaadMainApp() {
           </div>
         </section>
 
-        {recentlyViewedListings.length > 0 && (
-          <section className="bg-[#f7f8fb] px-4 pb-10 sm:px-6 sm:pb-12 lg:px-10">
-            <div className="mx-auto max-w-7xl rounded-[2rem] border border-[#f0bf3c]/40 bg-[#fff7df] p-5 lg:p-7">
-              <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#9b6b16]">
-                    Recently viewed
-                  </p>
-                  <h2 className="mt-2 text-2xl font-black text-[#0d1c38]">
-                    Continue from properties and JV deals you already opened.
-                  </h2>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setRecentListingIds([])}
-                  className="rounded-xl border border-[#f0bf3c] bg-white px-4 py-2 text-xs font-black text-[#9b6b16] hover:bg-[#fff7df]"
-                >
-                  Clear recent
-                </button>
-              </div>
-
-              <div className="inamaad-mobile-horizontal sm:grid-cols-3">
-                {recentlyViewedListings.slice(0, 3).map((listing) => (
-                  <button
-                    key={`recent-${listing.id}`}
-                    type="button"
-                    onClick={() => openListing(listing)}
-                    className="w-[78vw] rounded-2xl border border-[#f0bf3c]/40 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg sm:w-auto"
-                  >
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="rounded-full bg-[#0d1c38] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white">
-                        {isJointVentureListing(listing) ? "JV Deal" : "Property"}
-                      </span>
-                      <span className="text-xs font-black text-[#9b6b16]">
-                        {listing.price}
-                      </span>
-                    </div>
-                    <p className="line-clamp-1 text-sm font-black text-[#0d1c38]">
-                      {listing.title}
-                    </p>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">
-                      {buildPublicLocationText(listing)}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        <section id="properties" className="bg-[#f7f8fb] px-4 py-14 sm:px-6 sm:py-20 lg:px-10">
+        <section id="properties" className="bg-[#f7f8fb] px-6 py-20 lg:px-10">
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
               <div>
                 <div className="mb-4 flex items-center gap-3">
                   <div className="h-[3px] w-14 bg-[#f0bf3c]" />
                   <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
-                    Verified opportunities
+                    Featured opportunities
                   </p>
                 </div>
 
                 <h2 className="max-w-3xl text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
-                  Find homes, land, commercial assets and JV deals in one place.
+                  Explore verified properties and investment deals.
                 </h2>
 
                 <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-                  Search by location, property type, purpose, budget, availability,
-                  and investment strategy. Open details, submit enquiries, book inspections,
-                  and make offers from one clean platform.
+                  Browse premium homes, land, commercial assets, and joint
+                  venture opportunities reviewed for serious investors.
                 </p>
               </div>
 
@@ -7381,11 +8076,11 @@ function InamaadMainApp() {
                 onClick={() => openPostModal("property")}
                 className="w-fit rounded-2xl bg-[#0d1c38] px-7 py-4 text-base font-bold text-white shadow-sm transition hover:bg-[#13284f]"
               >
-                Submit Property / JV
+                Submit Property
               </button>
             </div>
 
-            <div className="inamaad-mobile-chip-row mt-8 sm:mt-10">
+            <div className="mt-10 flex flex-wrap gap-3">
               {[
                 "All",
                 "Residential",
@@ -7398,7 +8093,7 @@ function InamaadMainApp() {
                 "Office Space",
                 "Shop / Retail Space",
                 "Warehouse",
-                "Joint Venture",
+                "Mixed-use",
               ].map((item) => (
                 <button
                   key={item}
@@ -7421,7 +8116,7 @@ function InamaadMainApp() {
                     Advanced search
                   </p>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    {filteredListings.length} verified result{filteredListings.length === 1 ? "" : "s"} found
+                    {filteredPropertyListings.length} verified property result{filteredPropertyListings.length === 1 ? "" : "s"} found
                   </p>
                 </div>
 
@@ -7507,74 +8202,19 @@ function InamaadMainApp() {
             </div>
 
             {isLoading ? (
-              <div className="inamaad-mobile-horizontal mt-10 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
-                {[1, 2, 3].map((item) => (
-                  <div key={item} className="inamaad-listing-card-mobile overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm sm:rounded-[28px]">
-                    <div className="h-44 animate-pulse bg-slate-200 sm:h-72" />
-                    <div className="space-y-3 p-4 sm:space-y-4 sm:p-7">
-                      <div className="h-5 w-1/2 animate-pulse rounded-full bg-slate-200" />
-                      <div className="h-8 w-3/4 animate-pulse rounded-full bg-slate-200" />
-                      <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-12 rounded-[28px] bg-white p-8 text-center font-bold text-slate-500">
+                Loading listings...
               </div>
             ) : (
-              <div className="inamaad-mobile-horizontal mt-10 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredListings.length === 0 && (
-                  <div className="rounded-[28px] border border-dashed border-slate-300 bg-white p-8 text-center md:col-span-2 lg:col-span-3">
-                    <p className="text-lg font-black text-[#0d1c38]">
-                      No matching listings found
-                    </p>
-                    <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-500">
-                      Try clearing filters, searching a different location, or submit a new property/JV opportunity for admin review.
-                    </p>
-                    <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setQuery("");
-                          setPropertyType("All");
-                          setListingPurpose("All Purposes");
-                          setAvailabilityFilter("All Availability");
-                          setLocationFilter("All Locations");
-                          setMinValueFilter("");
-                          setMaxValueFilter("");
-                          setSortMode("Newest");
-                        }}
-                        className="rounded-2xl border border-[#0d1c38] px-5 py-3 text-sm font-black text-[#0d1c38] hover:bg-slate-50"
-                      >
-                        Clear filters
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openPostModal("property")}
-                        className="rounded-2xl bg-[#0d1c38] px-5 py-3 text-sm font-black text-white hover:bg-[#13284f]"
-                      >
-                        Submit property
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {filteredListings.map((listing) => (
+              <div className="inamaad-property-grid mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {filteredPropertyListings.map((listing) => (
                   <article
                     key={listing.id}
-                    data-inamaad-open-listing="true"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openListing(listing)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        openListing(listing);
-                      }
-                    }}
-                    className={`inamaad-listing-card-mobile group cursor-pointer overflow-hidden rounded-[22px] border bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl sm:rounded-[28px] ${
+                    className={`group overflow-hidden rounded-[28px] border bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${
                       listing.featured ? "border-[#f0bf3c] shadow-xl ring-2 ring-[#f0bf3c]/30" : "border-slate-200"
                     }`}
                   >
-                    <div className="relative h-44 overflow-hidden bg-[#0d1c38] sm:h-72">
+                    <div className="relative h-72 overflow-hidden bg-[#0d1c38]">
                       {listing.imageUrl ? (
                         <img
                           src={listing.imageUrl}
@@ -7591,127 +8231,115 @@ function InamaadMainApp() {
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0d1c38]/95 via-[#0d1c38]/45 to-[#0d1c38]/10" />
 
                       {propertyImagesByListingId[listing.id]?.length ? (
-                        <div className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-black text-[#0d1c38] shadow-lg sm:bottom-5 sm:right-5 sm:px-4 sm:py-2 sm:text-xs">
+                        <div className="absolute bottom-5 right-5 z-20 rounded-full bg-white/90 px-4 py-2 text-xs font-black text-[#0d1c38] shadow-lg">
                           {propertyImagesByListingId[listing.id].length + (listing.imageUrl ? 1 : 0)} Photos
                         </div>
                       ) : null}
 
-                      <div className="relative z-10 flex h-full flex-col justify-between p-4 text-white sm:p-7">
+                      <div className="relative z-10 flex h-full flex-col justify-between p-7 text-white">
                         <div className="flex items-start justify-between gap-4">
-                          <div className="inamaad-mobile-profile-strip">
-                            <div className="rounded-full bg-white/15 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide backdrop-blur sm:px-4 sm:py-2 sm:text-xs">
+                          <div className="flex flex-wrap gap-2">
+                            <div className="rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide backdrop-blur">
                               {listing.type}
                             </div>
 
                             {listing.featured && (
-                              <div className="rounded-full bg-[#f0bf3c] px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-[#0d1c38] shadow-lg sm:px-4 sm:py-2 sm:text-xs">
+                              <div className="rounded-full bg-[#f0bf3c] px-4 py-2 text-xs font-black uppercase tracking-wide text-[#0d1c38] shadow-lg">
                                 Featured
                               </div>
                             )}
                           </div>
 
-                          <div className="flex shrink-0 flex-col items-end gap-1.5 sm:gap-2">
-                            <div className="rounded-full bg-emerald-500 px-3 py-1.5 text-[10px] font-black text-white sm:px-4 sm:py-2 sm:text-xs">
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white">
                               {listing.status}
                             </div>
-                            <div className={`rounded-full px-3 py-1.5 text-[10px] font-black sm:px-4 sm:py-2 sm:text-xs ${availabilityBadgeClass(listing.availabilityStatus)}`}>
+                            <div className={`rounded-full px-4 py-2 text-xs font-black ${availabilityBadgeClass(listing.availabilityStatus)}`}>
                               {listing.availabilityStatus || "Available"}
                             </div>
-                            <div className="rounded-full bg-white/15 px-3 py-1.5 text-[9px] font-black uppercase tracking-wide text-white backdrop-blur sm:px-4 sm:py-2 sm:text-[11px]">
+                            <div className="rounded-full bg-white/15 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-white backdrop-blur">
                               Ref {buildListingReference(listing.id)}
                             </div>
                           </div>
                         </div>
 
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#f0bf3c] sm:text-xs sm:tracking-[0.2em]">
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
                             {listing.featured ? "INAMAAD premium featured asset" : "INAMAAD verified asset"}
                           </p>
-                          <h3 className="mt-2 max-w-sm text-lg font-black leading-tight sm:mt-3 sm:text-3xl">
+                          <h3 className="mt-3 max-w-sm text-3xl font-black leading-tight">
                             {listing.title}
                           </h3>
-                          <p className="mt-2 text-xs font-medium text-slate-200 sm:mt-3 sm:text-base">
+                          <p className="mt-3 text-base font-medium text-slate-200">
                             {listing.location}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="p-4 sm:p-7">
-                      <div className="flex items-start justify-between gap-3 sm:gap-5">
+                    <div className="p-7">
+                      <div className="flex items-start justify-between gap-5">
                         <div>
-                          <p className="text-xs font-bold text-slate-500 sm:text-sm">
+                          <p className="text-sm font-bold text-slate-500">
                             Starting price
                           </p>
-                          <p className="mt-1 text-xl font-black text-[#0d1c38] sm:text-3xl">
+                          <p className="mt-1 text-3xl font-black text-[#0d1c38]">
                             {listing.price}
                           </p>
-                          <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-slate-500 sm:mt-2 sm:text-xs">
+                          <p className="mt-2 text-xs font-black uppercase tracking-wide text-slate-500">
                             {availabilityShortNote(listing.availabilityStatus)}
                           </p>
                         </div>
 
-                        <div className="shrink-0 rounded-2xl bg-[#fff6dc] px-3 py-2 text-right sm:px-4 sm:py-3">
-                          <p className="text-[10px] font-bold text-slate-500 sm:text-xs">
+                        <div className="rounded-2xl bg-[#fff6dc] px-4 py-3 text-right">
+                          <p className="text-xs font-bold text-slate-500">
                             Type
                           </p>
-                          <p className="text-xs font-black text-[#9b6b16] sm:text-sm">
+                          <p className="text-sm font-black text-[#9b6b16]">
                             {listing.category}
                           </p>
                         </div>
                       </div>
 
                       {isJointVentureListing(listing) ? (
-                        <div className="inamaad-mobile-profile-strip mt-4 text-[11px] font-black text-[#0d1c38] sm:mt-5 sm:flex sm:flex-wrap sm:gap-2 sm:text-xs">
+                        <div className="mt-5 flex flex-wrap gap-2 text-xs font-black text-[#0d1c38]">
                           {listing.jvStructure ? <span className="rounded-full bg-amber-100 px-3 py-2">{listing.jvStructure}</span> : null}
                           {listing.jvProjectStage ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.jvProjectStage}</span> : null}
                           {listing.landSize ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.landSize}</span> : null}
                           {listing.jvExpectedUnits ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.jvExpectedUnits} units</span> : null}
                         </div>
                       ) : (listing.bedrooms || listing.bathrooms || listing.landSize) && (
-                        <div className="inamaad-mobile-profile-strip mt-4 text-[11px] font-black text-[#0d1c38] sm:mt-5 sm:flex sm:flex-wrap sm:gap-2 sm:text-xs">
+                        <div className="mt-5 flex flex-wrap gap-2 text-xs font-black text-[#0d1c38]">
                           {listing.bedrooms ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.bedrooms} Beds</span> : null}
                           {listing.bathrooms ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.bathrooms} Baths</span> : null}
                           {listing.landSize ? <span className="rounded-full bg-slate-100 px-3 py-2">{listing.landSize}</span> : null}
                         </div>
                       )}
 
-                      <p className="mt-4 min-h-[58px] text-sm leading-6 text-slate-600 sm:mt-5 sm:min-h-[72px] sm:text-base sm:leading-7">
+                      <p className="mt-5 min-h-[72px] text-base leading-7 text-slate-600">
                         {listing.description}
                       </p>
 
-                      <div className="mt-4 rounded-2xl bg-slate-50 p-4 sm:mt-6 sm:p-5">
+                      <div className="mt-6 rounded-2xl bg-slate-50 p-5">
                         <p className="text-sm font-bold text-slate-500">
                           Investment highlight
                         </p>
-                        <p className="mt-2 text-sm font-black text-[#0d1c38] sm:text-base">
+                        <p className="mt-2 text-base font-black text-[#0d1c38]">
                           {listing.yieldText}
                         </p>
                       </div>
 
-                      <div className="inamaad-profile-action-grid mt-4 grid gap-2 sm:mt-6 sm:gap-3">
+                      <div className="mt-6 grid grid-cols-2 gap-3">
                         <button
-                          type="button"
-                          data-inamaad-open-listing="true"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            openListing(listing);
-                          }}
-                          className="flex items-center justify-center rounded-xl bg-[#0d1c38] px-3 py-3 text-sm font-bold text-white transition hover:bg-[#13284f] sm:rounded-2xl sm:px-5 sm:py-4 sm:text-base"
+                          onClick={() => openListing(listing)}
+                          className="flex items-center justify-center rounded-2xl bg-[#0d1c38] px-5 py-4 text-base font-bold text-white transition hover:bg-[#13284f]"
                         >
                           View Details
                         </button>
 
                         <button
-                          type="button"
-                          data-inamaad-no-refresh="true"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            shareListing(listing);
-                          }}
-                          className="flex items-center justify-center rounded-xl border border-[#0d1c38] bg-white px-3 py-3 text-sm font-black text-[#0d1c38] transition hover:bg-slate-50 sm:rounded-2xl sm:px-5 sm:py-4 sm:text-base"
+                          onClick={() => shareListing(listing)}
+                          className="flex items-center justify-center rounded-2xl border border-[#0d1c38] bg-white px-5 py-4 text-base font-black text-[#0d1c38] transition hover:bg-slate-50"
                         >
                           Share
                         </button>
@@ -7767,7 +8395,7 @@ function InamaadMainApp() {
           </div>
         </section>
 
-        <section id="about" className="bg-[#f7f8fb] px-4 py-14 sm:px-6 sm:py-20 lg:px-10">
+        <section id="about" className="bg-[#f7f8fb] px-6 py-20 lg:px-10">
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div className="relative overflow-hidden rounded-[32px] bg-[#0d1c38] p-10 text-white">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(240,191,60,0.35),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.15),transparent_35%)]" />
@@ -7809,27 +8437,27 @@ function InamaadMainApp() {
               </div>
 
               <h2 className="text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
-                Built for serious property, investment and JV decisions.
+                Real estate opportunities with stronger clarity.
               </h2>
 
               <p className="mt-6 text-lg leading-8 text-slate-600">
-                INAMAAD brings buyers, investors, landowners, developers, agents,
-                and JV partners into one professional marketplace for discovery,
-                verification, submissions, lead tracking, and opportunity management.
+                The goal of INAMAAD is to become a trusted marketplace for
+                verified homes, land, commercial property, and joint venture
+                opportunities across Nigeria.
               </p>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-3xl font-black text-[#0d1c38]">Organized</p>
+                  <p className="text-3xl font-black text-[#0d1c38]">Fast</p>
                   <p className="mt-3 text-slate-600">
-                    Browse, filter, submit, enquire, inspect, offer, and apply through clear workflows.
+                    Search and filter opportunities quickly.
                   </p>
                 </div>
 
                 <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-3xl font-black text-[#0d1c38]">Protected</p>
+                  <p className="text-3xl font-black text-[#0d1c38]">Trusted</p>
                   <p className="mt-3 text-slate-600">
-                    Email confirmation, role-based admin access, protected forms, and secure storage rules support safer operations.
+                    Listings are reviewed before public approval.
                   </p>
                 </div>
               </div>
@@ -7838,69 +8466,194 @@ function InamaadMainApp() {
         </section>
 
         <section id="jv" className="bg-[#0d1c38] px-6 py-20 text-white lg:px-10">
-          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-            <div>
-              <div className="mb-4 flex items-center gap-3">
-                <div className="h-[3px] w-14 bg-[#f0bf3c]" />
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
-                  JV partnership marketplace
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+              <div>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
+                    Joint venture deals
+                  </p>
+                </div>
+
+                <h2 className="text-4xl font-black tracking-tight md:text-6xl">
+                  JV deals now have their own professional flow.
+                </h2>
+
+                <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
+                  This section is built for landowners, developers, financiers, investors,
+                  and real estate development partners. It focuses on land, documentation,
+                  project structure, contributions, and sharing formula instead of normal
+                  bedroom/bathroom property fields.
                 </p>
+
+                <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+                  <button
+                    onClick={() => openPostModal("jv")}
+                    className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-base font-black text-[#0d1c38] hover:bg-[#ffd45a]"
+                  >
+                    Submit JV Deal
+                  </button>
+
+                  <button
+                    onClick={() => setModal("investor")}
+                    className="rounded-2xl border border-white/20 px-7 py-4 text-base font-black text-white hover:bg-white/10"
+                  >
+                    Investor Access
+                  </button>
+                </div>
               </div>
 
-              <h2 className="text-4xl font-black tracking-tight md:text-6xl">
-                Structure partnerships between landowners, developers and investors.
-              </h2>
+              <div className="rounded-[32px] border border-white/10 bg-white/5 p-7 backdrop-blur">
+                <div className="rounded-[24px] bg-white p-7 text-[#0d1c38]">
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-[#d39b19]">
+                    JV required details
+                  </p>
 
-              <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-                INAMAAD helps JV opportunities show the information serious partners need:
-                land contribution, developer requirement, investor requirement, sharing formula,
-                project stage, documents, due diligence status, and application tracking.
-              </p>
-
-              <div className="mt-9 flex flex-col gap-4 sm:flex-row">
-                <button
-                  onClick={() => openPostModal("jv")}
-                  className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-base font-black text-[#0d1c38] hover:bg-[#ffd45a]"
-                >
-                  Submit JV Deal
-                </button>
-
-                <button
-                  onClick={() => setModal("investor")}
-                  className="rounded-2xl border border-white/20 px-7 py-4 text-base font-black text-white hover:bg-white/10"
-                >
-                  Investor Access
-                </button>
+                  <div className="mt-6 grid gap-4">
+                    {[
+                      ["Land details", "Size, location, title/document status"],
+                      ["Project plan", "Proposed development and project stage"],
+                      ["Contribution", "What landowner, developer, or investor provides"],
+                      ["Commercial terms", "Sharing formula, timeline, and estimated value"],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="flex items-center justify-between gap-5 rounded-2xl bg-[#f7f8fb] p-5"
+                      >
+                        <p className="text-sm font-bold text-slate-500">
+                          {label}
+                        </p>
+                        <p className="text-right text-sm font-black text-[#0d1c38]">
+                          {value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-white/10 bg-white/5 p-7 backdrop-blur">
-              <div className="rounded-[24px] bg-white p-7 text-[#0d1c38]">
-                <p className="text-sm font-black uppercase tracking-[0.2em] text-[#d39b19]">
-                  JV Profile
-                </p>
+            <div className="mt-12">
+              <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[0.18em] text-[#f0bf3c]">
+                    Available JV opportunities
+                  </p>
+                  <h3 className="mt-3 text-3xl font-black md:text-4xl">
+                    JV listings separated from normal properties.
+                  </h3>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+                    {filteredJvListings.length} JV deal{filteredJvListings.length === 1 ? "" : "s"} found from verified listings.
+                  </p>
+                </div>
 
-                <div className="mt-6 grid gap-4">
-                  {[
-                    ["Landowners", "Submit land for reviewed partnership"],
-                    ["Developers", "Find JV-ready development opportunities"],
-                    ["Investors", "Apply to structured real estate projects"],
-                    ["Coverage", "FCT Abuja, 36 states, and prime corridors"],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between gap-5 rounded-2xl bg-[#f7f8fb] p-5"
+                <button
+                  onClick={() => {
+                    setQuery("");
+                    setPropertyType("All");
+                    setListingPurpose("All Purposes");
+                    setAvailabilityFilter("All Availability");
+                    setLocationFilter("All Locations");
+                    setMinValueFilter("");
+                    setMaxValueFilter("");
+                  }}
+                  className="rounded-2xl border border-white/20 px-5 py-3 text-sm font-black text-white hover:bg-white/10"
+                >
+                  Clear JV Search
+                </button>
+              </div>
+
+              {filteredJvListings.length === 0 ? (
+                <div className="mt-8 rounded-[28px] border border-white/10 bg-white/5 p-8 text-center">
+                  <p className="text-xl font-black">No JV deals match this search yet.</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    Clear your filters or submit a new JV deal for review.
+                  </p>
+                  <button
+                    onClick={() => openPostModal("jv")}
+                    className="mt-5 rounded-2xl bg-[#f0bf3c] px-6 py-3 text-sm font-black text-[#0d1c38] hover:bg-[#ffd45a]"
+                  >
+                    Submit JV Deal
+                  </button>
+                </div>
+              ) : (
+                <div className="inamaad-jv-grid mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredJvListings.map((listing) => (
+                    <article
+                      key={listing.id}
+                      className="rounded-[28px] border border-white/10 bg-white p-6 text-[#0d1c38] shadow-sm"
                     >
-                      <p className="text-sm font-bold text-slate-500">
-                        {label}
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                            {buildListingReference(listing.id)}
+                          </p>
+                          <h4 className="mt-2 text-xl font-black">
+                            {listing.title}
+                          </h4>
+                          <p className="mt-2 text-sm font-bold text-slate-500">
+                            {buildPublicLocationText(listing)}
+                          </p>
+                        </div>
+
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
+                          JV
+                        </span>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 text-sm">
+                        <div className="rounded-2xl bg-[#f7f8fb] p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                            Land size
+                          </p>
+                          <p className="mt-1 font-black">
+                            {listing.landSize || "Not specified"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-[#f7f8fb] p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                            Structure
+                          </p>
+                          <p className="mt-1 font-black">
+                            {listing.jvStructure || listing.category || "JV Partnership"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-[#f7f8fb] p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                            Sharing formula
+                          </p>
+                          <p className="mt-1 font-black">
+                            {listing.jvSharingFormula || "To be discussed"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="mt-5 line-clamp-3 text-sm leading-6 text-slate-600">
+                        {listing.description}
                       </p>
-                      <p className="text-right text-sm font-black text-[#0d1c38]">
-                        {value}
-                      </p>
-                    </div>
+
+                      <div className="mt-6 grid grid-cols-2 gap-3">
+                        <button
+                          onClick={() => openListing(listing)}
+                          className="rounded-2xl bg-[#0d1c38] px-4 py-3 text-sm font-black text-white hover:bg-[#13284f]"
+                        >
+                          View JV Details
+                        </button>
+
+                        <button
+                          onClick={() => shareListing(listing)}
+                          className="rounded-2xl border border-[#0d1c38] px-4 py-3 text-sm font-black text-[#0d1c38] hover:bg-slate-50"
+                        >
+                          Share
+                        </button>
+                      </div>
+                    </article>
                   ))}
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </section>
@@ -7918,13 +8671,13 @@ function InamaadMainApp() {
                   </div>
 
                   <h2 className="max-w-3xl text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
-                    Request opportunities that match your budget, location and investment strategy.
+                    Access deals that match your capital and strategy.
                   </h2>
 
                   <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">
-                    Submit your budget, preferred asset type, location interest,
-                    and investment goals. INAMAAD saves your request for staff review,
-                    follow-up, and opportunity matching.
+                    Tell INAMAAD your preferred location, budget, and
+                    investment interest. Your request is saved for admin review
+                    and follow-up.
                   </p>
                 </div>
 
@@ -8067,213 +8820,110 @@ function InamaadMainApp() {
           </div>
         </section>
 
-        <section id="contact" className="bg-[#0F172A] px-4 py-16 text-white sm:px-6 sm:py-20 lg:px-10">
+        <section id="contact" className="bg-[#0d1c38] px-6 py-20 text-white lg:px-10">
           <div className="mx-auto max-w-7xl">
-            <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-5 shadow-2xl shadow-black/20 sm:p-8 lg:p-10">
-              <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-                <div>
-                  <div className="mb-5 flex items-center gap-3">
-                    <div className="h-[3px] w-12 bg-[#C9A227]" />
-                    <p className="text-xs font-black uppercase tracking-[0.28em] text-[#C9A227] sm:text-sm">
-                      Contact INAMAAD
-                    </p>
-                  </div>
-
-                  <h2 className="max-w-3xl text-3xl font-black tracking-tight sm:text-5xl lg:text-6xl">
-                    Speak with INAMAAD about property, investment, land or JV opportunities.
-                  </h2>
-
-                  <p className="mt-5 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
-                    Whether you want to buy, sell, rent, invest, list land, submit a JV deal,
-                    request inspection, make an offer, or discuss development partnership,
-                    INAMAAD gives you a professional channel for serious real estate decisions.
+            <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+              <div>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
+                    Contact
                   </p>
-
-                  <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                    {[
-                      {
-                        title: "Investors",
-                        text: "Discover verified real estate opportunities and structured investment leads.",
-                      },
-                      {
-                        title: "Developers",
-                        text: "Connect with landowners, capital partners, and development opportunities.",
-                      },
-                      {
-                        title: "Landowners",
-                        text: "Submit land or partnership opportunities for professional review.",
-                      },
-                      {
-                        title: "JV Partners",
-                        text: "Explore joint venture, land development, and strategic partnership pathways.",
-                      },
-                    ].map((item) => (
-                      <div
-                        key={item.title}
-                        className="rounded-3xl border border-white/10 bg-white/[0.06] p-5"
-                      >
-                        <h3 className="text-lg font-black text-white">{item.title}</h3>
-                        <p className="mt-2 text-sm leading-6 text-slate-300">{item.text}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-8 flex flex-wrap gap-3">
-                    <a
-                      href="#properties"
-                      className="rounded-full bg-[#C9A227] px-6 py-3 text-sm font-black text-[#0F172A] transition hover:bg-[#e2bd45]"
-                    >
-                      Browse Opportunities
-                    </a>
-
-                    <button
-                      type="button"
-                      onClick={() => setModal("post")}
-                      className="rounded-full border border-white/20 px-6 py-3 text-sm font-black text-white transition hover:border-[#C9A227] hover:text-[#C9A227]"
-                    >
-                      Submit Opportunity
-                    </button>
-
-                    <a
-                      href={`https://wa.me/${WHATSAPP_NUMBER}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-full border border-white/20 px-6 py-3 text-sm font-black text-white transition hover:border-[#C9A227] hover:text-[#C9A227]"
-                    >
-                      WhatsApp INAMAAD
-                    </a>
-                  </div>
                 </div>
 
-                <div className="rounded-[2rem] border border-white/10 bg-white p-5 text-[#0F172A] shadow-2xl shadow-black/30 sm:p-7">
-                  <div className="rounded-[1.5rem] border border-[#C9A227]/25 bg-[#f8f5eb] p-5">
-                    <p className="text-xs font-black uppercase tracking-[0.24em] text-[#9a7816]">
-                      Business Inquiry
-                    </p>
-                    <h3 className="mt-2 text-2xl font-black">
-                      Contact our team
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Send your inquiry and the message will be saved in your staff portal for follow-up.
-                    </p>
+                <h2 className="text-4xl font-black tracking-tight md:text-6xl">
+                  Ready to invest or submit a real estate opportunity?
+                </h2>
+
+                <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
+                  Start with investor access, submit your property, or contact
+                  INAMAAD directly on WhatsApp.
+                </p>
+              </div>
+
+              <form
+                onSubmit={submitContactMessage}
+                className="rounded-[2rem] bg-white p-6 text-[#0d1c38] shadow-2xl shadow-black/20"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                  Send message
+                </p>
+                <h3 className="mt-2 text-2xl font-black">Contact INAMAAD</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Messages from this form are saved directly inside your staff portal.
+                </p>
+
+                <div className="mt-5 grid gap-3">
+                  <input
+                    required
+                    value={contactForm.name}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, name: event.target.value })
+                    }
+                    placeholder="Full name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <input
+                      type="email"
+                      value={contactForm.email}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, email: event.target.value })
+                      }
+                      placeholder="Email optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={contactForm.phone}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, phone: event.target.value })
+                      }
+                      placeholder="Phone or WhatsApp"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
                   </div>
 
-                  <form onSubmit={submitContactMessage} className="mt-5 grid gap-3">
-                    <input
-                      type="text"
-                      value={publicFormBotTrap.contact_messages}
-                      onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, contact_messages: event.target.value })}
-                      tabIndex={-1}
-                      autoComplete="off"
-                      aria-hidden="true"
-                      className="hidden"
-                    />
-                    <input
-                      required
-                      value={contactForm.name}
-                      onChange={(event) =>
-                        setContactForm({ ...contactForm, name: event.target.value })
-                      }
-                      placeholder="Full name"
-                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
-                    />
+                  <input
+                    value={contactForm.subject}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, subject: event.target.value })
+                    }
+                    placeholder="Subject e.g. Property investment"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <input
-                        type="email"
-                        value={contactForm.email}
-                        onChange={(event) =>
-                          setContactForm({ ...contactForm, email: event.target.value })
-                        }
-                        placeholder="Email optional"
-                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
-                      />
+                  <textarea
+                    required
+                    value={contactForm.message}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, message: event.target.value })
+                    }
+                    placeholder="Write your message"
+                    rows={4}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
 
-                      <input
-                        value={contactForm.phone}
-                        onChange={(event) =>
-                          setContactForm({ ...contactForm, phone: event.target.value })
-                        }
-                        placeholder="Phone or WhatsApp"
-                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
-                      />
-                    </div>
+                  <button className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-sm font-black text-[#0d1c38] hover:bg-[#ffd45a]">
+                    Send message
+                  </button>
 
-                    <input
-                      value={contactForm.subject}
-                      onChange={(event) =>
-                        setContactForm({ ...contactForm, subject: event.target.value })
-                      }
-                      placeholder="Subject e.g. Investor inquiry, JV proposal, land submission"
-                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
-                    />
-
-                    <textarea
-                      required
-                      value={contactForm.message}
-                      onChange={(event) =>
-                        setContactForm({ ...contactForm, message: event.target.value })
-                      }
-                      placeholder="Tell us about your opportunity, investment interest, or partnership request"
-                      rows={5}
-                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
-                    />
-
-                    <button
-                      disabled={publicSubmittingForm === "contact_messages"}
-                      className="rounded-2xl bg-[#0F172A] px-7 py-4 text-sm font-black text-white transition hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {publicSubmittingForm === "contact_messages" ? "Sending inquiry..." : "Send Business Inquiry"}
-                    </button>
-
-                    <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => setModal("investor")}
-                        className="rounded-2xl border border-slate-200 px-5 py-4 text-center text-sm font-black text-[#0F172A] transition hover:border-[#C9A227] hover:text-[#9a7816]"
-                      >
-                        Investor Access
-                      </button>
-
-                      <a
-                        href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%20INAMAAD%2C%20I%20want%20to%20make%20a%20business%20inquiry.`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-2xl border border-slate-200 px-5 py-4 text-center text-sm font-black text-[#0F172A] transition hover:border-[#C9A227] hover:text-[#9a7816]"
-                      >
-                        WhatsApp: +{WHATSAPP_NUMBER}
-                      </a>
-                    </div>
-                  </form>
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-2xl border border-slate-200 px-7 py-4 text-center text-sm font-black text-[#0d1c38] hover:border-[#0d1c38]"
+                  >
+                    Or WhatsApp: +{WHATSAPP_NUMBER}
+                  </a>
                 </div>
-              </div>
-
-              <div className="mt-8 grid gap-4 border-t border-white/10 pt-8 md:grid-cols-3">
-                {[
-                  {
-                    title: "Opportunity Review",
-                    text: "Submit properties, land, or JV opportunities for structured review.",
-                  },
-                  {
-                    title: "Investor Relations",
-                    text: "Start conversations around verified deals and long-term growth.",
-                  },
-                  {
-                    title: "Partnership Desk",
-                    text: "Connect for development, land acquisition, and joint venture collaboration.",
-                  },
-                ].map((item) => (
-                  <div key={item.title} className="rounded-3xl bg-white/[0.05] p-5">
-                    <h3 className="text-base font-black text-[#C9A227]">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">{item.text}</p>
-                  </div>
-                ))}
-              </div>
+              </form>
             </div>
           </div>
         </section>
 
-        <section id="faq" className="bg-[#f7f8fb] px-4 py-14 sm:px-6 sm:py-20 lg:px-10">
+        <section id="faq" className="bg-[#f7f8fb] px-6 py-20 lg:px-10">
           <div className="mx-auto max-w-5xl">
             <div className="text-center">
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
@@ -8337,16 +8987,6 @@ function InamaadMainApp() {
               <a href="#jv">JV Deals</a>
               <a href="#about">About</a>
               <a href="#contact">Contact</a>
-
-              <button
-                onClick={() => {
-                  setAdminPassword("");
-                  setModal("admin");
-                }}
-                className="mt-2 w-fit text-left text-xs text-slate-400 hover:text-slate-700"
-              >
-                Staff Access
-              </button>
             </div>
           </div>
 
@@ -8355,40 +8995,11 @@ function InamaadMainApp() {
 
             <div className="mt-4 grid gap-3 text-sm text-slate-600">
               <button
-                type="button"
-                onClick={openUserGuide}
+                onClick={() => setModal("signin")}
                 className="w-fit text-left"
               >
-                How to use INAMAAD
+                Sign In
               </button>
-
-              {isSignedIn ? (
-                <>
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
-                      Logged in
-                    </p>
-                    <p className="mt-1 max-w-[190px] truncate text-xs font-black text-[#0d1c38]">
-                      {signedInEmail}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handlePublicSignOut}
-                    className="w-fit text-left font-black text-[#0d1c38]"
-                  >
-                  Sign{"\u00A0"}Out
-                </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setModal("signin")}
-                  className="w-fit text-left"
-                >
-                  Sign{"\u00A0"}In
-                </button>
-              )}
 
               <button
                 onClick={() => setModal("investor")}
@@ -8397,13 +9008,17 @@ function InamaadMainApp() {
                 Investor Access
               </button>
 
-
+              <button
+                onClick={() => {
+                  setAdminPassword("");
+                  setModal("admin");
+                }}
+                className="w-fit text-left text-xs text-slate-400 hover:text-slate-700"
+              >
+                Staff portal
+              </button>
             </div>
           </div>
-        </div>
-
-        <div className="mx-auto mt-8 max-w-7xl border-t border-slate-200 pt-5 text-center text-xs font-semibold text-slate-500">
-          Ã‚Â© 2026 INAMAAD Real Estate. All rights reserved.
         </div>
       </footer>
 
@@ -8424,17 +9039,12 @@ function InamaadMainApp() {
         </div>
       )}
 
+      {false && isRefreshingData && <div className="inamaad-sync-hidden" />}
+
       {modal && (
-        <div
-          data-inamaad-no-refresh="true"
-          className="fixed inset-0 z-[110] flex items-start justify-center overflow-y-auto bg-slate-950/70 px-2 py-3 backdrop-blur-sm sm:items-center sm:px-4 sm:py-8"
-        >
-          <div
-            className={`max-h-[94vh] w-full max-w-[calc(100vw-1rem)] overflow-y-auto rounded-[22px] bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:rounded-[30px] sm:p-6 md:p-8 ${
-              modal === "guide" ? "sm:max-w-5xl" : "sm:max-w-3xl"
-            }`}
-          >
-            <div className="mb-5 flex items-start justify-between gap-3 sm:mb-6 sm:gap-5">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[30px] bg-white p-6 shadow-2xl md:p-8">
+            <div className="mb-6 flex items-start justify-between gap-5">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-[#d39b19]">
                   INAMAAD
@@ -8442,14 +9052,14 @@ function InamaadMainApp() {
 
                 <h2 className="mt-2 text-2xl font-black text-[#0d1c38]">
                   {modal === "signin" && "Sign in"}
+                  {modal === "forgot_password" && "Forgot password"}
+                  {modal === "reset_password" && "Set new password"}
+                  {modal === "resend_confirmation" && "Resend confirmation"}
                   {modal === "register" && "Create account"}
                   {modal === "post" && "Submit opportunity"}
                   {modal === "investor" && "Request investor access"}
                   {modal === "admin" && "Staff portal"}
                   {modal === "edit" && "Edit listing"}
-                  {modal === "guide" && "How to use INAMAAD"}
-                  {modal === "forgotPassword" && "Forgot password"}
-                  {modal === "resetPassword" && "Create new password"}
                   {modal === "details" && selectedListing?.title}
                 </h2>
               </div>
@@ -8460,161 +9070,21 @@ function InamaadMainApp() {
                   setSelectedListing(null);
                   setEditingListing(null);
                 }}
-                className="shrink-0 rounded-full bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-200 sm:px-4 sm:text-sm"
+                className="rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-200"
               >
                 Close
               </button>
             </div>
 
-            {modal === "guide" && (
-              <div className="grid gap-6">
-                <div className="rounded-[26px] bg-[#0d1c38] p-5 text-white">
-                  <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-[#f0bf3c]">
-                        User guidance
-                      </p>
-                      <h3 className="mt-3 text-3xl font-black tracking-tight">
-                        Find property, inspect safely, contact INAMAAD, or submit your own listing.
-                      </h3>
-                      <p className="mt-4 text-sm leading-7 text-white/75">
-                        This quick guide helps first-time buyers, investors, agents, landlords, and JV partners understand the main actions on the website.
-                      </p>
-                    </div>
-
-                    <div className="rounded-[24px] border border-white/10 bg-white/10 p-4">
-                      <div className="rounded-2xl bg-white p-4 text-[#0d1c38]">
-                        <div className="mb-3 flex items-center justify-between">
-                          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-700">
-                            Example listing
-                          </span>
-                          <span className="text-xs font-black text-[#9b6b16]">Verified</span>
-                        </div>
-                        <div className="mb-3 h-24 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-100 to-[#f0bf3c]/30" />
-                        <div className="h-3 w-3/4 rounded-full bg-slate-200" />
-                        <div className="mt-2 h-3 w-1/2 rounded-full bg-slate-100" />
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <div className="h-9 rounded-xl bg-[#0d1c38]" />
-                          <div className="h-9 rounded-xl border border-slate-200" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  {[
-                    {
-                      title: "1. Browse properties",
-                      text: "Use Properties, JV Deals, search, location, price, purpose, and availability filters to find suitable opportunities.",
-                      badge: "Browse",
-                    },
-                    {
-                      title: "2. Open details",
-                      text: "Click any property or JV card to see price, location, documents, contact options, inspection form, offer form, and more details.",
-                      badge: "Details",
-                    },
-                    {
-                      title: "3. Contact safely",
-                      text: "Use WhatsApp, enquiry, inspection, or offer buttons. Request inspection before payment and confirm important documents first.",
-                      badge: "Safety",
-                    },
-                  ].map((step) => (
-                    <div key={step.title} className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4">
-                      <div className="mb-4 rounded-2xl bg-white p-3 shadow-sm">
-                        <div className="mb-3 flex items-center justify-between">
-                          <span className="rounded-full bg-[#fff7df] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-[#9b6b16]">
-                            {step.badge}
-                          </span>
-                          <div className="flex gap-1">
-                            <span className="h-2 w-2 rounded-full bg-red-300" />
-                            <span className="h-2 w-2 rounded-full bg-yellow-300" />
-                            <span className="h-2 w-2 rounded-full bg-green-300" />
-                          </div>
-                        </div>
-                        <div className="h-16 rounded-xl bg-gradient-to-br from-slate-200 to-slate-50" />
-                        <div className="mt-3 h-2.5 w-5/6 rounded-full bg-slate-200" />
-                        <div className="mt-2 h-2.5 w-2/3 rounded-full bg-slate-100" />
-                      </div>
-
-                      <h4 className="text-base font-black text-[#0d1c38]">{step.title}</h4>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{step.text}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
-                      For buyers and investors
-                    </p>
-                    <div className="mt-4 grid gap-3 text-sm leading-6 text-slate-600">
-                      <p><strong className="text-[#0d1c38]">Browse:</strong> Start from Properties or JV Deals.</p>
-                      <p><strong className="text-[#0d1c38]">Review:</strong> Open the detail page and check price, status, location, and documents.</p>
-                      <p><strong className="text-[#0d1c38]">Inspect:</strong> Use Request Inspection before making payment or commitment.</p>
-                      <p><strong className="text-[#0d1c38]">Contact:</strong> Use WhatsApp/contact buttons for quick guidance from INAMAAD.</p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
-                      For agents, owners and JV partners
-                    </p>
-                    <div className="mt-4 grid gap-3 text-sm leading-6 text-slate-600">
-                      <p><strong className="text-[#0d1c38]">Submit:</strong> Use Post Property or Submit Opportunity.</p>
-                      <p><strong className="text-[#0d1c38]">Choose type:</strong> Select Property for normal listings or JV for partnership deals.</p>
-                      <p><strong className="text-[#0d1c38]">Upload:</strong> Add clear images and supporting documents where available.</p>
-                      <p><strong className="text-[#0d1c38]">Wait review:</strong> Pending listings are checked before showing as verified.</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-[24px] border border-emerald-100 bg-emerald-50 p-5">
-                  <p className="text-sm font-black text-emerald-800">
-                    Safety reminder
-                  </p>
-                  <p className="mt-2 text-sm leading-7 text-emerald-700">
-                    Always inspect property, verify ownership/documents, and communicate through trusted INAMAAD contact channels before payment.
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModal(null);
-                      window.location.hash = "properties";
-                    }}
-                    className="rounded-2xl bg-[#0d1c38] px-5 py-4 text-sm font-black text-white hover:bg-[#13284f]"
-                  >
-                    Browse properties
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModal(null);
-                      openPostModal("property");
-                    }}
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-[#0d1c38] hover:border-[#0d1c38]"
-                  >
-                    Post property
-                  </button>
-
-                  <a
-                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%20INAMAAD%2C%20I%20need%20help%20using%20the%20website.`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-center text-sm font-black text-green-700 hover:bg-green-100"
-                  >
-                    Ask on WhatsApp
-                  </a>
-                </div>
-              </div>
-            )}
-
             {modal === "signin" && (
               <form onSubmit={handleSignIn} className="grid gap-4">
+                <div className="rounded-3xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Secure account access</p>
+                  <p className="mt-1">
+                    Sign in to manage your enquiries, listings, saved opportunities, and staff access.
+                  </p>
+                </div>
+
                 <input
                   required
                   type="email"
@@ -8640,68 +9110,67 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                {confirmationEmail && (
-                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                    <p className="font-black">Email confirmation required</p>
-                    <p className="mt-1">
-                      Confirm <span className="font-black">{confirmationEmail}</span> before signing in.
-                    </p>
-                  </div>
-                )}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotPasswordForm({ email: signInForm.email });
+                        setModal("forgot_password");
+                      }}
+                      className="text-left text-sm font-black text-[#0d1c38] hover:text-[#d39b19]"
+                    >
+                      Forgot password?
+                    </button>
 
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotPasswordEmail(signInForm.email);
-                      setModal("forgotPassword");
-                    }}
-                    className="text-sm font-black text-[#9a7816] hover:text-[#0d1c38]"
-                  >
-                    Forgot password?
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmEmailForm({ email: signInForm.email });
+                        setModal("resend_confirmation");
+                      }}
+                      className="text-left text-sm font-black text-[#0d1c38] hover:text-[#d39b19]"
+                    >
+                      Resend confirmation email
+                    </button>
+                  </div>
 
                   <button
                     type="button"
                     onClick={() => setModal("register")}
-                    className="text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
+                    className="text-left text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
                   >
                     Create a new account
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleResendConfirmationEmail}
-                  className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 text-sm font-black text-amber-900 transition hover:bg-amber-100"
-                >
-                  Resend confirmation email
-                </button>
-
-                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white hover:bg-[#132a55]">
                   Sign in
                 </button>
               </form>
             )}
 
-            {modal === "forgotPassword" && (
+            {modal === "forgot_password" && (
               <form onSubmit={handleForgotPassword} className="grid gap-4">
-                <div className="rounded-3xl border border-[#C9A227]/25 bg-[#f8f5eb] p-5">
-                  <p className="text-sm font-bold leading-6 text-slate-700">
-                    Enter the email address linked to your INAMAAD account. We will send a secure password reset link to your inbox.
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Reset your password</p>
+                  <p className="mt-1">
+                    Enter the email connected to your INAMAAD account. We will send a secure password reset link.
                   </p>
                 </div>
 
                 <input
                   required
                   type="email"
-                  value={forgotPasswordEmail}
-                  onChange={(event) => setForgotPasswordEmail(event.target.value)}
-                  placeholder="Email address"
+                  value={forgotPasswordForm.email}
+                  onChange={(event) =>
+                    setForgotPasswordForm({ email: event.target.value })
+                  }
+                  placeholder="Account email address"
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white hover:bg-[#132a55]">
                   Send reset link
                 </button>
 
@@ -8715,17 +9184,53 @@ function InamaadMainApp() {
               </form>
             )}
 
-            {modal === "resetPassword" && (
-              <form onSubmit={handleResetPassword} className="grid gap-4">
-                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
-                  <p className="text-sm font-bold leading-6 text-emerald-800">
-                    Your reset link has been verified. Create a new password for your INAMAAD account.
+            {modal === "resend_confirmation" && (
+              <form onSubmit={handleResendConfirmation} className="grid gap-4">
+                <div className="rounded-3xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Confirm your email</p>
+                  <p className="mt-1">
+                    If the first confirmation link expired or opened the wrong website, enter your account email and INAMAAD will send a fresh confirmation link using the correct website address.
+                  </p>
+                </div>
+
+                <input
+                  required
+                  type="email"
+                  value={confirmEmailForm.email}
+                  onChange={(event) =>
+                    setConfirmEmailForm({ email: event.target.value })
+                  }
+                  placeholder="Account email address"
+                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                />
+
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white hover:bg-[#132a55]">
+                  Send confirmation link
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setModal("signin")}
+                  className="text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
+                >
+                  Back to sign in
+                </button>
+              </form>
+            )}
+
+            {modal === "reset_password" && (
+              <form onSubmit={handleUpdatePassword} className="grid gap-4">
+                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-slate-700">
+                  <p className="font-black text-[#0d1c38]">Create your new password</p>
+                  <p className="mt-1">
+                    Your reset link has been verified. Enter a strong new password to secure your account.
                   </p>
                 </div>
 
                 <input
                   required
                   type="password"
+                  minLength={6}
                   value={resetPasswordForm.password}
                   onChange={(event) =>
                     setResetPasswordForm({
@@ -8740,6 +9245,7 @@ function InamaadMainApp() {
                 <input
                   required
                   type="password"
+                  minLength={6}
                   value={resetPasswordForm.confirmPassword}
                   onChange={(event) =>
                     setResetPasswordForm({
@@ -8751,7 +9257,7 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white hover:bg-[#132a55]">
                   Update password
                 </button>
               </form>
@@ -8800,16 +9306,16 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <div className="rounded-3xl border border-[#C9A227]/25 bg-[#f8f5eb] p-4 text-sm font-bold leading-6 text-slate-700">
-                  Email confirmation is required. After creating your account, check your inbox and confirm your email before signing in.
-                </div>
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white hover:bg-[#132a55]">
+                  Create account
+                </button>
 
                 <button
-                  type="submit"
-                  disabled={isRegistering}
-                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white transition hover:bg-[#13284f] disabled:cursor-not-allowed disabled:opacity-60"
+                  type="button"
+                  onClick={() => setModal("signin")}
+                  className="text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
                 >
-                  {isRegistering ? "Sending confirmation..." : "Create account"}
+                  Already have an account? Sign in
                 </button>
               </form>
             )}
@@ -8962,7 +9468,7 @@ function InamaadMainApp() {
                     </label>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
-                        ₦ ₦
+                        ₦ NGN
                       </span>
                       <input
                         required
@@ -9689,7 +10195,7 @@ function InamaadMainApp() {
                 <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
                   <p className="font-black text-[#0d1c38]">Admin writing guide:</p>
                   <p className="mt-2"><span className="font-black">Title:</span> Luxury Apartments in Maitama, Abuja</p>
-                  <p><span className="font-black">Investment highlight:</span> Premium capital appreciation in Abuja's prime district</p>
+                  <p><span className="font-black">Investment highlight:</span> Premium capital appreciation in Abuja’s prime district</p>
                   <p><span className="font-black">Opportunity:</span> Explain the location, buyer/investor benefit, rental potential, documents, and why the property is valuable.</p>
                 </div>
 
@@ -9816,7 +10322,7 @@ function InamaadMainApp() {
                     </label>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
-                        ₦ ₦
+                        ₦ NGN
                       </span>
                       <input
                         required
@@ -10702,15 +11208,6 @@ function InamaadMainApp() {
 
             {modal === "investor" && (
               <form onSubmit={submitInvestorRequest} className="grid gap-4">
-                <input
-                  type="text"
-                  value={publicFormBotTrap.investor_requests}
-                  onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, investor_requests: event.target.value })}
-                  tabIndex={-1}
-                  autoComplete="off"
-                  aria-hidden="true"
-                  className="hidden"
-                />
                 <div className="grid gap-4 md:grid-cols-2">
                   <input
                     required
@@ -10796,11 +11293,8 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button
-                  disabled={publicSubmittingForm === "investor_requests"}
-                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {publicSubmittingForm === "investor_requests" ? "Sending request..." : "Save investor request"}
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                  Save investor request
                 </button>
               </form>
             )}
@@ -11165,7 +11659,7 @@ function InamaadMainApp() {
                         <div>
                           <p className="text-slate-400">Media</p>
                           <p className="font-black">
-                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join("  -  ")}
+                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join(" • ")}
                           </p>
                         </div>
                       )}
@@ -11174,7 +11668,7 @@ function InamaadMainApp() {
                         <div>
                           <p className="text-slate-400">Specs</p>
                           <p className="font-black">
-                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join("  -  ")}
+                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join(" • ")}
                           </p>
                         </div>
                       )}
@@ -11265,15 +11759,6 @@ function InamaadMainApp() {
                     onSubmit={submitJvApplication}
                     className="mt-6 grid gap-4 rounded-[24px] border border-purple-200 bg-purple-50 p-6"
                   >
-                    <input
-                      type="text"
-                      value={publicFormBotTrap.jv_applications}
-                      onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, jv_applications: event.target.value })}
-                      tabIndex={-1}
-                      autoComplete="off"
-                      aria-hidden="true"
-                      className="hidden"
-                    />
                     <div>
                       <p className="text-xl font-black text-[#0d1c38]">
                         Apply for JV partnership
@@ -11442,11 +11927,8 @@ function InamaadMainApp() {
                       </div>
                     </div>
 
-                    <button
-                      disabled={publicSubmittingForm === "jv_applications"}
-                      className="rounded-2xl bg-purple-700 px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {publicSubmittingForm === "jv_applications" ? "Submitting JV application..." : "Submit JV partnership application"}
+                    <button className="rounded-2xl bg-purple-700 px-6 py-4 text-sm font-black text-white">
+                      Submit JV partnership application
                     </button>
                   </form>
                 )}
@@ -11455,15 +11937,6 @@ function InamaadMainApp() {
                   onSubmit={submitPropertyInquiry}
                   className="mt-6 grid gap-4 rounded-[24px] border border-slate-200 bg-white p-6"
                 >
-                  <input
-                    type="text"
-                    value={publicFormBotTrap.property_inquiries}
-                    onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, property_inquiries: event.target.value })}
-                    tabIndex={-1}
-                    autoComplete="off"
-                    aria-hidden="true"
-                    className="hidden"
-                  />
                   <div>
                     <p className="text-xl font-black text-[#0d1c38]">
                       Ask about this property
@@ -11524,11 +11997,8 @@ function InamaadMainApp() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <button
-                    disabled={publicSubmittingForm === "property_inquiries"}
-                    className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {publicSubmittingForm === "property_inquiries" ? "Sending inquiry..." : "Send property inquiry"}
+                  <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                    Send property inquiry
                   </button>
                 </form>
 
@@ -11536,15 +12006,6 @@ function InamaadMainApp() {
                   onSubmit={submitInspectionBooking}
                   className="mt-6 grid gap-4 rounded-[24px] border border-[#f0bf3c]/40 bg-[#fffaf0] p-6"
                 >
-                  <input
-                    type="text"
-                    value={publicFormBotTrap.inspection_bookings}
-                    onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, inspection_bookings: event.target.value })}
-                    tabIndex={-1}
-                    autoComplete="off"
-                    aria-hidden="true"
-                    className="hidden"
-                  />
                   <div>
                     <p className="text-xl font-black text-[#0d1c38]">
                       Book property inspection
@@ -11616,11 +12077,8 @@ function InamaadMainApp() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <button
-                    disabled={publicSubmittingForm === "inspection_bookings"}
-                    className="rounded-2xl bg-[#f0bf3c] px-6 py-4 text-sm font-black text-[#0d1c38] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {publicSubmittingForm === "inspection_bookings" ? "Booking inspection..." : "Book inspection"}
+                  <button className="rounded-2xl bg-[#f0bf3c] px-6 py-4 text-sm font-black text-[#0d1c38]">
+                    Book inspection
                   </button>
                 </form>
 
@@ -11628,15 +12086,6 @@ function InamaadMainApp() {
                   onSubmit={submitPropertyOffer}
                   className="mt-6 grid gap-4 rounded-[24px] border border-emerald-200 bg-emerald-50 p-6"
                 >
-                  <input
-                    type="text"
-                    value={publicFormBotTrap.property_offers}
-                    onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, property_offers: event.target.value })}
-                    tabIndex={-1}
-                    autoComplete="off"
-                    aria-hidden="true"
-                    className="hidden"
-                  />
                   <div>
                     <p className="text-xl font-black text-[#0d1c38]">
                       Make offer / reserve property
@@ -11717,11 +12166,8 @@ function InamaadMainApp() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <button
-                    disabled={publicSubmittingForm === "property_offers"}
-                    className="rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {publicSubmittingForm === "property_offers" ? "Submitting offer..." : "Submit offer / reserve interest"}
+                  <button className="rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-black text-white">
+                    Submit offer / reserve interest
                   </button>
                 </form>
               </div>
@@ -11788,56 +12234,6 @@ function InamaadMainApp() {
                   <p className="mt-2 leading-6">
                     Access enabled: {canEditListings ? "edit listings" : "read listings"}, {canApproveListings ? "approve listings" : "no approval"}, {canManageLeads ? "manage leads" : "read-only leads"}, {canOpenDocuments ? "secure documents" : "documents locked"}, {canExportReports ? "reports" : "no report export"}.
                   </p>
-                </div>
-
-                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
-                        Phase 1 launch foundation
-                      </p>
-                      <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
-                        Stability checklist
-                      </h3>
-                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                        Admin-only launch check for browsing, uploads, approval flow, contact channels, data mode, and lead capture. No payments or monetization added.
-                      </p>
-                    </div>
-
-                    <div className={`rounded-2xl px-5 py-3 text-center ${launchFoundationScore >= 85 ? "bg-emerald-50 text-emerald-700" : launchFoundationScore >= 65 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
-                      <p className="text-2xl font-black">{launchFoundationScore}%</p>
-                      <p className="text-[10px] font-black uppercase tracking-wide">Ready</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-3 md:grid-cols-2">
-                    {launchFoundationChecks.map((check) => (
-                      <div
-                        key={check.label}
-                        className={`rounded-2xl border p-4 ${check.passed ? "border-emerald-100 bg-emerald-50" : "border-amber-100 bg-amber-50"}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${check.passed ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"}`}>
-                            {check.passed ? "Ã¢Å“â€œ" : "!"}
-                          </span>
-                          <div>
-                            <p className="text-sm font-black text-[#0d1c38]">{check.label}</p>
-                            <p className="mt-1 text-xs leading-5 text-slate-600">{check.detail}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {failedLaunchFoundationChecks.length > 0 ? (
-                    <p className="mt-4 rounded-2xl bg-[#fff7df] p-4 text-sm font-semibold leading-6 text-[#9b6b16]">
-                      Next Phase 1 action: {failedLaunchFoundationChecks[0].label} Ã¢â‚¬â€ {failedLaunchFoundationChecks[0].detail}
-                    </p>
-                  ) : (
-                    <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold leading-6 text-emerald-700">
-                      Phase 1 foundation looks ready. Keep testing uploads, property details, and admin approval before moving to Phase 2.
-                    </p>
-                  )}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-10">
@@ -11922,7 +12318,7 @@ function InamaadMainApp() {
                         Follow-up dashboard
                       </h3>
                       <p className="mt-2 text-sm leading-6 text-slate-500">
-                        Track overdue buyers, today's follow-ups, urgent leads, and unassigned opportunities in one place.
+                        Track overdue buyers, today’s follow-ups, urgent leads, and unassigned opportunities in one place.
                       </p>
                     </div>
 
@@ -11976,7 +12372,7 @@ function InamaadMainApp() {
                             <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.title}</p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
-                              Follow-up: {formatDate(item.followUpDate)}  -  Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                              Follow-up: {formatDate(item.followUpDate)} • Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
                         ))}
@@ -12005,7 +12401,7 @@ function InamaadMainApp() {
                             <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.title}</p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
-                              Follow-up: {formatDate(item.followUpDate)}  -  Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                              Follow-up: {formatDate(item.followUpDate)} • Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
                         ))}
@@ -12150,7 +12546,7 @@ function InamaadMainApp() {
                             </p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
                               {formatDate(log.createdAt)}
-                              {log.targetId ? `  -  ID: ${log.targetId}` : ""}
+                              {log.targetId ? ` • ID: ${log.targetId}` : ""}
                             </p>
                           </div>
                         </div>
@@ -12483,7 +12879,7 @@ function InamaadMainApp() {
                             {listing.title}
                           </p>
                           <p className="mt-1 text-sm text-slate-500">
-                            {listing.location}  -  {listing.price}
+                            {listing.location} • {listing.price}
                           </p>
                         </div>
 
@@ -12604,12 +13000,12 @@ function InamaadMainApp() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-500">
-                              {listing.location}  -  {listing.price}
+                              {listing.location} • {listing.price}
                             </p>
 
                             <p className="mt-2 text-sm text-slate-500">
-                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"}  - {" "}
-                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"}  -  {listing.mandateStatus || "Not Confirmed"}
+                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"} •{" "}
+                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"} • {listing.mandateStatus || "Not Confirmed"}
                             </p>
                           </div>
 
@@ -12687,7 +13083,7 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {inquiry.email || "No email"}  -  {inquiry.phone}
+                                {inquiry.email || "No email"} • {inquiry.phone}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -12820,11 +13216,11 @@ function InamaadMainApp() {
                               </div>
 
                               <p className="mt-2 font-black text-[#0d1c38]">
-                                {application.applicantName}  -  {application.applicantRole}
+                                {application.applicantName} • {application.applicantRole}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {application.companyName || "No company stated"}  -  {application.applicantEmail || "No email"}  -  {application.applicantPhone}
+                                {application.companyName || "No company stated"} • {application.applicantEmail || "No email"} • {application.applicantPhone}
                               </p>
 
                               {application.budgetCapacity && (
@@ -13174,11 +13570,11 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {offer.buyerEmail || "No email"}  -  {offer.buyerPhone}
+                                {offer.buyerEmail || "No email"} • {offer.buyerPhone}
                               </p>
 
                               <p className="mt-2 text-sm font-black text-emerald-700">
-                                Offer: {offer.offerAmount || "Not stated"}  -  {offer.paymentPlan || "No payment plan"}
+                                Offer: {offer.offerAmount || "Not stated"} • {offer.paymentPlan || "No payment plan"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13299,11 +13695,11 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {booking.email || "No email"}  -  {booking.phone}
+                                {booking.email || "No email"} • {booking.phone}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                Preferred: {booking.preferredDate || "No date"}  -  {booking.preferredTime || "No time"}
+                                Preferred: {booking.preferredDate || "No date"} • {booking.preferredTime || "No time"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13446,7 +13842,7 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {message.email || "No email"}  -  {message.phone || "No phone"}
+                                {message.email || "No email"} • {message.phone || "No phone"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13583,11 +13979,11 @@ function InamaadMainApp() {
                               </div>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {request.email}  -  {request.phone}
+                                {request.email} • {request.phone}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                Budget: {request.budget}  -  Interest: {request.interest}
+                                Budget: {request.budget} • Interest: {request.interest}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13709,18 +14105,18 @@ function InamaadMainApp() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-500">
-                              {listing.location}  -  {listing.price}
+                              {listing.location} • {listing.price}
                             </p>
 
                             {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
                               <p className="mt-1 text-xs font-bold text-slate-500">
-                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join("  -  ")}
+                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join(" • ")}
                               </p>
                             )}
 
                             <p className="mt-1 text-xs font-black text-slate-400">
-                              {listing.status}  -  {listing.availabilityStatus || "Available"}
-                              {listing.featured ? `  -  Featured rank ${listing.featuredRank || 0}` : ""}
+                              {listing.status} • {listing.availabilityStatus || "Available"}
+                              {listing.featured ? ` • Featured rank ${listing.featuredRank || 0}` : ""}
                             </p>
 
                             {listing.availabilityNote && (
@@ -13766,14 +14162,6 @@ function InamaadMainApp() {
   );
 }
 
-export default function App() {
-  return (
-    <InamaadErrorBoundary>
-      <InamaadMainApp />
-    </InamaadErrorBoundary>
-  );
-}
-
 // Lead command center upgrade: follow-up dashboard for overdue, due-today, urgent, and unassigned leads.
 
 // Property reference upgrade: public and staff listing references use stable INM-000001 style IDs.
@@ -13789,40 +14177,3 @@ export default function App() {
 // JV upgrade: JV listings now use project structure, landowner/developer/investor requirements, sharing formula, stage, expected units, project cost, and timeline instead of bedroom/bathroom fields.
 
 // Final property/JV separation repair: normal properties no longer store/display JV-only fields, and JV deals no longer store/display bedroom/bathroom/furnishing fields.
-
-// INAMAAD_MOBILE_FIT_AUDIT: mobile overflow guard, compact header, responsive modal, and safer small-screen spacing added without adding homepage upgrade reminders.
-
-// INAMAAD_MOBILE_MEDIUM_HORIZONTAL_AUDIT: reduced mobile font scale, made property/JV profile cards horizontal on mobile, kept homepage free of upgrade reminders.
-
-// INAMAAD_INVISIBLE_SYNC_SCROLL_STABILITY_AUDIT: removed visible syncing badge, stopped touch/pointer refresh during mobile scroll, and preserved scroll position during background data refresh.
-
-// INAMAAD_STATIC_NAVBAR_AUDIT: navbar and new-user notice changed from sticky to normal/static layout so they do not move while scrolling.
-
-// INAMAAD_STICKY_NAVBAR_VISIBLE_AUDIT: navbar is sticky and visible while scrolling; new-user notice remains non-sticky to avoid double-bar jumping.
-
-// INAMAAD_FIXED_VISIBLE_NAVBAR_AUDIT: navbar is fixed at the top and remains visible while scrolling; page content is padded so it does not hide under the navbar.
-
-// INAMAAD_COPYRIGHT_FOOTER_AUDIT: footer copyright added at the end of the page.
-
-// INAMAAD_MOVABLE_NAVBAR_RESTORE_AUDIT: navbar restored to normal movable/static page flow; fixed top padding removed.
-
-// INAMAAD_STAFF_ACCESS_UNDER_COMPANY_AUDIT: staff portal link moved from Access footer column into Company footer column as small Staff Access link.
-
-// INAMAAD_PREMIUM_CONTACT_SECTION_AUDIT: contact section upgraded to premium business-focused investor/developer/landowner/JV inquiry layout.
-
-// INAMAAD_FORGOT_PASSWORD_AUDIT: forgot password and reset password modals added using Supabase password recovery flow.
-
-// INAMAAD_SIGNED_IN_STATUS_AUDIT: navbar now clearly changes after sign in by showing signed-in account badge and sign-out action on desktop and mobile.
-
-// INAMAAD_LOGIN_VISIBLE_STRONG_FIX_AUDIT: login state now switches immediately to Logged in after successful sign in, and footer Access column no longer shows Sign In while logged in.
-
-// INAMAAD_EMAIL_CONFIRMATION_REQUIRED_AUDIT: signup now redirects user to sign in only after email confirmation, sign-in detects unconfirmed emails, and users can resend confirmation email.
-
-// INAMAAD_AUTH_MESSAGE_AND_CONFIRMATION_FIX_AUDIT: signup now shows readable auth errors instead of {}, keeps users logged out until email confirmation, and maps Supabase rate/email errors to clear messages.
-
-// INAMAAD_CREATE_ACCOUNT_BUTTON_FIX_AUDIT: Create account button is now explicit submit, shows loading, prevents double click, and handleRegister always returns readable messages.
-
-// INAMAAD_SIGNUP_EMAIL_CONFIRMATION_DELIVERY_FIX_AUDIT: signup has timeout, never says account activated before confirmation, and guards against unconfirmed sessions.
-
-
-// INAMAAD_FRONTEND_FORM_PROTECTION_AUDIT: public forms now use client-side validation, bot-trap fields, and double-submit locks.

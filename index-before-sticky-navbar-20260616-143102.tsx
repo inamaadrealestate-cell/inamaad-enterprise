@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient, type User } from "@supabase/supabase-js";
 
 type ModalType =
@@ -10,9 +10,7 @@ type ModalType =
   | "admin"
   | "details"
   | "edit"
-  | "guide"
-  | "forgotPassword"
-  | "resetPassword";
+  | "guide";
 
 type ListingStatus = "Verified" | "Pending Review";
 type AvailabilityStatus = "Available" | "Reserved" | "Sold" | "Rented" | "Leased" | "Off Market";
@@ -318,6 +316,7 @@ type StaffMember = {
 };
 
 const WHATSAPP_NUMBER = "2348106350486";
+const LOCAL_ADMIN_PASSWORD = "admin123";
 const staffRoleOptions: StaffRole[] = [
   "Super Admin",
   "Admin",
@@ -338,7 +337,7 @@ const navLinks = [
   { label: "Home", href: "#" },
   { label: "Properties", href: "#properties" },
   { label: "Calculator", href: "#calculator" },
-  { label: "JV\u00A0Deals", href: "#jv" },
+  { label: "JV Deals", href: "#jv" },
   { label: "About", href: "#about" },
   { label: "Contact", href: "#contact" },
 ];
@@ -645,7 +644,7 @@ const seedListings: Listing[] = [
     value: 450000000,
     type: "Residential",
     category: "For Sale",
-    yieldText: "Premium capital appreciation in Abuja's prime district",
+    yieldText: "Premium capital appreciation in Abuja’s prime district",
     description:
       "A high-end residential investment opportunity positioned for strong rental income, resale value, and long-term wealth preservation.",
     status: "Verified",
@@ -662,7 +661,7 @@ const seedListings: Listing[] = [
     category: "Investment",
     yieldText: "Strong commercial rental potential",
     description:
-      "A premium commercial asset located in one of Lagos' strongest business districts, suitable for corporate tenants and long-term income.",
+      "A premium commercial asset located in one of Lagos’ strongest business districts, suitable for corporate tenants and long-term income.",
     status: "Verified",
     availabilityStatus: "Available",
     createdAt: new Date().toISOString(),
@@ -730,69 +729,69 @@ const seedListings: Listing[] = [
 ];
 
 const stats = [
-  { value: "Verified", label: "Property review flow" },
-  { value: "Secure", label: "Email-confirmed access" },
-  { value: "JV-ready", label: "Partnership submissions" },
-  { value: "36 + FCT", label: "Nigeria coverage" },
+  { value: "2,500+", label: "Verified listings" },
+  { value: "10,000+", label: "Registered users" },
+  { value: "150+", label: "JV opportunities" },
+  { value: "36", label: "States + FCT" },
 ];
 
 const categoryCards = [
   {
-    title: "Buy & Rent",
-    text: "Browse homes, apartments, duplexes, land, and commercial assets with cleaner details and direct enquiry options.",
+    title: "Residential",
+    text: "Premium homes, apartments, duplexes, and estate opportunities for buyers and investors.",
   },
   {
-    title: "Invest & Compare",
-    text: "Use filters, ROI planning, property view insights, and investor requests to find opportunities that match your strategy.",
+    title: "Land & Commercial",
+    text: "Strategic land, commercial plazas, office assets, and long-term real estate opportunities.",
   },
   {
-    title: "Partner Through JV",
-    text: "Submit or apply for structured joint venture deals connecting landowners, developers, and capital partners.",
+    title: "JV Opportunities",
+    text: "Connect landowners, developers, and investors for profitable development partnerships.",
   },
 ];
 
 const processSteps = [
   {
-    title: "Discover",
-    text: "Visitors search verified homes, land, commercial assets, investment listings, and JV opportunities across Nigeria.",
+    title: "Submit opportunity",
+    text: "Owners, developers, landowners, and agents submit properties, land, or joint venture deals.",
   },
   {
-    title: "Engage",
-    text: "Users can enquire, book inspections, make offers, request investor guidance, or apply for JV partnerships.",
+    title: "Verification review",
+    text: "INAMAAD reviews key details such as ownership, location, value, opportunity strength, and investment fit.",
   },
   {
-    title: "Review & manage",
-    text: "INAMAAD staff review listings, applications, documents, leads, property views, and activity inside the admin portal.",
+    title: "Investor connection",
+    text: "Qualified investors discover opportunities based on budget, location, asset type, and strategy.",
   },
 ];
 
 const verificationItems = [
-  "Email-confirmed user access",
-  "Property, ownership, and document review",
-  "Role-based staff/admin control",
-  "Protected public forms and secure storage rules",
+  "Property and ownership review",
+  "Market value and location assessment",
+  "Developer, seller, or landowner screening",
+  "Investor risk and opportunity review",
 ];
 
 const faqItems = [
   {
-    question: "What can users do on INAMAAD?",
+    question: "Is INAMAAD only for buying property?",
     answer:
-      "Users can browse properties and JV deals, view details, submit enquiries, book inspections, make offers, request investor guidance, and apply for JV partnerships.",
+      "No. INAMAAD supports property sales, land investments, commercial assets, joint ventures, and investor matching.",
   },
   {
-    question: "Can property owners and developers submit opportunities?",
+    question: "Can developers post opportunities?",
     answer:
-      "Yes. Owners, agents, developers, and landowners can submit properties, land, commercial opportunities, and JV deals for review.",
+      "Yes. Developers can submit projects, JV proposals, off-plan opportunities, and investment-ready real estate deals.",
   },
   {
-    question: "How does INAMAAD support investors?",
+    question: "Can investors request private deals?",
     answer:
-      "Investors can search opportunities, use the ROI calculator, submit their budget and preferred interest, and request deal guidance.",
+      "Yes. Investors can submit their budget and interest so INAMAAD can match them with suitable opportunities.",
   },
   {
-    question: "How are listings and leads managed?",
+    question: "Are all listings verified?",
     answer:
-      "INAMAAD staff can review pending listings, manage enquiries, offers, inspections, JV applications, contact messages, analytics, and activity logs from the admin portal.",
+      "Listings marked as verified have passed internal review. New submissions remain pending until admin approval.",
   },
 ];
 
@@ -1696,22 +1695,11 @@ function InamaadMainApp() {
     password: "",
   });
 
-  const [demoSignedIn, setDemoSignedIn] = useState(false);
-  const [demoUserEmail, setDemoUserEmail] = useState("");
-
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  const [confirmationEmail, setConfirmationEmail] = useState("");
-  const [resetPasswordForm, setResetPasswordForm] = useState({
-    password: "",
-    confirmPassword: "",
-  });
-
   const [registerForm, setRegisterForm] = useState({
     name: "",
     email: "",
     password: "",
   });
-  const [isRegistering, setIsRegistering] = useState(false);
 
   const [postForm, setPostForm] = useState({
     title: "",
@@ -1993,78 +1981,7 @@ function InamaadMainApp() {
   const [jvProposalDocumentFile, setJvProposalDocumentFile] = useState<File | null>(null);
   const [jvOtherDocumentFile, setJvOtherDocumentFile] = useState<File | null>(null);
 
-  const [publicSubmittingForm, setPublicSubmittingForm] = useState<LeadKind | null>(null);
-  const publicSubmissionLockRef = useRef<LeadKind | null>(null);
-  const [publicFormBotTrap, setPublicFormBotTrap] = useState<Record<LeadKind, string>>({
-    investor_requests: "",
-    property_inquiries: "",
-    property_offers: "",
-    jv_applications: "",
-    contact_messages: "",
-    inspection_bookings: "",
-  });
-
   const usesDatabase = Boolean(supabase);
-
-  function cleanFormText(value?: string | null) {
-    return String(value || "").trim();
-  }
-
-  function hasMinimumText(value: string | undefined, minimumLength: number) {
-    return cleanFormText(value).length >= minimumLength;
-  }
-
-  function optionalEmailIsValid(value?: string) {
-    const email = cleanFormText(value);
-    return !email || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
-  }
-
-  function phoneLooksValid(value?: string) {
-    return cleanFormText(value).replace(/\D/g, "").length >= 7;
-  }
-
-  function isWithinLimit(value: string | undefined, maximumLength: number) {
-    return cleanFormText(value).length <= maximumLength;
-  }
-
-  function beginPublicFormSubmit(
-    formKey: LeadKind,
-    checks: Array<{ ok: boolean; message: string }>
-  ) {
-    if (publicSubmissionLockRef.current) {
-      showSuccess("Please wait, your previous submission is still processing.");
-      return false;
-    }
-
-    if (cleanFormText(publicFormBotTrap[formKey])) {
-      console.warn("INAMAAD bot-trap blocked a public form submission:", formKey);
-      showSuccess("Submission blocked. Please refresh the page and try again.");
-      return false;
-    }
-
-    const failedCheck = checks.find((check) => !check.ok);
-
-    if (failedCheck) {
-      showSuccess(failedCheck.message);
-      return false;
-    }
-
-    publicSubmissionLockRef.current = formKey;
-    setPublicSubmittingForm(formKey);
-    return true;
-  }
-
-  function finishPublicFormSubmit(formKey: LeadKind) {
-    if (publicSubmissionLockRef.current === formKey) {
-      publicSubmissionLockRef.current = null;
-    }
-
-    setPublicSubmittingForm((current) => (current === formKey ? null : current));
-  }
-
-  function resetPublicFormBotTrap(formKey: LeadKind) {
-    setPublicFormBotTrap((current) => ({ ...current, [formKey]: "" }));
-  }
 
   const pendingListings = listings.filter(
     (listing) => listing.status === "Pending Review"
@@ -2087,14 +2004,12 @@ function InamaadMainApp() {
   const totalLeads = investorRequests.length + propertyInquiries.length + propertyOffers.length + jvApplications.length + contactMessages.length + inspectionBookings.length;
   const conversionReadyLeads = propertyInquiries.length + propertyOffers.length + jvApplications.length + contactMessages.length + inspectionBookings.length;
   const unreadNotifications = staffNotifications.filter((notification) => !notification.isRead).length;
-  const isSignedIn = Boolean(user) || demoSignedIn;
-  const signedInEmail = user?.email || demoUserEmail || "INAMAAD Account";
   const currentStaffMember = staffMembers.find((member) => member.email === user?.email);
   const currentStaffRole: StaffRole = usesDatabase
     ? currentStaffMember?.role || "Viewer"
-    : "Viewer";
+    : "Super Admin";
   const hasAnyStaffRole = (allowedRoles: StaffRole[]) =>
-    usesDatabase && allowedRoles.includes(currentStaffRole);
+    !usesDatabase || allowedRoles.includes(currentStaffRole);
 
   const isSuperAdmin = hasAnyStaffRole(["Super Admin"]);
   const canManageStaff = hasAnyStaffRole(["Super Admin"]);
@@ -2463,31 +2378,8 @@ function InamaadMainApp() {
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (_event, session) => {
         setUser(session?.user ?? null);
-
-        if (session?.user) {
-          const emailConfirmedAt = session.user.email_confirmed_at;
-
-          if (!emailConfirmedAt && event === "SIGNED_IN") {
-            setConfirmationEmail(session.user.email ?? "");
-            supabase.auth.signOut();
-            setUser(null);
-            setDemoSignedIn(false);
-            setDemoUserEmail("");
-            showSuccess("Email confirmation is required before signing in. Check your inbox and confirm your email first.");
-            return;
-          }
-
-          setDemoSignedIn(false);
-          setDemoUserEmail("");
-        }
-
-        if (event === "PASSWORD_RECOVERY") {
-          setModal("resetPassword");
-          showSuccess("Enter your new password to complete account recovery.");
-        }
-
         if (!session?.user) {
           setAdminUnlocked(false);
           setInvestorRequests([]);
@@ -2666,59 +2558,8 @@ function InamaadMainApp() {
     }, delay);
   }
 
-  function formatAuthError(error: unknown, fallback = "Unable to complete request. Please try again."): string {
-    if (!error) return fallback;
-
-    if (typeof error === "string") {
-      return error.trim() && error !== "{}" ? error : fallback;
-    }
-
-    if (error instanceof Error) {
-      return error.message || fallback;
-    }
-
-    if (typeof error === "object") {
-      const value = error as { message?: unknown; error_description?: unknown; error?: unknown; status?: unknown };
-
-      const rawMessage =
-        typeof value.message === "string"
-          ? value.message
-          : typeof value.error_description === "string"
-            ? value.error_description
-            : typeof value.error === "string"
-              ? value.error
-              : "";
-
-      const message = rawMessage.trim();
-
-      if (!message || message === "{}") {
-        return fallback;
-      }
-
-      const lowerMessage = message.toLowerCase();
-
-      if (lowerMessage.includes("rate limit")) {
-        return "Request rate limit reached. Please wait a few minutes before trying again. If this continues, check Supabase SMTP and email rate limits.";
-      }
-
-      if (lowerMessage.includes("error sending confirmation email")) {
-        return "Confirmation email could not be sent. Check Supabase SMTP settings or wait for the email limit to reset.";
-      }
-
-      if (lowerMessage.includes("email not confirmed")) {
-        return "Please confirm your email before signing in. Check your inbox or resend the confirmation email.";
-      }
-
-      return message;
-    }
-
-    return fallback;
-  }
-
-  function showSuccess(message: unknown) {
-    const readableMessage = formatAuthError(message, "Action completed.");
-
-    setSuccessMessage(readableMessage);
+  function showSuccess(message: string) {
+    setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(""), 4500);
 
     if (supabase) {
@@ -4350,770 +4191,455 @@ function InamaadMainApp() {
   async function submitInvestorRequest(event: React.FormEvent) {
     event.preventDefault();
 
-    const formKey: LeadKind = "investor_requests";
+    const newRequest: Omit<InvestorRequest, "id"> = {
+      ...investorForm,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(investorForm.name, 2), message: "Please enter your full name." },
-        { ok: optionalEmailIsValid(investorForm.email) && hasMinimumText(investorForm.email, 6), message: "Please enter a valid email address." },
-        { ok: phoneLooksValid(investorForm.phone), message: "Please enter a valid phone or WhatsApp number." },
-        { ok: hasMinimumText(investorForm.budget, 1), message: "Please enter your investment budget." },
-        { ok: isWithinLimit(investorForm.message, 5000), message: "Your message is too long." },
-      ])
-    ) {
-      return;
-    }
-
-    try {
-      const newRequest: Omit<InvestorRequest, "id"> = {
-        ...investorForm,
+    if (supabase) {
+      const { error } = await supabase.from("investor_requests").insert({
+        name: investorForm.name,
+        email: investorForm.email,
+        phone: investorForm.phone,
+        budget: investorForm.budget,
+        interest: investorForm.interest,
+        message: investorForm.message,
         status: "New",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("investor_requests").insert({
-          name: cleanFormText(investorForm.name),
-          email: cleanFormText(investorForm.email),
-          phone: cleanFormText(investorForm.phone),
-          budget: cleanFormText(investorForm.budget),
-          interest: investorForm.interest,
-          message: cleanFormText(investorForm.message),
-          status: "New",
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess("Unable to submit investor request. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setInvestorRequests((current) => [
-          { ...newRequest, id: Date.now() },
-          ...current,
-        ]);
-      }
-
-      await createStaffNotification(
-        "New investor request",
-        `${investorForm.name} requested ${investorForm.interest} investment support with budget ${investorForm.budget}.`,
-        "Investor Request"
-      );
-
-      setInvestorForm({
-        name: "",
-        email: "",
-        phone: "",
-        budget: "",
-        interest: "Residential",
-        message: "",
       });
 
-      resetPublicFormBotTrap(formKey);
-      setModal(null);
-      showSuccess("Investor request saved. INAMAAD will contact you shortly.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit investor request. Check database.");
+        return;
+      }
+    } else {
+      setInvestorRequests((current) => [
+        { ...newRequest, id: Date.now() },
+        ...current,
+      ]);
     }
+
+    await createStaffNotification(
+      "New investor request",
+      `${investorForm.name} requested ${investorForm.interest} investment support with budget ${investorForm.budget}.`,
+      "Investor Request"
+    );
+
+    setInvestorForm({
+      name: "",
+      email: "",
+      phone: "",
+      budget: "",
+      interest: "Residential",
+      message: "",
+    });
+
+    setModal(null);
+    showSuccess("Investor request saved. INAMAAD will contact you shortly.");
   }
+
   async function submitPropertyInquiry(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const formKey: LeadKind = "property_inquiries";
+    const newInquiry: Omit<PropertyInquiry, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      name: inquiryForm.name,
+      email: inquiryForm.email,
+      phone: inquiryForm.phone,
+      message: inquiryForm.message,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(inquiryForm.name, 2), message: "Please enter your name." },
-        { ok: optionalEmailIsValid(inquiryForm.email), message: "Please enter a valid email address or leave it empty." },
-        { ok: phoneLooksValid(inquiryForm.phone), message: "Please enter a valid phone or WhatsApp number." },
-        { ok: isWithinLimit(inquiryForm.message, 5000), message: "Your message is too long." },
-      ])
-    ) {
-      return;
-    }
+    if (supabase) {
+      const { error } = await supabase.from("property_inquiries").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        name: inquiryForm.name,
+        email: inquiryForm.email || null,
+        phone: inquiryForm.phone,
+        message: inquiryForm.message,
+      });
 
-    try {
-      const newInquiry: Omit<PropertyInquiry, "id"> = {
-        listingId: selectedListing.id,
-        listingTitle: selectedListing.title,
-        name: cleanFormText(inquiryForm.name),
-        email: cleanFormText(inquiryForm.email),
-        phone: cleanFormText(inquiryForm.phone),
-        message: cleanFormText(inquiryForm.message),
-        status: "New",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("property_inquiries").insert({
-          listing_id: selectedListing.id,
-          listing_title: selectedListing.title,
-          name: cleanFormText(inquiryForm.name),
-          email: cleanFormText(inquiryForm.email) || null,
-          phone: cleanFormText(inquiryForm.phone),
-          message: cleanFormText(inquiryForm.message) || null,
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess("Unable to submit inquiry. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setPropertyInquiries((current) => [
-          { ...newInquiry, id: Date.now() },
-          ...current,
-        ]);
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit inquiry. Check database settings.");
+        return;
       }
-
-      await createStaffNotification(
-        "New property inquiry",
-        `${inquiryForm.name} requested access for ${selectedListing.title}.`,
-        "Property Inquiry"
-      );
-
-      setInquiryForm({ name: "", email: "", phone: "", message: "" });
-      resetPublicFormBotTrap(formKey);
-      setModal(null);
-      showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+    } else {
+      setPropertyInquiries((current) => [
+        { ...newInquiry, id: Date.now() },
+        ...current,
+      ]);
     }
+
+    await createStaffNotification(
+      "New property inquiry",
+      `${inquiryForm.name} requested access for ${selectedListing.title}.`,
+      "Property Inquiry"
+    );
+
+    setInquiryForm({ name: "", email: "", phone: "", message: "" });
+    setModal(null);
+    showSuccess("Inquiry sent. INAMAAD will contact you shortly.");
   }
+
   async function submitInspectionBooking(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const formKey: LeadKind = "inspection_bookings";
+    const newBooking: Omit<InspectionBooking, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      name: inspectionForm.name,
+      email: inspectionForm.email,
+      phone: inspectionForm.phone,
+      preferredDate: inspectionForm.preferredDate,
+      preferredTime: inspectionForm.preferredTime,
+      message: inspectionForm.message,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(inspectionForm.name, 2), message: "Please enter your name." },
-        { ok: optionalEmailIsValid(inspectionForm.email), message: "Please enter a valid email address or leave it empty." },
-        { ok: phoneLooksValid(inspectionForm.phone), message: "Please enter a valid phone or WhatsApp number." },
-        { ok: isWithinLimit(inspectionForm.message, 5000), message: "Your inspection message is too long." },
-      ])
-    ) {
-      return;
-    }
-
-    try {
-      const newBooking: Omit<InspectionBooking, "id"> = {
-        listingId: selectedListing.id,
-        listingTitle: selectedListing.title,
-        name: cleanFormText(inspectionForm.name),
-        email: cleanFormText(inspectionForm.email),
-        phone: cleanFormText(inspectionForm.phone),
-        preferredDate: inspectionForm.preferredDate,
-        preferredTime: inspectionForm.preferredTime,
-        message: cleanFormText(inspectionForm.message),
+    if (supabase) {
+      const { error } = await supabase.from("inspection_bookings").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        name: inspectionForm.name,
+        email: inspectionForm.email || null,
+        phone: inspectionForm.phone,
+        preferred_date: inspectionForm.preferredDate || null,
+        preferred_time: inspectionForm.preferredTime || null,
+        message: inspectionForm.message || null,
         status: "New",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("inspection_bookings").insert({
-          listing_id: selectedListing.id,
-          listing_title: selectedListing.title,
-          name: cleanFormText(inspectionForm.name),
-          email: cleanFormText(inspectionForm.email) || null,
-          phone: cleanFormText(inspectionForm.phone),
-          preferred_date: inspectionForm.preferredDate || null,
-          preferred_time: inspectionForm.preferredTime || null,
-          message: cleanFormText(inspectionForm.message) || null,
-          status: "New",
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess("Unable to book inspection. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setInspectionBookings((current) => [
-          { ...newBooking, id: Date.now() },
-          ...current,
-        ]);
-      }
-
-      await createStaffNotification(
-        "New inspection booking",
-        `${inspectionForm.name} booked an inspection for ${selectedListing.title}.`,
-        "Inspection Booking"
-      );
-
-      setInspectionForm({
-        name: "",
-        email: "",
-        phone: "",
-        preferredDate: "",
-        preferredTime: "",
-        message: "",
       });
-      resetPublicFormBotTrap(formKey);
-      showSuccess("Inspection booking sent. INAMAAD will confirm your appointment.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to book inspection. Check database settings.");
+        return;
+      }
+    } else {
+      setInspectionBookings((current) => [
+        { ...newBooking, id: Date.now() },
+        ...current,
+      ]);
     }
+
+    await createStaffNotification(
+      "New inspection booking",
+      `${inspectionForm.name} booked an inspection for ${selectedListing.title}.`,
+      "Inspection Booking"
+    );
+
+    setInspectionForm({
+      name: "",
+      email: "",
+      phone: "",
+      preferredDate: "",
+      preferredTime: "",
+      message: "",
+    });
+    showSuccess("Inspection booking sent. INAMAAD will confirm your appointment.");
   }
+
   async function submitPropertyOffer(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const formKey: LeadKind = "property_offers";
+    const formattedOfferAmount = formatPriceInput(offerForm.offerAmount) || offerForm.offerAmount;
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(offerForm.buyerName, 2), message: "Please enter the buyer name." },
-        { ok: optionalEmailIsValid(offerForm.buyerEmail), message: "Please enter a valid email address or leave it empty." },
-        { ok: phoneLooksValid(offerForm.buyerPhone), message: "Please enter a valid phone or WhatsApp number." },
-        { ok: isWithinLimit(offerForm.message, 5000), message: "Your offer message is too long." },
-      ])
-    ) {
-      return;
-    }
+    const newOffer: Omit<PropertyOffer, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      buyerName: offerForm.buyerName,
+      buyerEmail: offerForm.buyerEmail,
+      buyerPhone: offerForm.buyerPhone,
+      offerAmount: formattedOfferAmount,
+      paymentPlan: offerForm.paymentPlan,
+      message: offerForm.message,
+      status: "New",
+      priority: "High",
+      createdAt: new Date().toISOString(),
+    };
 
-    try {
-      const formattedOfferAmount = formatPriceInput(offerForm.offerAmount) || offerForm.offerAmount;
-
-      const newOffer: Omit<PropertyOffer, "id"> = {
-        listingId: selectedListing.id,
-        listingTitle: selectedListing.title,
-        buyerName: cleanFormText(offerForm.buyerName),
-        buyerEmail: cleanFormText(offerForm.buyerEmail),
-        buyerPhone: cleanFormText(offerForm.buyerPhone),
-        offerAmount: formattedOfferAmount,
-        paymentPlan: offerForm.paymentPlan,
-        message: cleanFormText(offerForm.message),
+    if (supabase) {
+      const { error } = await supabase.from("property_offers").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        buyer_name: offerForm.buyerName,
+        buyer_email: offerForm.buyerEmail || null,
+        buyer_phone: offerForm.buyerPhone,
+        offer_amount: formattedOfferAmount || null,
+        payment_plan: offerForm.paymentPlan || null,
+        message: offerForm.message || null,
         status: "New",
         priority: "High",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("property_offers").insert({
-          listing_id: selectedListing.id,
-          listing_title: selectedListing.title,
-          buyer_name: cleanFormText(offerForm.buyerName),
-          buyer_email: cleanFormText(offerForm.buyerEmail) || null,
-          buyer_phone: cleanFormText(offerForm.buyerPhone),
-          offer_amount: cleanFormText(formattedOfferAmount) || null,
-          payment_plan: offerForm.paymentPlan || null,
-          message: cleanFormText(offerForm.message) || null,
-          status: "New",
-          priority: "High",
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess("Unable to submit offer. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setPropertyOffers((current) => [{ ...newOffer, id: Date.now() }, ...current]);
-      }
-
-      await createStaffNotification(
-        "New property offer",
-        `${offerForm.buyerName} made an offer/reservation request for ${selectedListing.title}${formattedOfferAmount ? ` at ${formattedOfferAmount}` : ""}.`,
-        "Property Offer"
-      );
-
-      setOfferForm({
-        buyerName: "",
-        buyerEmail: "",
-        buyerPhone: "",
-        offerAmount: "",
-        paymentPlan: "Full payment",
-        message: "",
       });
 
-      resetPublicFormBotTrap(formKey);
-      showSuccess("Offer/reservation request sent. INAMAAD will review and contact you shortly.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit offer. Check database settings.");
+        return;
+      }
+    } else {
+      setPropertyOffers((current) => [{ ...newOffer, id: Date.now() }, ...current]);
     }
+
+    await createStaffNotification(
+      "New property offer",
+      `${offerForm.buyerName} made an offer/reservation request for ${selectedListing.title}${formattedOfferAmount ? ` at ${formattedOfferAmount}` : ""}.`,
+      "Property Offer"
+    );
+
+    setOfferForm({
+      buyerName: "",
+      buyerEmail: "",
+      buyerPhone: "",
+      offerAmount: "",
+      paymentPlan: "Full payment",
+      message: "",
+    });
+
+    showSuccess("Offer/reservation request sent. INAMAAD will review and contact you shortly.");
   }
+
   async function submitJvApplication(event: React.FormEvent) {
     event.preventDefault();
 
     if (!selectedListing) return;
 
-    const formKey: LeadKind = "jv_applications";
+    let companyProfileUrl = "";
+    let cacCertificateUrl = "";
+    let portfolioUrl = "";
+    let financialProofUrl = "";
+    let proposalDocumentUrl = "";
+    let otherDocumentUrl = "";
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(jvApplicationForm.applicantName, 2), message: "Please enter your full name." },
-        { ok: optionalEmailIsValid(jvApplicationForm.applicantEmail), message: "Please enter a valid email address or leave it empty." },
-        { ok: phoneLooksValid(jvApplicationForm.applicantPhone), message: "Please enter a valid phone or WhatsApp number." },
-        { ok: isWithinLimit(jvApplicationForm.companyName, 180), message: "Company name is too long." },
-        { ok: isWithinLimit(jvApplicationForm.experienceSummary, 10000), message: "Experience summary is too long." },
-        { ok: isWithinLimit(jvApplicationForm.proposalMessage, 10000), message: "JV proposal message is too long." },
-      ])
-    ) {
+    try {
+      if (supabase) {
+        companyProfileUrl = jvCompanyProfileFile
+          ? await uploadJvApplicationDocument(jvCompanyProfileFile, "company-profile")
+          : "";
+        cacCertificateUrl = jvCacCertificateFile
+          ? await uploadJvApplicationDocument(jvCacCertificateFile, "cac-certificate")
+          : "";
+        portfolioUrl = jvPortfolioFile
+          ? await uploadJvApplicationDocument(jvPortfolioFile, "portfolio")
+          : "";
+        financialProofUrl = jvFinancialProofFile
+          ? await uploadJvApplicationDocument(jvFinancialProofFile, "financial-proof")
+          : "";
+        proposalDocumentUrl = jvProposalDocumentFile
+          ? await uploadJvApplicationDocument(jvProposalDocumentFile, "proposal-document")
+          : "";
+        otherDocumentUrl = jvOtherDocumentFile
+          ? await uploadJvApplicationDocument(jvOtherDocumentFile, "other")
+          : "";
+      }
+    } catch (error) {
+      console.error(error);
+      showSuccess("Unable to upload JV application document. Use PDF, JPG, PNG, or WEBP under 20MB.");
       return;
     }
 
-    try {
-      let companyProfileUrl = "";
-      let cacCertificateUrl = "";
-      let portfolioUrl = "";
-      let financialProofUrl = "";
-      let proposalDocumentUrl = "";
-      let otherDocumentUrl = "";
+    const newApplication: Omit<JVApplication, "id"> = {
+      listingId: selectedListing.id,
+      listingTitle: selectedListing.title,
+      applicantName: jvApplicationForm.applicantName,
+      applicantEmail: jvApplicationForm.applicantEmail,
+      applicantPhone: jvApplicationForm.applicantPhone,
+      applicantRole: jvApplicationForm.applicantRole,
+      companyName: jvApplicationForm.companyName,
+      budgetCapacity: jvApplicationForm.budgetCapacity,
+      experienceSummary: jvApplicationForm.experienceSummary,
+      proposalMessage: jvApplicationForm.proposalMessage,
+      companyProfileUrl,
+      cacCertificateUrl,
+      portfolioUrl,
+      financialProofUrl,
+      proposalDocumentUrl,
+      otherDocumentUrl,
+      status: "New",
+      priority: "High",
+      createdAt: new Date().toISOString(),
+    };
 
-      try {
-        if (supabase) {
-          companyProfileUrl = jvCompanyProfileFile
-            ? await uploadJvApplicationDocument(jvCompanyProfileFile, "company-profile")
-            : "";
-          cacCertificateUrl = jvCacCertificateFile
-            ? await uploadJvApplicationDocument(jvCacCertificateFile, "cac-certificate")
-            : "";
-          portfolioUrl = jvPortfolioFile
-            ? await uploadJvApplicationDocument(jvPortfolioFile, "portfolio")
-            : "";
-          financialProofUrl = jvFinancialProofFile
-            ? await uploadJvApplicationDocument(jvFinancialProofFile, "financial-proof")
-            : "";
-          proposalDocumentUrl = jvProposalDocumentFile
-            ? await uploadJvApplicationDocument(jvProposalDocumentFile, "proposal-document")
-            : "";
-          otherDocumentUrl = jvOtherDocumentFile
-            ? await uploadJvApplicationDocument(jvOtherDocumentFile, "other")
-            : "";
-        }
-      } catch (error) {
-        console.error(error);
-        showSuccess("Unable to upload JV application document. Use PDF, JPG, PNG, or WEBP under 20MB.");
-        return;
-      }
-
-      const newApplication: Omit<JVApplication, "id"> = {
-        listingId: selectedListing.id,
-        listingTitle: selectedListing.title,
-        applicantName: cleanFormText(jvApplicationForm.applicantName),
-        applicantEmail: cleanFormText(jvApplicationForm.applicantEmail),
-        applicantPhone: cleanFormText(jvApplicationForm.applicantPhone),
-        applicantRole: jvApplicationForm.applicantRole,
-        companyName: cleanFormText(jvApplicationForm.companyName),
-        budgetCapacity: cleanFormText(jvApplicationForm.budgetCapacity),
-        experienceSummary: cleanFormText(jvApplicationForm.experienceSummary),
-        proposalMessage: cleanFormText(jvApplicationForm.proposalMessage),
-        companyProfileUrl,
-        cacCertificateUrl,
-        portfolioUrl,
-        financialProofUrl,
-        proposalDocumentUrl,
-        otherDocumentUrl,
+    if (supabase) {
+      const { error } = await supabase.from("jv_applications").insert({
+        listing_id: selectedListing.id,
+        listing_title: selectedListing.title,
+        applicant_name: jvApplicationForm.applicantName,
+        applicant_email: jvApplicationForm.applicantEmail || null,
+        applicant_phone: jvApplicationForm.applicantPhone,
+        applicant_role: jvApplicationForm.applicantRole,
+        company_name: jvApplicationForm.companyName || null,
+        budget_capacity: jvApplicationForm.budgetCapacity || null,
+        experience_summary: jvApplicationForm.experienceSummary || null,
+        proposal_message: jvApplicationForm.proposalMessage || null,
+        company_profile_url: companyProfileUrl || null,
+        cac_certificate_url: cacCertificateUrl || null,
+        portfolio_url: portfolioUrl || null,
+        financial_proof_url: financialProofUrl || null,
+        proposal_document_url: proposalDocumentUrl || null,
+        other_document_url: otherDocumentUrl || null,
         status: "New",
         priority: "High",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("jv_applications").insert({
-          listing_id: String(selectedListing.id),
-          listing_title: selectedListing.title,
-          applicant_name: cleanFormText(jvApplicationForm.applicantName),
-          applicant_email: cleanFormText(jvApplicationForm.applicantEmail) || null,
-          applicant_phone: cleanFormText(jvApplicationForm.applicantPhone),
-          applicant_role: jvApplicationForm.applicantRole,
-          company_name: cleanFormText(jvApplicationForm.companyName) || null,
-          budget_capacity: cleanFormText(jvApplicationForm.budgetCapacity) || null,
-          experience_summary: cleanFormText(jvApplicationForm.experienceSummary) || null,
-          proposal_message: cleanFormText(jvApplicationForm.proposalMessage) || null,
-          company_profile_url: companyProfileUrl || null,
-          cac_certificate_url: cacCertificateUrl || null,
-          portfolio_url: portfolioUrl || null,
-          financial_proof_url: financialProofUrl || null,
-          proposal_document_url: proposalDocumentUrl || null,
-          other_document_url: otherDocumentUrl || null,
-          status: "New",
-          priority: "High",
-          document_review_status: "Pending",
-          risk_level: "Not Reviewed",
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess(error.message || "Unable to submit JV application. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setJvApplications((current) => [{ ...newApplication, id: Date.now() }, ...current]);
-      }
-
-      await createStaffNotification(
-        "New JV partnership application",
-        `${jvApplicationForm.applicantName} applied as ${jvApplicationForm.applicantRole} for ${selectedListing.title}.`,
-        "JV Application"
-      );
-
-      setJvApplicationForm({
-        applicantName: "",
-        applicantEmail: "",
-        applicantPhone: "",
-        applicantRole: "Developer",
-        companyName: "",
-        budgetCapacity: "",
-        experienceSummary: "",
-        proposalMessage: "",
       });
-      setJvCompanyProfileFile(null);
-      setJvCacCertificateFile(null);
-      setJvPortfolioFile(null);
-      setJvFinancialProofFile(null);
-      setJvProposalDocumentFile(null);
-      setJvOtherDocumentFile(null);
 
-      resetPublicFormBotTrap(formKey);
-      showSuccess("JV partnership application sent. INAMAAD will review and contact you shortly.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to submit JV application. Check database settings.");
+        return;
+      }
+    } else {
+      setJvApplications((current) => [{ ...newApplication, id: Date.now() }, ...current]);
     }
+
+    await createStaffNotification(
+      "New JV partnership application",
+      `${jvApplicationForm.applicantName} applied as ${jvApplicationForm.applicantRole} for ${selectedListing.title}.`,
+      "JV Application"
+    );
+
+    setJvApplicationForm({
+      applicantName: "",
+      applicantEmail: "",
+      applicantPhone: "",
+      applicantRole: "Developer",
+      companyName: "",
+      budgetCapacity: "",
+      experienceSummary: "",
+      proposalMessage: "",
+    });
+    setJvCompanyProfileFile(null);
+    setJvCacCertificateFile(null);
+    setJvPortfolioFile(null);
+    setJvFinancialProofFile(null);
+    setJvProposalDocumentFile(null);
+    setJvOtherDocumentFile(null);
+
+    showSuccess("JV partnership application sent with supporting documents. INAMAAD will review and contact you shortly.");
   }
+
   async function submitContactMessage(event: React.FormEvent) {
     event.preventDefault();
 
-    const formKey: LeadKind = "contact_messages";
+    const newMessage: Omit<ContactMessage, "id"> = {
+      ...contactForm,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
 
-    if (
-      !beginPublicFormSubmit(formKey, [
-        { ok: hasMinimumText(contactForm.name, 2), message: "Please enter your full name." },
-        { ok: optionalEmailIsValid(contactForm.email), message: "Please enter a valid email address or leave it empty." },
-        { ok: phoneLooksValid(contactForm.phone) || hasMinimumText(contactForm.email, 6), message: "Please provide either a valid phone number or email address." },
-        { ok: hasMinimumText(contactForm.message, 5), message: "Please enter a message with at least 5 characters." },
-        { ok: isWithinLimit(contactForm.message, 5000), message: "Your message is too long." },
-      ])
-    ) {
-      return;
-    }
-
-    try {
-      const newMessage: Omit<ContactMessage, "id"> = {
-        ...contactForm,
-        name: cleanFormText(contactForm.name),
-        email: cleanFormText(contactForm.email),
-        phone: cleanFormText(contactForm.phone),
-        subject: cleanFormText(contactForm.subject),
-        message: cleanFormText(contactForm.message),
+    if (supabase) {
+      const { error } = await supabase.from("contact_messages").insert({
+        name: contactForm.name,
+        email: contactForm.email || null,
+        phone: contactForm.phone || null,
+        subject: contactForm.subject || "General enquiry",
+        message: contactForm.message,
         status: "New",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (supabase) {
-        const { error } = await supabase.from("contact_messages").insert({
-          name: cleanFormText(contactForm.name),
-          email: cleanFormText(contactForm.email) || null,
-          phone: cleanFormText(contactForm.phone) || null,
-          subject: cleanFormText(contactForm.subject) || "General enquiry",
-          message: cleanFormText(contactForm.message),
-          status: "New",
-        });
-
-        if (error) {
-          console.error(error);
-          showSuccess("Unable to send contact message. Please check your details and try again.");
-          return;
-        }
-      } else {
-        setContactMessages((current) => [
-          { ...newMessage, id: Date.now() },
-          ...current,
-        ]);
-      }
-
-      await createStaffNotification(
-        "New contact message",
-        `${contactForm.name} sent a contact message: ${contactForm.subject || "General enquiry"}.`,
-        "Contact Message"
-      );
-
-      setContactForm({
-        name: "",
-        email: "",
-        phone: "",
-        subject: "",
-        message: "",
       });
 
-      resetPublicFormBotTrap(formKey);
-      showSuccess("Contact message sent. INAMAAD will reply shortly.");
-    } finally {
-      finishPublicFormSubmit(formKey);
+      if (error) {
+        console.error(error);
+        showSuccess("Unable to send contact message. Check database settings.");
+        return;
+      }
+    } else {
+      setContactMessages((current) => [
+        { ...newMessage, id: Date.now() },
+        ...current,
+      ]);
     }
+
+    await createStaffNotification(
+      "New contact message",
+      `${contactForm.name} sent a contact message: ${contactForm.subject || "General enquiry"}.`,
+      "Contact Message"
+    );
+
+    setContactForm({
+      name: "",
+      email: "",
+      phone: "",
+      subject: "",
+      message: "",
+    });
+
+    showSuccess("Contact message sent. INAMAAD will reply shortly.");
   }
+
   async function handleSignIn(event: React.FormEvent) {
     event.preventDefault();
 
     if (!supabase) {
-      setDemoSignedIn(true);
-      setDemoUserEmail(signInForm.email || "Demo account");
-      setSignInForm({ email: "", password: "" });
       setModal(null);
-      showSuccess("Logged in successfully. Your account status is now visible.");
+      showSuccess("Demo sign in completed.");
       return;
     }
 
-    const loginEmail = signInForm.email.trim();
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: loginEmail,
+    const { error } = await supabase.auth.signInWithPassword({
+      email: signInForm.email,
       password: signInForm.password,
     });
 
     if (error) {
-      const message = formatAuthError(error, "Unable to sign in. Please check your email and password.");
-
-      if (message.toLowerCase().includes("confirm your email") || message.toLowerCase().includes("email not confirmed")) {
-        setConfirmationEmail(loginEmail);
-        showSuccess("Please confirm your email before signing in. Check your inbox or resend the confirmation email.");
-        return;
-      }
-
-      showSuccess(message);
+      showSuccess(error.message);
       return;
-    }
-
-    const signedInUser = data.user ?? data.session?.user ?? null;
-
-    if (signedInUser) {
-      setUser(signedInUser);
-      setDemoSignedIn(false);
-      setDemoUserEmail("");
-    } else {
-      // Fallback: show the logged-in state immediately after a successful login.
-      // The Supabase auth listener will replace this with the real user session.
-      setDemoSignedIn(true);
-      setDemoUserEmail(loginEmail || "INAMAAD Account");
     }
 
     setSignInForm({ email: "", password: "" });
     setModal(null);
-    showSuccess("Logged in successfully.");
-  }
-
-  async function handleResendConfirmationEmail() {
-    const email = (signInForm.email || confirmationEmail || registerForm.email).trim();
-
-    if (!email) {
-      showSuccess("Enter your email address first, then resend confirmation.");
-      return;
-    }
-
-    setConfirmationEmail(email);
-
-    if (!supabase) {
-      showSuccess("Demo mode: confirmation email would be sent when Supabase is connected.");
-      return;
-    }
-
-    const redirectTo = `${window.location.origin}${window.location.pathname}`;
-
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
-    });
-
-    if (error) {
-      showSuccess(formatAuthError(error));
-      return;
-    }
-
-    showSuccess("Confirmation email sent. Check your inbox and spam folder.");
-  }
-
-  async function handleForgotPassword(event: React.FormEvent) {
-    event.preventDefault();
-
-    const email = forgotPasswordEmail.trim();
-
-    if (!email) {
-      showSuccess("Enter your email address first.");
-      return;
-    }
-
-    if (!supabase) {
-      setForgotPasswordEmail("");
-      setModal("signin");
-      showSuccess("Demo mode: password reset email would be sent when Supabase is connected.");
-      return;
-    }
-
-    const redirectTo = `${window.location.origin}${window.location.pathname}`;
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    });
-
-    if (error) {
-      showSuccess(formatAuthError(error));
-      return;
-    }
-
-    setForgotPasswordEmail("");
-    setModal("signin");
-    showSuccess("Password reset link sent. Check your email inbox.");
-  }
-
-  async function handleResetPassword(event: React.FormEvent) {
-    event.preventDefault();
-
-    if (!supabase) {
-      setResetPasswordForm({ password: "", confirmPassword: "" });
-      setModal("signin");
-      showSuccess("Demo mode: password would be updated when Supabase is connected.");
-      return;
-    }
-
-    if (resetPasswordForm.password.length < 6) {
-      showSuccess("Password must be at least 6 characters.");
-      return;
-    }
-
-    if (resetPasswordForm.password !== resetPasswordForm.confirmPassword) {
-      showSuccess("Passwords do not match.");
-      return;
-    }
-
-    const { error } = await supabase.auth.updateUser({
-      password: resetPasswordForm.password,
-    });
-
-    if (error) {
-      showSuccess(formatAuthError(error));
-      return;
-    }
-
-    setResetPasswordForm({ password: "", confirmPassword: "" });
-    setModal("signin");
-    showSuccess("Password updated successfully. You can now sign in.");
+    showSuccess("Signed in successfully.");
   }
 
   async function handleRegister(event: React.FormEvent) {
     event.preventDefault();
 
-    if (isRegistering) {
+    if (!supabase) {
+      setModal(null);
+      showSuccess("Demo account created.");
       return;
     }
 
-    const registerEmail = registerForm.email.trim().toLowerCase();
-    const registerName = registerForm.name.trim();
-    const registerPassword = registerForm.password;
+    const { error } = await supabase.auth.signUp({
+      email: registerForm.email,
+      password: registerForm.password,
+      options: {
+        data: {
+          full_name: registerForm.name,
+        },
+      },
+    });
 
-    if (!registerName) {
-      showSuccess("Enter your full name first.");
+    if (error) {
+      showSuccess(error.message);
       return;
     }
 
-    if (!registerEmail) {
-      showSuccess("Enter your email address first.");
-      return;
-    }
-
-    if (!registerEmail.includes("@") || !registerEmail.includes(".")) {
-      showSuccess("Enter a valid email address.");
-      return;
-    }
-
-    if (registerPassword.length < 6) {
-      showSuccess("Password must be at least 6 characters.");
-      return;
-    }
-
-    setIsRegistering(true);
-    showSuccess("Creating your account and requesting confirmation email...");
-
-    try {
-      if (!supabase) {
-        setDemoSignedIn(false);
-        setDemoUserEmail("");
-        setConfirmationEmail(registerEmail);
-        setRegisterForm({ name: "", email: "", password: "" });
-        setSignInForm({ email: registerEmail, password: "" });
-        setModal("signin");
-        showSuccess("Demo mode: account created. Email confirmation would be required when Supabase is connected.");
-        return;
-      }
-
-      const redirectTo = `${window.location.origin}${window.location.pathname}`;
-
-      const signUpResponse = await Promise.race([
-        supabase.auth.signUp({
-          email: registerEmail,
-          password: registerPassword,
-          options: {
-            emailRedirectTo: redirectTo,
-            data: {
-              full_name: registerName,
-            },
-          },
-        }),
-        new Promise<never>((_, reject) => {
-          window.setTimeout(() => {
-            reject(
-              new Error(
-                "Confirmation email request is taking too long. Check Supabase Auth Logs, SMTP settings, and email rate limits before trying again."
-              )
-            );
-          }, 25000);
-        }),
-      ]);
-
-      const { data, error } = signUpResponse;
-
-      if (error) {
-        setConfirmationEmail(registerEmail);
-        showSuccess(
-          formatAuthError(
-            error,
-            "Unable to create account. Check Supabase email confirmation, SMTP, and rate limits."
-          )
-        );
-        return;
-      }
-
-      // If Supabase unexpectedly returns a session, sign it out immediately.
-      // INAMAAD requires email confirmation before the first sign in.
-      if (data?.session) {
-        await supabase.auth.signOut();
-        setUser(null);
-        setDemoSignedIn(false);
-        setDemoUserEmail("");
-      }
-
-      setConfirmationEmail(registerEmail);
-      setRegisterForm({ name: "", email: "", password: "" });
-      setSignInForm({ email: registerEmail, password: "" });
-      setModal("signin");
-
-      // Do not say "account activated" here. Activation only happens after email confirmation.
-      showSuccess("Account created. Check your email inbox or spam folder for the confirmation link before signing in.");
-    } catch (error) {
-      showSuccess(
-        formatAuthError(
-          error,
-          "Create account failed. Check Supabase Auth Logs, SMTP settings, and rate limits."
-        )
-      );
-    } finally {
-      setIsRegistering(false);
-    }
+    setRegisterForm({ name: "", email: "", password: "" });
+    setModal(null);
+    showSuccess("Account created. Check your email if confirmation is required.");
   }
 
   async function unlockAdmin(event: React.FormEvent) {
     event.preventDefault();
 
     if (!supabase) {
-      showSuccess("Supabase Auth is required for staff access. Configure Supabase and sign in with an authorized staff account.");
+      if (adminPassword === LOCAL_ADMIN_PASSWORD) {
+        setAdminUnlocked(true);
+        setAdminPassword("");
+      } else {
+        showSuccess("Wrong admin password.");
+      }
+
       return;
     }
 
@@ -5123,25 +4649,12 @@ function InamaadMainApp() {
     });
 
     if (error) {
-      showSuccess(formatAuthError(error));
+      showSuccess(error.message);
       return;
     }
 
     setAdminPassword("");
     await checkAdminAccess();
-  }
-
-  async function handlePublicSignOut() {
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
-
-    setUser(null);
-    setDemoSignedIn(false);
-    setDemoUserEmail("");
-    setAdminUnlocked(false);
-    setModal(null);
-    showSuccess("Signed out successfully.");
   }
 
   async function logoutAdmin() {
@@ -5151,8 +4664,6 @@ function InamaadMainApp() {
 
     setAdminUnlocked(false);
     setUser(null);
-    setDemoSignedIn(false);
-    setDemoUserEmail("");
     setInvestorRequests([]);
     setPropertyInquiries([]);
     setPropertyViews([]);
@@ -5172,7 +4683,7 @@ function InamaadMainApp() {
     details = ""
   ) {
     const newLog: Omit<AdminActivityLog, "id"> = {
-      adminEmail: user?.email || adminEmail || "Staff user",
+      adminEmail: user?.email || adminEmail || "Local demo admin",
       action,
       targetType,
       targetId,
@@ -6095,7 +5606,7 @@ function InamaadMainApp() {
 
     if (!staffMember) return email;
 
-    return `${staffMember.fullName || staffMember.email}  -  ${staffMember.role}`;
+    return `${staffMember.fullName || staffMember.email} • ${staffMember.role}`;
   }
 
   function getLeadKindLabel(kind: LeadKind) {
@@ -6326,7 +5837,7 @@ function InamaadMainApp() {
               <option value="">Unassigned</option>
               {assignableStaffMembers.map((member) => (
                 <option key={member.email} value={member.email}>
-                  {member.fullName || member.email} Ã¢â‚¬â€ {member.role}
+                  {member.fullName || member.email} — {member.role}
                 </option>
               ))}
             </select>
@@ -7008,7 +6519,7 @@ function InamaadMainApp() {
       )}
 
       <header className="relative z-50 border-b border-slate-200 bg-[#e9edf3]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4 lg:px-4 xl:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-5 lg:px-10">
           <a href="#" className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0d1c38] text-lg font-black text-[#f0bf3c] shadow-sm sm:h-11 sm:w-11 sm:text-xl">
               I
@@ -7024,14 +6535,14 @@ function InamaadMainApp() {
             </div>
           </a>
 
-          <nav className="hidden flex-none items-center gap-4 whitespace-nowrap lg:flex xl:gap-5">
+          <nav className="hidden items-center gap-8 lg:flex">
             {navLinks.map((item, index) => (
               <a
                 key={item.label}
                 href={item.href}
-                className={`whitespace-nowrap text-sm font-semibold leading-5 transition xl:text-[15px] ${
+                className={`text-lg font-medium transition ${
                   index === 0
-                    ? "rounded-xl bg-white px-3 py-2.5 text-[#0d1c38] shadow-sm xl:px-4"
+                    ? "rounded-xl bg-white px-5 py-3 text-[#0d1c38] shadow-sm"
                     : "text-slate-600 hover:text-[#0d1c38]"
                 }`}
               >
@@ -7040,51 +6551,28 @@ function InamaadMainApp() {
             ))}
           </nav>
 
-          <div className="hidden flex-none items-center gap-2 whitespace-nowrap lg:flex xl:gap-3">
+          <div className="hidden items-center gap-4 lg:flex">
             <button
               type="button"
               onClick={openUserGuide}
-              className="whitespace-nowrap text-sm font-semibold leading-5 text-slate-700 hover:text-[#0d1c38] xl:text-[15px]"
+              className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
             >
               Guide
             </button>
 
-            {isSignedIn ? (
-              <>
-                <div className="max-w-[220px] shrink-0 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-left shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
-                    Logged in
-                  </p>
-                  <p className="max-w-[160px] truncate text-xs font-black text-[#0d1c38] xl:max-w-[190px] xl:text-sm">
-                    {signedInEmail}
-                  </p>
-                </div>
+            <button
+              onClick={() => setModal("signin")}
+              className="text-lg font-medium text-slate-700 hover:text-[#0d1c38]"
+            >
+              Sign In
+            </button>
 
-                <button
-                  type="button"
-                  onClick={handlePublicSignOut}
-                  className="whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-black leading-5 text-slate-700 transition hover:border-[#0d1c38] hover:text-[#0d1c38] xl:px-5"
-                >
-                  Sign{"\u00A0"}Out
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setModal("signin")}
-                  className="whitespace-nowrap text-sm font-semibold leading-5 text-slate-700 hover:text-[#0d1c38] xl:text-[15px]"
-                >
-                  Sign{"\u00A0"}In
-                </button>
-
-                <button
-                  onClick={() => setModal("investor")}
-                  className="whitespace-nowrap rounded-xl bg-[#0d1c38] px-4 py-2.5 text-sm font-bold leading-5 text-white shadow-sm transition hover:bg-[#13284f] xl:px-5 xl:text-[15px]"
-                >
-                  Get{"\u00A0"}Started
-                </button>
-              </>
-            )}
+            <button
+              onClick={() => setModal("investor")}
+              className="rounded-xl bg-[#0d1c38] px-6 py-3 text-lg font-semibold text-white shadow-sm transition hover:bg-[#13284f]"
+            >
+              Get Started
+            </button>
           </div>
 
           <button
@@ -7116,51 +6604,15 @@ function InamaadMainApp() {
                 How to use
               </button>
 
-              {isSignedIn ? (
-                <div className="grid gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
-                      Logged in
-                    </p>
-                    <p className="truncate text-sm font-black text-[#0d1c38]">
-                      {signedInEmail}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileOpen(false);
-                      handlePublicSignOut();
-                    }}
-                    className="rounded-xl border border-emerald-200 bg-white px-5 py-3 text-left font-black text-[#0d1c38]"
-                  >
-                  Sign{"\u00A0"}Out
-                </button>
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={() => {
-                      setMobileOpen(false);
-                      setModal("signin");
-                    }}
-                    className="rounded-xl border border-slate-200 px-5 py-3 text-left font-black text-[#0d1c38]"
-                  >
-                  Sign{"\u00A0"}In
-                </button>
-
-                  <button
-                    onClick={() => {
-                      setMobileOpen(false);
-                      setModal("investor");
-                    }}
-                    className="rounded-xl bg-[#0d1c38] px-5 py-3 text-left font-black text-white"
-                  >
-                  Get{"\u00A0"}Started
-                </button>
-                </>
-              )}
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  setModal("investor");
+                }}
+                className="rounded-xl bg-[#0d1c38] px-5 py-3 text-left font-black text-white"
+              >
+                Get Started
+              </button>
             </div>
           </div>
         )}
@@ -7183,21 +6635,21 @@ function InamaadMainApp() {
               <div className="mb-5 flex items-center gap-3">
                 <div className="h-[3px] w-14 bg-[#f0bf3c]" />
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f0bf3c] sm:text-sm">
-                  Launch-ready real estate marketplace
+                  Nigeria’s premier platform
                 </p>
               </div>
 
               <h1 className="max-w-3xl text-3xl font-black leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-[44px]">
-                Nigeria's trusted hub for
+                Connecting Property,
                 <br />
-                <span className="text-[#f0bf3c]">Property</span>, Land
-                <br />Investment & JV Deals
+                <span className="text-[#f0bf3c]">Land</span>, Investors
+                <br />& Opportunities
               </h1>
 
               <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">
-                Browse verified homes, land, commercial assets, investor-ready
-                opportunities, and structured JV deals across Nigeria. Enquire,
-                inspect, offer, partner, and manage every lead with confidence.
+                Discover verified properties, joint venture deals, and
+                investment opportunities across Nigeria. Buy, sell, and invest
+                with confidence.
               </p>
 
               <div className="mt-8 max-w-6xl rounded-[24px] bg-white p-3 shadow-2xl sm:p-4">
@@ -7206,7 +6658,7 @@ function InamaadMainApp() {
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     type="text"
-                    placeholder="Search location, property, JV deal..."
+                    placeholder="Search properties..."
                     className="h-14 rounded-2xl border border-slate-200 px-5 text-base outline-none transition focus:border-[#0d1c38]"
                   />
 
@@ -7362,18 +6814,17 @@ function InamaadMainApp() {
                 <div className="mb-4 flex items-center gap-3">
                   <div className="h-[3px] w-14 bg-[#f0bf3c]" />
                   <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#d39b19]">
-                    Verified opportunities
+                    Featured opportunities
                   </p>
                 </div>
 
                 <h2 className="max-w-3xl text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
-                  Find homes, land, commercial assets and JV deals in one place.
+                  Explore verified properties and investment deals.
                 </h2>
 
                 <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-                  Search by location, property type, purpose, budget, availability,
-                  and investment strategy. Open details, submit enquiries, book inspections,
-                  and make offers from one clean platform.
+                  Browse premium homes, land, commercial assets, and joint
+                  venture opportunities reviewed for serious investors.
                 </p>
               </div>
 
@@ -7381,7 +6832,7 @@ function InamaadMainApp() {
                 onClick={() => openPostModal("property")}
                 className="w-fit rounded-2xl bg-[#0d1c38] px-7 py-4 text-base font-bold text-white shadow-sm transition hover:bg-[#13284f]"
               >
-                Submit Property / JV
+                Submit Property
               </button>
             </div>
 
@@ -7809,27 +7260,27 @@ function InamaadMainApp() {
               </div>
 
               <h2 className="text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
-                Built for serious property, investment and JV decisions.
+                Real estate opportunities with stronger clarity.
               </h2>
 
               <p className="mt-6 text-lg leading-8 text-slate-600">
-                INAMAAD brings buyers, investors, landowners, developers, agents,
-                and JV partners into one professional marketplace for discovery,
-                verification, submissions, lead tracking, and opportunity management.
+                The goal of INAMAAD is to become a trusted marketplace for
+                verified homes, land, commercial property, and joint venture
+                opportunities across Nigeria.
               </p>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-3xl font-black text-[#0d1c38]">Organized</p>
+                  <p className="text-3xl font-black text-[#0d1c38]">Fast</p>
                   <p className="mt-3 text-slate-600">
-                    Browse, filter, submit, enquire, inspect, offer, and apply through clear workflows.
+                    Search and filter opportunities quickly.
                   </p>
                 </div>
 
                 <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-3xl font-black text-[#0d1c38]">Protected</p>
+                  <p className="text-3xl font-black text-[#0d1c38]">Trusted</p>
                   <p className="mt-3 text-slate-600">
-                    Email confirmation, role-based admin access, protected forms, and secure storage rules support safer operations.
+                    Listings are reviewed before public approval.
                   </p>
                 </div>
               </div>
@@ -7843,18 +7294,18 @@ function InamaadMainApp() {
               <div className="mb-4 flex items-center gap-3">
                 <div className="h-[3px] w-14 bg-[#f0bf3c]" />
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
-                  JV partnership marketplace
+                  Joint venture deals
                 </p>
               </div>
 
               <h2 className="text-4xl font-black tracking-tight md:text-6xl">
-                Structure partnerships between landowners, developers and investors.
+                Connect landowners, investors, and developers.
               </h2>
 
               <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-                INAMAAD helps JV opportunities show the information serious partners need:
-                land contribution, developer requirement, investor requirement, sharing formula,
-                project stage, documents, due diligence status, and application tracking.
+                INAMAAD helps structure discovery for joint venture
+                opportunities, where landowners, developers, and investors can
+                find better-fit partnerships.
               </p>
 
               <div className="mt-9 flex flex-col gap-4 sm:flex-row">
@@ -7882,10 +7333,10 @@ function InamaadMainApp() {
 
                 <div className="mt-6 grid gap-4">
                   {[
-                    ["Landowners", "Submit land for reviewed partnership"],
-                    ["Developers", "Find JV-ready development opportunities"],
-                    ["Investors", "Apply to structured real estate projects"],
-                    ["Coverage", "FCT Abuja, 36 states, and prime corridors"],
+                    ["Landowners", "Submit land for development"],
+                    ["Developers", "Find JV-ready land opportunities"],
+                    ["Investors", "Join structured real estate projects"],
+                    ["Market", "Lagos, Abuja, and emerging corridors"],
                   ].map(([label, value]) => (
                     <div
                       key={label}
@@ -7918,13 +7369,13 @@ function InamaadMainApp() {
                   </div>
 
                   <h2 className="max-w-3xl text-4xl font-black tracking-tight text-[#0d1c38] md:text-6xl">
-                    Request opportunities that match your budget, location and investment strategy.
+                    Access deals that match your capital and strategy.
                   </h2>
 
                   <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">
-                    Submit your budget, preferred asset type, location interest,
-                    and investment goals. INAMAAD saves your request for staff review,
-                    follow-up, and opportunity matching.
+                    Tell INAMAAD your preferred location, budget, and
+                    investment interest. Your request is saved for admin review
+                    and follow-up.
                   </p>
                 </div>
 
@@ -8067,208 +7518,105 @@ function InamaadMainApp() {
           </div>
         </section>
 
-        <section id="contact" className="bg-[#0F172A] px-4 py-16 text-white sm:px-6 sm:py-20 lg:px-10">
+        <section id="contact" className="bg-[#0d1c38] px-6 py-20 text-white lg:px-10">
           <div className="mx-auto max-w-7xl">
-            <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-5 shadow-2xl shadow-black/20 sm:p-8 lg:p-10">
-              <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-                <div>
-                  <div className="mb-5 flex items-center gap-3">
-                    <div className="h-[3px] w-12 bg-[#C9A227]" />
-                    <p className="text-xs font-black uppercase tracking-[0.28em] text-[#C9A227] sm:text-sm">
-                      Contact INAMAAD
-                    </p>
-                  </div>
-
-                  <h2 className="max-w-3xl text-3xl font-black tracking-tight sm:text-5xl lg:text-6xl">
-                    Speak with INAMAAD about property, investment, land or JV opportunities.
-                  </h2>
-
-                  <p className="mt-5 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
-                    Whether you want to buy, sell, rent, invest, list land, submit a JV deal,
-                    request inspection, make an offer, or discuss development partnership,
-                    INAMAAD gives you a professional channel for serious real estate decisions.
+            <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+              <div>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-[3px] w-14 bg-[#f0bf3c]" />
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0bf3c]">
+                    Contact
                   </p>
-
-                  <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                    {[
-                      {
-                        title: "Investors",
-                        text: "Discover verified real estate opportunities and structured investment leads.",
-                      },
-                      {
-                        title: "Developers",
-                        text: "Connect with landowners, capital partners, and development opportunities.",
-                      },
-                      {
-                        title: "Landowners",
-                        text: "Submit land or partnership opportunities for professional review.",
-                      },
-                      {
-                        title: "JV Partners",
-                        text: "Explore joint venture, land development, and strategic partnership pathways.",
-                      },
-                    ].map((item) => (
-                      <div
-                        key={item.title}
-                        className="rounded-3xl border border-white/10 bg-white/[0.06] p-5"
-                      >
-                        <h3 className="text-lg font-black text-white">{item.title}</h3>
-                        <p className="mt-2 text-sm leading-6 text-slate-300">{item.text}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-8 flex flex-wrap gap-3">
-                    <a
-                      href="#properties"
-                      className="rounded-full bg-[#C9A227] px-6 py-3 text-sm font-black text-[#0F172A] transition hover:bg-[#e2bd45]"
-                    >
-                      Browse Opportunities
-                    </a>
-
-                    <button
-                      type="button"
-                      onClick={() => setModal("post")}
-                      className="rounded-full border border-white/20 px-6 py-3 text-sm font-black text-white transition hover:border-[#C9A227] hover:text-[#C9A227]"
-                    >
-                      Submit Opportunity
-                    </button>
-
-                    <a
-                      href={`https://wa.me/${WHATSAPP_NUMBER}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-full border border-white/20 px-6 py-3 text-sm font-black text-white transition hover:border-[#C9A227] hover:text-[#C9A227]"
-                    >
-                      WhatsApp INAMAAD
-                    </a>
-                  </div>
                 </div>
 
-                <div className="rounded-[2rem] border border-white/10 bg-white p-5 text-[#0F172A] shadow-2xl shadow-black/30 sm:p-7">
-                  <div className="rounded-[1.5rem] border border-[#C9A227]/25 bg-[#f8f5eb] p-5">
-                    <p className="text-xs font-black uppercase tracking-[0.24em] text-[#9a7816]">
-                      Business Inquiry
-                    </p>
-                    <h3 className="mt-2 text-2xl font-black">
-                      Contact our team
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Send your inquiry and the message will be saved in your staff portal for follow-up.
-                    </p>
+                <h2 className="text-4xl font-black tracking-tight md:text-6xl">
+                  Ready to invest or submit a real estate opportunity?
+                </h2>
+
+                <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
+                  Start with investor access, submit your property, or contact
+                  INAMAAD directly on WhatsApp.
+                </p>
+              </div>
+
+              <form
+                onSubmit={submitContactMessage}
+                className="rounded-[2rem] bg-white p-6 text-[#0d1c38] shadow-2xl shadow-black/20"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-[#d49613]">
+                  Send message
+                </p>
+                <h3 className="mt-2 text-2xl font-black">Contact INAMAAD</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Messages from this form are saved directly inside your staff portal.
+                </p>
+
+                <div className="mt-5 grid gap-3">
+                  <input
+                    required
+                    value={contactForm.name}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, name: event.target.value })
+                    }
+                    placeholder="Full name"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <input
+                      type="email"
+                      value={contactForm.email}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, email: event.target.value })
+                      }
+                      placeholder="Email optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={contactForm.phone}
+                      onChange={(event) =>
+                        setContactForm({ ...contactForm, phone: event.target.value })
+                      }
+                      placeholder="Phone or WhatsApp"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
                   </div>
 
-                  <form onSubmit={submitContactMessage} className="mt-5 grid gap-3">
-                    <input
-                      type="text"
-                      value={publicFormBotTrap.contact_messages}
-                      onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, contact_messages: event.target.value })}
-                      tabIndex={-1}
-                      autoComplete="off"
-                      aria-hidden="true"
-                      className="hidden"
-                    />
-                    <input
-                      required
-                      value={contactForm.name}
-                      onChange={(event) =>
-                        setContactForm({ ...contactForm, name: event.target.value })
-                      }
-                      placeholder="Full name"
-                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
-                    />
+                  <input
+                    value={contactForm.subject}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, subject: event.target.value })
+                    }
+                    placeholder="Subject e.g. Property investment"
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <input
-                        type="email"
-                        value={contactForm.email}
-                        onChange={(event) =>
-                          setContactForm({ ...contactForm, email: event.target.value })
-                        }
-                        placeholder="Email optional"
-                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
-                      />
+                  <textarea
+                    required
+                    value={contactForm.message}
+                    onChange={(event) =>
+                      setContactForm({ ...contactForm, message: event.target.value })
+                    }
+                    placeholder="Write your message"
+                    rows={4}
+                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
 
-                      <input
-                        value={contactForm.phone}
-                        onChange={(event) =>
-                          setContactForm({ ...contactForm, phone: event.target.value })
-                        }
-                        placeholder="Phone or WhatsApp"
-                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
-                      />
-                    </div>
+                  <button className="rounded-2xl bg-[#f0bf3c] px-7 py-4 text-sm font-black text-[#0d1c38] hover:bg-[#ffd45a]">
+                    Send message
+                  </button>
 
-                    <input
-                      value={contactForm.subject}
-                      onChange={(event) =>
-                        setContactForm({ ...contactForm, subject: event.target.value })
-                      }
-                      placeholder="Subject e.g. Investor inquiry, JV proposal, land submission"
-                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
-                    />
-
-                    <textarea
-                      required
-                      value={contactForm.message}
-                      onChange={(event) =>
-                        setContactForm({ ...contactForm, message: event.target.value })
-                      }
-                      placeholder="Tell us about your opportunity, investment interest, or partnership request"
-                      rows={5}
-                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none transition focus:border-[#C9A227] focus:ring-4 focus:ring-[#C9A227]/15"
-                    />
-
-                    <button
-                      disabled={publicSubmittingForm === "contact_messages"}
-                      className="rounded-2xl bg-[#0F172A] px-7 py-4 text-sm font-black text-white transition hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {publicSubmittingForm === "contact_messages" ? "Sending inquiry..." : "Send Business Inquiry"}
-                    </button>
-
-                    <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => setModal("investor")}
-                        className="rounded-2xl border border-slate-200 px-5 py-4 text-center text-sm font-black text-[#0F172A] transition hover:border-[#C9A227] hover:text-[#9a7816]"
-                      >
-                        Investor Access
-                      </button>
-
-                      <a
-                        href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%20INAMAAD%2C%20I%20want%20to%20make%20a%20business%20inquiry.`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-2xl border border-slate-200 px-5 py-4 text-center text-sm font-black text-[#0F172A] transition hover:border-[#C9A227] hover:text-[#9a7816]"
-                      >
-                        WhatsApp: +{WHATSAPP_NUMBER}
-                      </a>
-                    </div>
-                  </form>
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-2xl border border-slate-200 px-7 py-4 text-center text-sm font-black text-[#0d1c38] hover:border-[#0d1c38]"
+                  >
+                    Or WhatsApp: +{WHATSAPP_NUMBER}
+                  </a>
                 </div>
-              </div>
-
-              <div className="mt-8 grid gap-4 border-t border-white/10 pt-8 md:grid-cols-3">
-                {[
-                  {
-                    title: "Opportunity Review",
-                    text: "Submit properties, land, or JV opportunities for structured review.",
-                  },
-                  {
-                    title: "Investor Relations",
-                    text: "Start conversations around verified deals and long-term growth.",
-                  },
-                  {
-                    title: "Partnership Desk",
-                    text: "Connect for development, land acquisition, and joint venture collaboration.",
-                  },
-                ].map((item) => (
-                  <div key={item.title} className="rounded-3xl bg-white/[0.05] p-5">
-                    <h3 className="text-base font-black text-[#C9A227]">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">{item.text}</p>
-                  </div>
-                ))}
-              </div>
+              </form>
             </div>
           </div>
         </section>
@@ -8337,16 +7685,6 @@ function InamaadMainApp() {
               <a href="#jv">JV Deals</a>
               <a href="#about">About</a>
               <a href="#contact">Contact</a>
-
-              <button
-                onClick={() => {
-                  setAdminPassword("");
-                  setModal("admin");
-                }}
-                className="mt-2 w-fit text-left text-xs text-slate-400 hover:text-slate-700"
-              >
-                Staff Access
-              </button>
             </div>
           </div>
 
@@ -8362,33 +7700,12 @@ function InamaadMainApp() {
                 How to use INAMAAD
               </button>
 
-              {isSignedIn ? (
-                <>
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
-                      Logged in
-                    </p>
-                    <p className="mt-1 max-w-[190px] truncate text-xs font-black text-[#0d1c38]">
-                      {signedInEmail}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handlePublicSignOut}
-                    className="w-fit text-left font-black text-[#0d1c38]"
-                  >
-                  Sign{"\u00A0"}Out
-                </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setModal("signin")}
-                  className="w-fit text-left"
-                >
-                  Sign{"\u00A0"}In
-                </button>
-              )}
+              <button
+                onClick={() => setModal("signin")}
+                className="w-fit text-left"
+              >
+                Sign In
+              </button>
 
               <button
                 onClick={() => setModal("investor")}
@@ -8397,13 +7714,17 @@ function InamaadMainApp() {
                 Investor Access
               </button>
 
-
+              <button
+                onClick={() => {
+                  setAdminPassword("");
+                  setModal("admin");
+                }}
+                className="w-fit text-left text-xs text-slate-400 hover:text-slate-700"
+              >
+                Staff portal
+              </button>
             </div>
           </div>
-        </div>
-
-        <div className="mx-auto mt-8 max-w-7xl border-t border-slate-200 pt-5 text-center text-xs font-semibold text-slate-500">
-          Ã‚Â© 2026 INAMAAD Real Estate. All rights reserved.
         </div>
       </footer>
 
@@ -8448,8 +7769,6 @@ function InamaadMainApp() {
                   {modal === "admin" && "Staff portal"}
                   {modal === "edit" && "Edit listing"}
                   {modal === "guide" && "How to use INAMAAD"}
-                  {modal === "forgotPassword" && "Forgot password"}
-                  {modal === "resetPassword" && "Create new password"}
                   {modal === "details" && selectedListing?.title}
                 </h2>
               </div>
@@ -8640,119 +7959,16 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                {confirmationEmail && (
-                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                    <p className="font-black">Email confirmation required</p>
-                    <p className="mt-1">
-                      Confirm <span className="font-black">{confirmationEmail}</span> before signing in.
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotPasswordEmail(signInForm.email);
-                      setModal("forgotPassword");
-                    }}
-                    className="text-sm font-black text-[#9a7816] hover:text-[#0d1c38]"
-                  >
-                    Forgot password?
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModal("register")}
-                    className="text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
-                  >
-                    Create a new account
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleResendConfirmationEmail}
-                  className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 text-sm font-black text-amber-900 transition hover:bg-amber-100"
-                >
-                  Resend confirmation email
-                </button>
-
                 <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
                   Sign in
                 </button>
-              </form>
-            )}
-
-            {modal === "forgotPassword" && (
-              <form onSubmit={handleForgotPassword} className="grid gap-4">
-                <div className="rounded-3xl border border-[#C9A227]/25 bg-[#f8f5eb] p-5">
-                  <p className="text-sm font-bold leading-6 text-slate-700">
-                    Enter the email address linked to your INAMAAD account. We will send a secure password reset link to your inbox.
-                  </p>
-                </div>
-
-                <input
-                  required
-                  type="email"
-                  value={forgotPasswordEmail}
-                  onChange={(event) => setForgotPasswordEmail(event.target.value)}
-                  placeholder="Email address"
-                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                />
-
-                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
-                  Send reset link
-                </button>
 
                 <button
                   type="button"
-                  onClick={() => setModal("signin")}
-                  className="text-sm font-bold text-slate-500 hover:text-[#0d1c38]"
+                  onClick={() => setModal("register")}
+                  className="text-sm font-bold text-slate-500"
                 >
-                  Back to sign in
-                </button>
-              </form>
-            )}
-
-            {modal === "resetPassword" && (
-              <form onSubmit={handleResetPassword} className="grid gap-4">
-                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
-                  <p className="text-sm font-bold leading-6 text-emerald-800">
-                    Your reset link has been verified. Create a new password for your INAMAAD account.
-                  </p>
-                </div>
-
-                <input
-                  required
-                  type="password"
-                  value={resetPasswordForm.password}
-                  onChange={(event) =>
-                    setResetPasswordForm({
-                      ...resetPasswordForm,
-                      password: event.target.value,
-                    })
-                  }
-                  placeholder="New password"
-                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                />
-
-                <input
-                  required
-                  type="password"
-                  value={resetPasswordForm.confirmPassword}
-                  onChange={(event) =>
-                    setResetPasswordForm({
-                      ...resetPasswordForm,
-                      confirmPassword: event.target.value,
-                    })
-                  }
-                  placeholder="Confirm new password"
-                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                />
-
-                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
-                  Update password
+                  Create a new account
                 </button>
               </form>
             )}
@@ -8800,16 +8016,8 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <div className="rounded-3xl border border-[#C9A227]/25 bg-[#f8f5eb] p-4 text-sm font-bold leading-6 text-slate-700">
-                  Email confirmation is required. After creating your account, check your inbox and confirm your email before signing in.
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isRegistering}
-                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white transition hover:bg-[#13284f] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isRegistering ? "Sending confirmation..." : "Create account"}
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                  Create account
                 </button>
               </form>
             )}
@@ -8962,7 +8170,7 @@ function InamaadMainApp() {
                     </label>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
-                        ₦ ₦
+                        ₦ NGN
                       </span>
                       <input
                         required
@@ -9689,7 +8897,7 @@ function InamaadMainApp() {
                 <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
                   <p className="font-black text-[#0d1c38]">Admin writing guide:</p>
                   <p className="mt-2"><span className="font-black">Title:</span> Luxury Apartments in Maitama, Abuja</p>
-                  <p><span className="font-black">Investment highlight:</span> Premium capital appreciation in Abuja's prime district</p>
+                  <p><span className="font-black">Investment highlight:</span> Premium capital appreciation in Abuja’s prime district</p>
                   <p><span className="font-black">Opportunity:</span> Explain the location, buyer/investor benefit, rental potential, documents, and why the property is valuable.</p>
                 </div>
 
@@ -9816,7 +9024,7 @@ function InamaadMainApp() {
                     </label>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
-                        ₦ ₦
+                        ₦ NGN
                       </span>
                       <input
                         required
@@ -10702,15 +9910,6 @@ function InamaadMainApp() {
 
             {modal === "investor" && (
               <form onSubmit={submitInvestorRequest} className="grid gap-4">
-                <input
-                  type="text"
-                  value={publicFormBotTrap.investor_requests}
-                  onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, investor_requests: event.target.value })}
-                  tabIndex={-1}
-                  autoComplete="off"
-                  aria-hidden="true"
-                  className="hidden"
-                />
                 <div className="grid gap-4 md:grid-cols-2">
                   <input
                     required
@@ -10796,11 +9995,8 @@ function InamaadMainApp() {
                   className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                 />
 
-                <button
-                  disabled={publicSubmittingForm === "investor_requests"}
-                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {publicSubmittingForm === "investor_requests" ? "Sending request..." : "Save investor request"}
+                <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                  Save investor request
                 </button>
               </form>
             )}
@@ -11165,7 +10361,7 @@ function InamaadMainApp() {
                         <div>
                           <p className="text-slate-400">Media</p>
                           <p className="font-black">
-                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join("  -  ")}
+                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join(" • ")}
                           </p>
                         </div>
                       )}
@@ -11174,7 +10370,7 @@ function InamaadMainApp() {
                         <div>
                           <p className="text-slate-400">Specs</p>
                           <p className="font-black">
-                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join("  -  ")}
+                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join(" • ")}
                           </p>
                         </div>
                       )}
@@ -11265,15 +10461,6 @@ function InamaadMainApp() {
                     onSubmit={submitJvApplication}
                     className="mt-6 grid gap-4 rounded-[24px] border border-purple-200 bg-purple-50 p-6"
                   >
-                    <input
-                      type="text"
-                      value={publicFormBotTrap.jv_applications}
-                      onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, jv_applications: event.target.value })}
-                      tabIndex={-1}
-                      autoComplete="off"
-                      aria-hidden="true"
-                      className="hidden"
-                    />
                     <div>
                       <p className="text-xl font-black text-[#0d1c38]">
                         Apply for JV partnership
@@ -11442,11 +10629,8 @@ function InamaadMainApp() {
                       </div>
                     </div>
 
-                    <button
-                      disabled={publicSubmittingForm === "jv_applications"}
-                      className="rounded-2xl bg-purple-700 px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {publicSubmittingForm === "jv_applications" ? "Submitting JV application..." : "Submit JV partnership application"}
+                    <button className="rounded-2xl bg-purple-700 px-6 py-4 text-sm font-black text-white">
+                      Submit JV partnership application
                     </button>
                   </form>
                 )}
@@ -11455,15 +10639,6 @@ function InamaadMainApp() {
                   onSubmit={submitPropertyInquiry}
                   className="mt-6 grid gap-4 rounded-[24px] border border-slate-200 bg-white p-6"
                 >
-                  <input
-                    type="text"
-                    value={publicFormBotTrap.property_inquiries}
-                    onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, property_inquiries: event.target.value })}
-                    tabIndex={-1}
-                    autoComplete="off"
-                    aria-hidden="true"
-                    className="hidden"
-                  />
                   <div>
                     <p className="text-xl font-black text-[#0d1c38]">
                       Ask about this property
@@ -11524,11 +10699,8 @@ function InamaadMainApp() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <button
-                    disabled={publicSubmittingForm === "property_inquiries"}
-                    className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {publicSubmittingForm === "property_inquiries" ? "Sending inquiry..." : "Send property inquiry"}
+                  <button className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white">
+                    Send property inquiry
                   </button>
                 </form>
 
@@ -11536,15 +10708,6 @@ function InamaadMainApp() {
                   onSubmit={submitInspectionBooking}
                   className="mt-6 grid gap-4 rounded-[24px] border border-[#f0bf3c]/40 bg-[#fffaf0] p-6"
                 >
-                  <input
-                    type="text"
-                    value={publicFormBotTrap.inspection_bookings}
-                    onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, inspection_bookings: event.target.value })}
-                    tabIndex={-1}
-                    autoComplete="off"
-                    aria-hidden="true"
-                    className="hidden"
-                  />
                   <div>
                     <p className="text-xl font-black text-[#0d1c38]">
                       Book property inspection
@@ -11616,11 +10779,8 @@ function InamaadMainApp() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <button
-                    disabled={publicSubmittingForm === "inspection_bookings"}
-                    className="rounded-2xl bg-[#f0bf3c] px-6 py-4 text-sm font-black text-[#0d1c38] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {publicSubmittingForm === "inspection_bookings" ? "Booking inspection..." : "Book inspection"}
+                  <button className="rounded-2xl bg-[#f0bf3c] px-6 py-4 text-sm font-black text-[#0d1c38]">
+                    Book inspection
                   </button>
                 </form>
 
@@ -11628,15 +10788,6 @@ function InamaadMainApp() {
                   onSubmit={submitPropertyOffer}
                   className="mt-6 grid gap-4 rounded-[24px] border border-emerald-200 bg-emerald-50 p-6"
                 >
-                  <input
-                    type="text"
-                    value={publicFormBotTrap.property_offers}
-                    onChange={(event) => setPublicFormBotTrap({ ...publicFormBotTrap, property_offers: event.target.value })}
-                    tabIndex={-1}
-                    autoComplete="off"
-                    aria-hidden="true"
-                    className="hidden"
-                  />
                   <div>
                     <p className="text-xl font-black text-[#0d1c38]">
                       Make offer / reserve property
@@ -11717,11 +10868,8 @@ function InamaadMainApp() {
                     className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
 
-                  <button
-                    disabled={publicSubmittingForm === "property_offers"}
-                    className="rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {publicSubmittingForm === "property_offers" ? "Submitting offer..." : "Submit offer / reserve interest"}
+                  <button className="rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-black text-white">
+                    Submit offer / reserve interest
                   </button>
                 </form>
               </div>
@@ -11818,7 +10966,7 @@ function InamaadMainApp() {
                       >
                         <div className="flex items-start gap-3">
                           <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${check.passed ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"}`}>
-                            {check.passed ? "Ã¢Å“â€œ" : "!"}
+                            {check.passed ? "✓" : "!"}
                           </span>
                           <div>
                             <p className="text-sm font-black text-[#0d1c38]">{check.label}</p>
@@ -11831,7 +10979,7 @@ function InamaadMainApp() {
 
                   {failedLaunchFoundationChecks.length > 0 ? (
                     <p className="mt-4 rounded-2xl bg-[#fff7df] p-4 text-sm font-semibold leading-6 text-[#9b6b16]">
-                      Next Phase 1 action: {failedLaunchFoundationChecks[0].label} Ã¢â‚¬â€ {failedLaunchFoundationChecks[0].detail}
+                      Next Phase 1 action: {failedLaunchFoundationChecks[0].label} — {failedLaunchFoundationChecks[0].detail}
                     </p>
                   ) : (
                     <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold leading-6 text-emerald-700">
@@ -11922,7 +11070,7 @@ function InamaadMainApp() {
                         Follow-up dashboard
                       </h3>
                       <p className="mt-2 text-sm leading-6 text-slate-500">
-                        Track overdue buyers, today's follow-ups, urgent leads, and unassigned opportunities in one place.
+                        Track overdue buyers, today’s follow-ups, urgent leads, and unassigned opportunities in one place.
                       </p>
                     </div>
 
@@ -11976,7 +11124,7 @@ function InamaadMainApp() {
                             <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.title}</p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
-                              Follow-up: {formatDate(item.followUpDate)}  -  Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                              Follow-up: {formatDate(item.followUpDate)} • Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
                         ))}
@@ -12005,7 +11153,7 @@ function InamaadMainApp() {
                             <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.title}</p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
-                              Follow-up: {formatDate(item.followUpDate)}  -  Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                              Follow-up: {formatDate(item.followUpDate)} • Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
                         ))}
@@ -12150,7 +11298,7 @@ function InamaadMainApp() {
                             </p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
                               {formatDate(log.createdAt)}
-                              {log.targetId ? `  -  ID: ${log.targetId}` : ""}
+                              {log.targetId ? ` • ID: ${log.targetId}` : ""}
                             </p>
                           </div>
                         </div>
@@ -12483,7 +11631,7 @@ function InamaadMainApp() {
                             {listing.title}
                           </p>
                           <p className="mt-1 text-sm text-slate-500">
-                            {listing.location}  -  {listing.price}
+                            {listing.location} • {listing.price}
                           </p>
                         </div>
 
@@ -12604,12 +11752,12 @@ function InamaadMainApp() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-500">
-                              {listing.location}  -  {listing.price}
+                              {listing.location} • {listing.price}
                             </p>
 
                             <p className="mt-2 text-sm text-slate-500">
-                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"}  - {" "}
-                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"}  -  {listing.mandateStatus || "Not Confirmed"}
+                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"} •{" "}
+                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"} • {listing.mandateStatus || "Not Confirmed"}
                             </p>
                           </div>
 
@@ -12687,7 +11835,7 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {inquiry.email || "No email"}  -  {inquiry.phone}
+                                {inquiry.email || "No email"} • {inquiry.phone}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -12820,11 +11968,11 @@ function InamaadMainApp() {
                               </div>
 
                               <p className="mt-2 font-black text-[#0d1c38]">
-                                {application.applicantName}  -  {application.applicantRole}
+                                {application.applicantName} • {application.applicantRole}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {application.companyName || "No company stated"}  -  {application.applicantEmail || "No email"}  -  {application.applicantPhone}
+                                {application.companyName || "No company stated"} • {application.applicantEmail || "No email"} • {application.applicantPhone}
                               </p>
 
                               {application.budgetCapacity && (
@@ -13174,11 +12322,11 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {offer.buyerEmail || "No email"}  -  {offer.buyerPhone}
+                                {offer.buyerEmail || "No email"} • {offer.buyerPhone}
                               </p>
 
                               <p className="mt-2 text-sm font-black text-emerald-700">
-                                Offer: {offer.offerAmount || "Not stated"}  -  {offer.paymentPlan || "No payment plan"}
+                                Offer: {offer.offerAmount || "Not stated"} • {offer.paymentPlan || "No payment plan"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13299,11 +12447,11 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {booking.email || "No email"}  -  {booking.phone}
+                                {booking.email || "No email"} • {booking.phone}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                Preferred: {booking.preferredDate || "No date"}  -  {booking.preferredTime || "No time"}
+                                Preferred: {booking.preferredDate || "No date"} • {booking.preferredTime || "No time"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13446,7 +12594,7 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {message.email || "No email"}  -  {message.phone || "No phone"}
+                                {message.email || "No email"} • {message.phone || "No phone"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13583,11 +12731,11 @@ function InamaadMainApp() {
                               </div>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {request.email}  -  {request.phone}
+                                {request.email} • {request.phone}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                Budget: {request.budget}  -  Interest: {request.interest}
+                                Budget: {request.budget} • Interest: {request.interest}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13709,18 +12857,18 @@ function InamaadMainApp() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-500">
-                              {listing.location}  -  {listing.price}
+                              {listing.location} • {listing.price}
                             </p>
 
                             {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
                               <p className="mt-1 text-xs font-bold text-slate-500">
-                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join("  -  ")}
+                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join(" • ")}
                               </p>
                             )}
 
                             <p className="mt-1 text-xs font-black text-slate-400">
-                              {listing.status}  -  {listing.availabilityStatus || "Available"}
-                              {listing.featured ? `  -  Featured rank ${listing.featuredRank || 0}` : ""}
+                              {listing.status} • {listing.availabilityStatus || "Available"}
+                              {listing.featured ? ` • Featured rank ${listing.featuredRank || 0}` : ""}
                             </p>
 
                             {listing.availabilityNote && (
@@ -13797,32 +12945,3 @@ export default function App() {
 // INAMAAD_INVISIBLE_SYNC_SCROLL_STABILITY_AUDIT: removed visible syncing badge, stopped touch/pointer refresh during mobile scroll, and preserved scroll position during background data refresh.
 
 // INAMAAD_STATIC_NAVBAR_AUDIT: navbar and new-user notice changed from sticky to normal/static layout so they do not move while scrolling.
-
-// INAMAAD_STICKY_NAVBAR_VISIBLE_AUDIT: navbar is sticky and visible while scrolling; new-user notice remains non-sticky to avoid double-bar jumping.
-
-// INAMAAD_FIXED_VISIBLE_NAVBAR_AUDIT: navbar is fixed at the top and remains visible while scrolling; page content is padded so it does not hide under the navbar.
-
-// INAMAAD_COPYRIGHT_FOOTER_AUDIT: footer copyright added at the end of the page.
-
-// INAMAAD_MOVABLE_NAVBAR_RESTORE_AUDIT: navbar restored to normal movable/static page flow; fixed top padding removed.
-
-// INAMAAD_STAFF_ACCESS_UNDER_COMPANY_AUDIT: staff portal link moved from Access footer column into Company footer column as small Staff Access link.
-
-// INAMAAD_PREMIUM_CONTACT_SECTION_AUDIT: contact section upgraded to premium business-focused investor/developer/landowner/JV inquiry layout.
-
-// INAMAAD_FORGOT_PASSWORD_AUDIT: forgot password and reset password modals added using Supabase password recovery flow.
-
-// INAMAAD_SIGNED_IN_STATUS_AUDIT: navbar now clearly changes after sign in by showing signed-in account badge and sign-out action on desktop and mobile.
-
-// INAMAAD_LOGIN_VISIBLE_STRONG_FIX_AUDIT: login state now switches immediately to Logged in after successful sign in, and footer Access column no longer shows Sign In while logged in.
-
-// INAMAAD_EMAIL_CONFIRMATION_REQUIRED_AUDIT: signup now redirects user to sign in only after email confirmation, sign-in detects unconfirmed emails, and users can resend confirmation email.
-
-// INAMAAD_AUTH_MESSAGE_AND_CONFIRMATION_FIX_AUDIT: signup now shows readable auth errors instead of {}, keeps users logged out until email confirmation, and maps Supabase rate/email errors to clear messages.
-
-// INAMAAD_CREATE_ACCOUNT_BUTTON_FIX_AUDIT: Create account button is now explicit submit, shows loading, prevents double click, and handleRegister always returns readable messages.
-
-// INAMAAD_SIGNUP_EMAIL_CONFIRMATION_DELIVERY_FIX_AUDIT: signup has timeout, never says account activated before confirmation, and guards against unconfirmed sessions.
-
-
-// INAMAAD_FRONTEND_FORM_PROTECTION_AUDIT: public forms now use client-side validation, bot-trap fields, and double-submit locks.

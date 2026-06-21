@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient, type User } from "@supabase/supabase-js";
 
 type ModalType =
@@ -6095,7 +6095,7 @@ function InamaadMainApp() {
 
     if (!staffMember) return email;
 
-    return `${staffMember.fullName || staffMember.email}  -  ${staffMember.role}`;
+    return `${staffMember.fullName || staffMember.email} Ã¢â‚¬Â¢ ${staffMember.role}`;
   }
 
   function getLeadKindLabel(kind: LeadKind) {
@@ -11165,7 +11165,7 @@ function InamaadMainApp() {
                         <div>
                           <p className="text-slate-400">Media</p>
                           <p className="font-black">
-                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join("  -  ")}
+                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join(" Ã¢â‚¬Â¢ ")}
                           </p>
                         </div>
                       )}
@@ -11174,7 +11174,7 @@ function InamaadMainApp() {
                         <div>
                           <p className="text-slate-400">Specs</p>
                           <p className="font-black">
-                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join("  -  ")}
+                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join(" Ã¢â‚¬Â¢ ")}
                           </p>
                         </div>
                       )}
@@ -11976,7 +11976,7 @@ function InamaadMainApp() {
                             <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.title}</p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
-                              Follow-up: {formatDate(item.followUpDate)}  -  Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                              Follow-up: {formatDate(item.followUpDate)} Ã¢â‚¬Â¢ Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
                         ))}
@@ -12005,7 +12005,7 @@ function InamaadMainApp() {
                             <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.title}</p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
-                              Follow-up: {formatDate(item.followUpDate)}  -  Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                              Follow-up: {formatDate(item.followUpDate)} Ã¢â‚¬Â¢ Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
                         ))}
@@ -12150,7 +12150,7 @@ function InamaadMainApp() {
                             </p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
                               {formatDate(log.createdAt)}
-                              {log.targetId ? `  -  ID: ${log.targetId}` : ""}
+                              {log.targetId ? ` Ã¢â‚¬Â¢ ID: ${log.targetId}` : ""}
                             </p>
                           </div>
                         </div>
@@ -12483,7 +12483,7 @@ function InamaadMainApp() {
                             {listing.title}
                           </p>
                           <p className="mt-1 text-sm text-slate-500">
-                            {listing.location}  -  {listing.price}
+                            {listing.location} Ã¢â‚¬Â¢ {listing.price}
                           </p>
                         </div>
 
@@ -12604,12 +12604,12 @@ function InamaadMainApp() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-500">
-                              {listing.location}  -  {listing.price}
+                              {listing.location} Ã¢â‚¬Â¢ {listing.price}
                             </p>
 
                             <p className="mt-2 text-sm text-slate-500">
-                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"}  - {" "}
-                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"}  -  {listing.mandateStatus || "Not Confirmed"}
+                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"} Ã¢â‚¬Â¢{" "}
+                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"} Ã¢â‚¬Â¢ {listing.mandateStatus || "Not Confirmed"}
                             </p>
                           </div>
 
@@ -12687,7 +12687,7 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {inquiry.email || "No email"}  -  {inquiry.phone}
+                                {inquiry.email || "No email"} Ã¢â‚¬Â¢ {inquiry.phone}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -12820,11 +12820,11 @@ function InamaadMainApp() {
                               </div>
 
                               <p className="mt-2 font-black text-[#0d1c38]">
-                                {application.applicantName}  -  {application.applicantRole}
+                                {application.applicantName} Ã¢â‚¬Â¢ {application.applicantRole}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {application.companyName || "No company stated"}  -  {application.applicantEmail || "No email"}  -  {application.applicantPhone}
+                                {application.companyName || "No company stated"} Ã¢â‚¬Â¢ {application.applicantEmail || "No email"} Ã¢â‚¬Â¢ {application.applicantPhone}
                               </p>
 
                               {application.budgetCapacity && (
@@ -13174,11 +13174,11 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {offer.buyerEmail || "No email"}  -  {offer.buyerPhone}
+                                {offer.buyerEmail || "No email"} Ã¢â‚¬Â¢ {offer.buyerPhone}
                               </p>
 
                               <p className="mt-2 text-sm font-black text-emerald-700">
-                                Offer: {offer.offerAmount || "Not stated"}  -  {offer.paymentPlan || "No payment plan"}
+                                Offer: {offer.offerAmount || "Not stated"} Ã¢â‚¬Â¢ {offer.paymentPlan || "No payment plan"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13299,11 +13299,11 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {booking.email || "No email"}  -  {booking.phone}
+                                {booking.email || "No email"} Ã¢â‚¬Â¢ {booking.phone}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                Preferred: {booking.preferredDate || "No date"}  -  {booking.preferredTime || "No time"}
+                                Preferred: {booking.preferredDate || "No date"} Ã¢â‚¬Â¢ {booking.preferredTime || "No time"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13446,7 +13446,7 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {message.email || "No email"}  -  {message.phone || "No phone"}
+                                {message.email || "No email"} Ã¢â‚¬Â¢ {message.phone || "No phone"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13583,11 +13583,11 @@ function InamaadMainApp() {
                               </div>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {request.email}  -  {request.phone}
+                                {request.email} Ã¢â‚¬Â¢ {request.phone}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                Budget: {request.budget}  -  Interest: {request.interest}
+                                Budget: {request.budget} Ã¢â‚¬Â¢ Interest: {request.interest}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13709,18 +13709,18 @@ function InamaadMainApp() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-500">
-                              {listing.location}  -  {listing.price}
+                              {listing.location} Ã¢â‚¬Â¢ {listing.price}
                             </p>
 
                             {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
                               <p className="mt-1 text-xs font-bold text-slate-500">
-                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join("  -  ")}
+                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join(" Ã¢â‚¬Â¢ ")}
                               </p>
                             )}
 
                             <p className="mt-1 text-xs font-black text-slate-400">
-                              {listing.status}  -  {listing.availabilityStatus || "Available"}
-                              {listing.featured ? `  -  Featured rank ${listing.featuredRank || 0}` : ""}
+                              {listing.status} Ã¢â‚¬Â¢ {listing.availabilityStatus || "Available"}
+                              {listing.featured ? ` Ã¢â‚¬Â¢ Featured rank ${listing.featuredRank || 0}` : ""}
                             </p>
 
                             {listing.availabilityNote && (

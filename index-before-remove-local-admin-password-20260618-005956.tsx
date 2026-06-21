@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient, type User } from "@supabase/supabase-js";
 
 type ModalType =
@@ -318,6 +318,7 @@ type StaffMember = {
 };
 
 const WHATSAPP_NUMBER = "2348106350486";
+const LOCAL_ADMIN_PASSWORD = "admin123";
 const staffRoleOptions: StaffRole[] = [
   "Super Admin",
   "Admin",
@@ -2092,9 +2093,9 @@ function InamaadMainApp() {
   const currentStaffMember = staffMembers.find((member) => member.email === user?.email);
   const currentStaffRole: StaffRole = usesDatabase
     ? currentStaffMember?.role || "Viewer"
-    : "Viewer";
+    : "Super Admin";
   const hasAnyStaffRole = (allowedRoles: StaffRole[]) =>
-    usesDatabase && allowedRoles.includes(currentStaffRole);
+    !usesDatabase || allowedRoles.includes(currentStaffRole);
 
   const isSuperAdmin = hasAnyStaffRole(["Super Admin"]);
   const canManageStaff = hasAnyStaffRole(["Super Admin"]);
@@ -5113,7 +5114,13 @@ function InamaadMainApp() {
     event.preventDefault();
 
     if (!supabase) {
-      showSuccess("Supabase Auth is required for staff access. Configure Supabase and sign in with an authorized staff account.");
+      if (adminPassword === LOCAL_ADMIN_PASSWORD) {
+        setAdminUnlocked(true);
+        setAdminPassword("");
+      } else {
+        showSuccess("Wrong admin password.");
+      }
+
       return;
     }
 
@@ -5172,7 +5179,7 @@ function InamaadMainApp() {
     details = ""
   ) {
     const newLog: Omit<AdminActivityLog, "id"> = {
-      adminEmail: user?.email || adminEmail || "Staff user",
+      adminEmail: user?.email || adminEmail || "Local demo admin",
       action,
       targetType,
       targetId,
@@ -6095,7 +6102,7 @@ function InamaadMainApp() {
 
     if (!staffMember) return email;
 
-    return `${staffMember.fullName || staffMember.email}  -  ${staffMember.role}`;
+    return `${staffMember.fullName || staffMember.email} â€¢ ${staffMember.role}`;
   }
 
   function getLeadKindLabel(kind: LeadKind) {
@@ -6326,7 +6333,7 @@ function InamaadMainApp() {
               <option value="">Unassigned</option>
               {assignableStaffMembers.map((member) => (
                 <option key={member.email} value={member.email}>
-                  {member.fullName || member.email} Ã¢â‚¬â€ {member.role}
+                  {member.fullName || member.email} â€” {member.role}
                 </option>
               ))}
             </select>
@@ -8403,7 +8410,7 @@ function InamaadMainApp() {
         </div>
 
         <div className="mx-auto mt-8 max-w-7xl border-t border-slate-200 pt-5 text-center text-xs font-semibold text-slate-500">
-          Ã‚Â© 2026 INAMAAD Real Estate. All rights reserved.
+          Â© 2026 INAMAAD Real Estate. All rights reserved.
         </div>
       </footer>
 
@@ -11165,7 +11172,7 @@ function InamaadMainApp() {
                         <div>
                           <p className="text-slate-400">Media</p>
                           <p className="font-black">
-                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join("  -  ")}
+                            {[selectedListing.videoUrl ? "Video" : "", selectedListing.virtualTourUrl ? "Virtual tour" : "", selectedListing.droneVideoUrl ? "Drone" : ""].filter(Boolean).join(" â€¢ ")}
                           </p>
                         </div>
                       )}
@@ -11174,7 +11181,7 @@ function InamaadMainApp() {
                         <div>
                           <p className="text-slate-400">Specs</p>
                           <p className="font-black">
-                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join("  -  ")}
+                            {[selectedListing.bedrooms ? `${selectedListing.bedrooms} bed` : "", selectedListing.bathrooms ? `${selectedListing.bathrooms} bath` : "", selectedListing.landSize || ""].filter(Boolean).join(" â€¢ ")}
                           </p>
                         </div>
                       )}
@@ -11818,7 +11825,7 @@ function InamaadMainApp() {
                       >
                         <div className="flex items-start gap-3">
                           <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${check.passed ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"}`}>
-                            {check.passed ? "Ã¢Å“â€œ" : "!"}
+                            {check.passed ? "âœ“" : "!"}
                           </span>
                           <div>
                             <p className="text-sm font-black text-[#0d1c38]">{check.label}</p>
@@ -11831,7 +11838,7 @@ function InamaadMainApp() {
 
                   {failedLaunchFoundationChecks.length > 0 ? (
                     <p className="mt-4 rounded-2xl bg-[#fff7df] p-4 text-sm font-semibold leading-6 text-[#9b6b16]">
-                      Next Phase 1 action: {failedLaunchFoundationChecks[0].label} Ã¢â‚¬â€ {failedLaunchFoundationChecks[0].detail}
+                      Next Phase 1 action: {failedLaunchFoundationChecks[0].label} â€” {failedLaunchFoundationChecks[0].detail}
                     </p>
                   ) : (
                     <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold leading-6 text-emerald-700">
@@ -11976,7 +11983,7 @@ function InamaadMainApp() {
                             <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.title}</p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
-                              Follow-up: {formatDate(item.followUpDate)}  -  Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                              Follow-up: {formatDate(item.followUpDate)} â€¢ Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
                         ))}
@@ -12005,7 +12012,7 @@ function InamaadMainApp() {
                             <p className="mt-3 font-black text-[#0d1c38]">{item.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.title}</p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
-                              Follow-up: {formatDate(item.followUpDate)}  -  Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
+                              Follow-up: {formatDate(item.followUpDate)} â€¢ Assigned: {getAssignedStaffLabel(item.assignedToEmail)}
                             </p>
                           </div>
                         ))}
@@ -12150,7 +12157,7 @@ function InamaadMainApp() {
                             </p>
                             <p className="mt-2 text-xs font-bold text-slate-400">
                               {formatDate(log.createdAt)}
-                              {log.targetId ? `  -  ID: ${log.targetId}` : ""}
+                              {log.targetId ? ` â€¢ ID: ${log.targetId}` : ""}
                             </p>
                           </div>
                         </div>
@@ -12483,7 +12490,7 @@ function InamaadMainApp() {
                             {listing.title}
                           </p>
                           <p className="mt-1 text-sm text-slate-500">
-                            {listing.location}  -  {listing.price}
+                            {listing.location} â€¢ {listing.price}
                           </p>
                         </div>
 
@@ -12604,12 +12611,12 @@ function InamaadMainApp() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-500">
-                              {listing.location}  -  {listing.price}
+                              {listing.location} â€¢ {listing.price}
                             </p>
 
                             <p className="mt-2 text-sm text-slate-500">
-                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"}  - {" "}
-                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"}  -  {listing.mandateStatus || "Not Confirmed"}
+                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"} â€¢{" "}
+                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"} â€¢ {listing.mandateStatus || "Not Confirmed"}
                             </p>
                           </div>
 
@@ -12687,7 +12694,7 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {inquiry.email || "No email"}  -  {inquiry.phone}
+                                {inquiry.email || "No email"} â€¢ {inquiry.phone}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -12820,11 +12827,11 @@ function InamaadMainApp() {
                               </div>
 
                               <p className="mt-2 font-black text-[#0d1c38]">
-                                {application.applicantName}  -  {application.applicantRole}
+                                {application.applicantName} â€¢ {application.applicantRole}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {application.companyName || "No company stated"}  -  {application.applicantEmail || "No email"}  -  {application.applicantPhone}
+                                {application.companyName || "No company stated"} â€¢ {application.applicantEmail || "No email"} â€¢ {application.applicantPhone}
                               </p>
 
                               {application.budgetCapacity && (
@@ -13174,11 +13181,11 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {offer.buyerEmail || "No email"}  -  {offer.buyerPhone}
+                                {offer.buyerEmail || "No email"} â€¢ {offer.buyerPhone}
                               </p>
 
                               <p className="mt-2 text-sm font-black text-emerald-700">
-                                Offer: {offer.offerAmount || "Not stated"}  -  {offer.paymentPlan || "No payment plan"}
+                                Offer: {offer.offerAmount || "Not stated"} â€¢ {offer.paymentPlan || "No payment plan"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13299,11 +13306,11 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {booking.email || "No email"}  -  {booking.phone}
+                                {booking.email || "No email"} â€¢ {booking.phone}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                Preferred: {booking.preferredDate || "No date"}  -  {booking.preferredTime || "No time"}
+                                Preferred: {booking.preferredDate || "No date"} â€¢ {booking.preferredTime || "No time"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13446,7 +13453,7 @@ function InamaadMainApp() {
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {message.email || "No email"}  -  {message.phone || "No phone"}
+                                {message.email || "No email"} â€¢ {message.phone || "No phone"}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13583,11 +13590,11 @@ function InamaadMainApp() {
                               </div>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                {request.email}  -  {request.phone}
+                                {request.email} â€¢ {request.phone}
                               </p>
 
                               <p className="mt-1 text-sm text-slate-500">
-                                Budget: {request.budget}  -  Interest: {request.interest}
+                                Budget: {request.budget} â€¢ Interest: {request.interest}
                               </p>
 
                               <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -13709,18 +13716,18 @@ function InamaadMainApp() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-500">
-                              {listing.location}  -  {listing.price}
+                              {listing.location} â€¢ {listing.price}
                             </p>
 
                             {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
                               <p className="mt-1 text-xs font-bold text-slate-500">
-                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join("  -  ")}
+                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join(" â€¢ ")}
                               </p>
                             )}
 
                             <p className="mt-1 text-xs font-black text-slate-400">
-                              {listing.status}  -  {listing.availabilityStatus || "Available"}
-                              {listing.featured ? `  -  Featured rank ${listing.featuredRank || 0}` : ""}
+                              {listing.status} â€¢ {listing.availabilityStatus || "Available"}
+                              {listing.featured ? ` â€¢ Featured rank ${listing.featuredRank || 0}` : ""}
                             </p>
 
                             {listing.availabilityNote && (

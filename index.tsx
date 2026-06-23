@@ -1815,6 +1815,7 @@ function InamaadMainApp() {
   const [postImageFile, setPostImageFile] = useState<File | null>(null);
   const [postGalleryFiles, setPostGalleryFiles] = useState<File[]>([]);
   const [postDocumentFile, setPostDocumentFile] = useState<File | null>(null);
+  const [postVideoFile, setPostVideoFile] = useState<File | null>(null);
 
   const [editForm, setEditForm] = useState({
     title: "",
@@ -3149,6 +3150,47 @@ function InamaadMainApp() {
     setPropertyImages((current) => [...current, ...localRows]);
   }
 
+  async function uploadPropertyVideo(file: File) {
+    const allowedVideoTypes = ["video/mp4", "video/webm", "video/quicktime"];
+    const allowedVideoExtensions = ["mp4", "webm", "mov"];
+    const maxVideoSize = 50 * 1024 * 1024;
+    const extension = file.name.split(".").pop()?.toLowerCase() || "mp4";
+
+    if (file.size > maxVideoSize) {
+      throw new Error("Video is too large. Please upload a video of 50MB or less.");
+    }
+
+    if (!allowedVideoExtensions.includes(extension)) {
+      throw new Error("Unsupported video file. Use MP4, WEBM, or MOV.");
+    }
+
+    if (file.type && !allowedVideoTypes.includes(file.type)) {
+      throw new Error("Unsupported video type. Use MP4, WEBM, or MOV.");
+    }
+
+    if (!supabase) return "";
+
+    const safeFileName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("property-videos")
+      .upload(safeFileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data } = supabase.storage
+      .from("property-videos")
+      .getPublicUrl(safeFileName);
+
+    return data.publicUrl;
+  }
   async function uploadPropertyDocument(file: File) {
     validateUploadFile(file, "document");
 
@@ -3665,6 +3707,7 @@ function InamaadMainApp() {
     setPostImageFile(null);
     setPostGalleryFiles([]);
     setPostDocumentFile(null);
+    setPostVideoFile(null);
 
     setPostForm((current) => {
       if (mode === "jv") {
@@ -3741,6 +3784,15 @@ function InamaadMainApp() {
           : await imageFileToBase64(postDocumentFile)
         : "";
 
+      if (postVideoFile && !supabase) {
+        showSuccess("Video upload requires Supabase storage. Please try again on the live website.");
+        return;
+      }
+
+      const uploadedVideoUrl = postVideoFile
+        ? await uploadPropertyVideo(postVideoFile)
+        : "";
+
       const postIsJV = postMode === "jv";
 
       const newListing: Omit<Listing, "id"> = {
@@ -3752,7 +3804,7 @@ function InamaadMainApp() {
         nearbyLandmark: postForm.nearbyLandmark,
         googleMapLink: postForm.googleMapLink,
         showExactAddress: postForm.showExactAddress,
-        videoUrl: postForm.videoUrl,
+        videoUrl: uploadedVideoUrl || postForm.videoUrl,
         virtualTourUrl: postForm.virtualTourUrl,
         droneVideoUrl: postForm.droneVideoUrl,
         showVideoPublicly: postForm.showVideoPublicly,
@@ -3986,6 +4038,7 @@ function InamaadMainApp() {
       setPostImageFile(null);
       setPostGalleryFiles([]);
       setPostDocumentFile(null);
+      setPostVideoFile(null);
 
       setModal(null);
       showSuccess("Opportunity submitted successfully. Admin review is pending.");
@@ -9133,6 +9186,32 @@ function InamaadMainApp() {
                   </div>
                 </div>
 
+                <div className="rounded-[26px] border border-blue-200 bg-blue-50 p-5">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">
+                    Video walkthrough optional
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Upload a short property video, site walkthrough, or JV land inspection clip. Keep it under 50MB.
+                    MP4 is recommended.
+                  </p>
+
+                  <label className="mt-4 block rounded-2xl border border-blue-100 bg-white p-4">
+                    <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                      Upload video optional
+                    </span>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime"
+                      onChange={(event) => setPostVideoFile(event.target.files?.[0] || null)}
+                      className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-xs file:font-black file:text-blue-700"
+                    />
+                    {postVideoFile ? (
+                      <p className="mt-3 text-xs font-bold text-blue-700">
+                        Selected: {postVideoFile.name}
+                      </p>
+                    ) : null}
+                  </label>
+                </div>
                 <button
                   type="submit"
                   disabled={isLoading}

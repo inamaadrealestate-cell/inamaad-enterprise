@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient, type User } from "@supabase/supabase-js";
 
 type ModalType =
@@ -8814,14 +8814,19 @@ function InamaadMainApp() {
               </form>
             )}
 
-            {modal === "post" && (
-              <form key={`post-${postMode}-${postFormRenderKey}`} onSubmit={submitListing} className="grid gap-4">
-                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
-                  <p className="font-black text-[#0d1c38]">Need help? Use examples like these:</p>
-                  <p className="mt-2"><span className="font-black">Title:</span> 4 Bedroom Smart Duplex in Lekki Phase 1</p>
-                  <p><span className="font-black">Investment highlight:</span> Estimated 14% yearly appreciation with strong rental demand</p>
-                  <p><span className="font-black">Opportunity:</span> A verified property in a fast-growing location, suitable for rental income, resale value, or long-term investment.</p>
-                  <p className="mt-2 rounded-xl bg-white px-3 py-2 text-slate-600"><span className="font-black text-[#0d1c38]">Quick guide:</span> choose the building/asset under Property type, then choose For Sale, For Rent, Short Let, Lease, Investment, or JV under Listing purpose.</p>
+                        {modal === "post" && (
+              <form key={`post-simple-${postMode}-${postFormRenderKey}`} onSubmit={submitListing} className="grid gap-4">
+                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-sm leading-6 text-slate-700">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">
+                    Quick submission
+                  </p>
+                  <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                    Submit the basic details only.
+                  </h3>
+                  <p className="mt-2">
+                    We have simplified this form for launch. Submit the main property or JV information now;
+                    INAMAAD can contact you later for full verification, extra documents, and professional listing details.
+                  </p>
                 </div>
 
                 <div className="grid gap-3 rounded-3xl border border-slate-200 bg-[#f7f8fb] p-3 sm:grid-cols-2">
@@ -8841,1866 +8846,303 @@ function InamaadMainApp() {
                   </button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <input
-                    required
-                    value={postForm.title}
-                    onChange={(event) =>
-                      setPostForm({ ...postForm, title: event.target.value })
-                    }
-                    placeholder="Property title, e.g. 4 Bedroom Terrace Duplex in Lekki Phase 1"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  <select
-                    required
-                    value={postForm.stateName}
-                    onChange={(event) =>
-                      setPostForm({ ...postForm, stateName: event.target.value })
-                    }
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    aria-label="State or FCT"
-                  >
-                    {nigeriaLocationLabels.map((location) => (
-                      <option key={location}>{location}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Exact property location</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Use State/FCT and City/Area publicly. Keep full address hidden unless you want visitors to see it.
+                <div className="rounded-[26px] border border-slate-200 bg-white p-5">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                    1. Basic opportunity details
                   </p>
 
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <input
                       required
-                      value={postForm.cityArea}
-                      onChange={(event) => setPostForm({ ...postForm, cityArea: event.target.value })}
-                      placeholder="City / Area, e.g. Garki, Maitama, Lekki Phase 1"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={postForm.nearbyLandmark}
-                      onChange={(event) => setPostForm({ ...postForm, nearbyLandmark: event.target.value })}
-                      placeholder="Nearby landmark, e.g. close to Shoprite / airport road"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={postForm.fullAddress}
-                      onChange={(event) => setPostForm({ ...postForm, fullAddress: event.target.value })}
-                      placeholder="Full address / estate name, kept private unless enabled"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
-                    />
-
-                    <input
-                      value={postForm.googleMapLink}
-                      onChange={(event) => setPostForm({ ...postForm, googleMapLink: event.target.value })}
-                      placeholder="Google Maps link, optional"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
-                    />
-                  </div>
-
-                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={postForm.showExactAddress}
-                      onChange={(event) => setPostForm({ ...postForm, showExactAddress: event.target.checked })}
-                    />
-                    Show exact address and map link publicly
-                  </label>
-
-                  <p className="mt-3 text-xs font-bold text-slate-500">
-                    Public display: {postForm.cityArea || "Area"}, {postForm.stateName || "State/FCT"}
-                  </p>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Property video / virtual tour</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Add YouTube, TikTok, Instagram, Google Drive, virtual tour, or drone video links. Leave blank if not available.
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <input
-                      value={postForm.videoUrl}
-                      onChange={(event) => setPostForm({ ...postForm, videoUrl: event.target.value })}
-                      placeholder="YouTube / property video link"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.virtualTourUrl}
-                      onChange={(event) => setPostForm({ ...postForm, virtualTourUrl: event.target.value })}
-                      placeholder="Virtual tour link, e.g. Matterport / 360 tour"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.droneVideoUrl}
-                      onChange={(event) => setPostForm({ ...postForm, droneVideoUrl: event.target.value })}
-                      placeholder="Drone video link, optional"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
-                    />
-                  </div>
-
-                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={postForm.showVideoPublicly}
-                      onChange={(event) => setPostForm({ ...postForm, showVideoPublicly: event.target.checked })}
-                    />
-                    Show video / virtual tour links publicly
-                  </label>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
-                    <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                      {postFormIsJointVenture ? "Estimated JV value / project cost" : "Price currency"}
-                    </label>
-                    <div className="mt-2 flex items-center gap-3">
-                      <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
-                        ₦ ₦
-                      </span>
-                      <input
-                        required
-                        inputMode="numeric"
-                        value={postForm.price}
-                        onChange={(event) =>
-                          setPostForm({
-                            ...postForm,
-                            price: formatPriceInput(event.target.value),
-                          })
-                        }
-                        placeholder="Enter amount, e.g. 50000000"
-                        className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
-                      />
-                    </div>
-                    <p className="mt-2 text-xs font-bold text-slate-500">
-                      Auto calculated: {formatPricePreview(postForm.price)}
-                    </p>
-                  </div>
-
-                  <select
-                    value={postForm.type}
-                    onChange={(event) => {
-                      const nextType = event.target.value;
-                      if (nextType === "Joint Venture") {
-                        switchPostSubmissionMode("jv");
-                        return;
-                      }
-                      setPostForm({ ...postForm, type: nextType });
-                    }}
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    aria-label="Property type"
-                  >
-                    {propertyTypeOptions.map((type) => (
-                      <option key={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Price breakdown and payment details</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-600">
-                    Add extra Nigerian real estate costs. The total estimated cost is calculated automatically from property price plus fees.
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    {[
-                      ["agencyFee", "Agency fee, e.g. 5000000"],
-                      ["legalFee", "Legal / documentation fee, e.g. 2500000"],
-                      ["serviceCharge", "Service charge, optional"],
-                      ["cautionFee", "Caution fee, optional"],
-                      ["surveyFee", "Survey fee, optional"],
-                      ["developmentFee", "Development fee, optional"],
-                    ].map(([field, placeholder]) => (
-                      <div key={field} className="rounded-2xl border border-amber-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
-                        <label className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
-                          {placeholder.split(",")[0]}
-                        </label>
-                        <div className="mt-2 flex items-center gap-3">
-                          <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">₦</span>
-                          <input
-                            inputMode="numeric"
-                            value={postForm[field as keyof typeof postForm] as string}
-                            onChange={(event) =>
-                              setPostForm({
-                                ...postForm,
-                                [field]: formatPriceInput(event.target.value),
-                              })
-                            }
-                            placeholder={placeholder}
-                            className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 rounded-2xl bg-[#0d1c38] p-4 text-white">
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f0bf3c]">Auto total estimated cost</p>
-                    <p className="mt-2 text-2xl font-black">{calculateTotalEstimatedCost(postForm) || "₦0"}</p>
-                    <p className="mt-1 text-xs text-slate-300">Property price + agency + legal/documentation + service + caution + survey + development fees.</p>
-                  </div>
-
-                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={postForm.paymentPlanAvailable}
-                      onChange={(event) => setPostForm({ ...postForm, paymentPlanAvailable: event.target.checked })}
-                    />
-                    Payment plan / installment is available
-                  </label>
-
-                  <textarea
-                    value={postForm.installmentDetails}
-                    onChange={(event) => setPostForm({ ...postForm, installmentDetails: event.target.value })}
-                    placeholder="Installment details, e.g. 30% initial deposit, balance over 6 months"
-                    className="mt-4 min-h-[90px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <select
-                    value={postForm.category}
-                    onChange={(event) => {
-                      const nextPurpose = event.target.value;
-                      if (nextPurpose === "JV Partnership") {
-                        switchPostSubmissionMode("jv");
-                        return;
-                      }
-                      setPostForm({
-                        ...postForm,
-                        category: nextPurpose,
-                      });
-                    }}
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    aria-label="Listing purpose"
-                  >
-                    {listingPurposeOptions.map((purpose) => (
-                      <option key={purpose}>{purpose}</option>
-                    ))}
-                  </select>
-
-                  <div className="grid gap-4 md:col-span-2 md:grid-cols-3">
-                    <select
-                      value={postForm.availabilityStatus}
+                      value={postForm.title}
                       onChange={(event) =>
-                        setPostForm({
-                          ...postForm,
-                          availabilityStatus: event.target.value as AvailabilityStatus,
-                        })
+                        setPostForm({ ...postForm, title: event.target.value })
                       }
-                      aria-label="Availability status"
+                      placeholder={postFormIsJointVenture ? "JV title, e.g. Maitama estate JV opportunity" : "Property title, e.g. 4 Bedroom Duplex in Garki"}
                       className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <select
+                      required
+                      value={postForm.stateName}
+                      onChange={(event) =>
+                        setPostForm({ ...postForm, stateName: event.target.value })
+                      }
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      aria-label="State or FCT"
                     >
-                      {availabilityStatusOptions.map((status) => (
-                        <option key={status}>{status}</option>
+                      {nigeriaLocationLabels.map((location) => (
+                        <option key={location} value={location}>
+                          {location}
+                        </option>
                       ))}
                     </select>
 
                     <input
-                      type="date"
-                      value={postForm.availableFrom}
+                      required
+                      value={postForm.cityArea}
                       onChange={(event) =>
-                        setPostForm({ ...postForm, availableFrom: event.target.value })
+                        setPostForm({ ...postForm, cityArea: event.target.value })
                       }
+                      placeholder="City / area, e.g. Maitama, Lekki, Garki"
                       className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Available from date"
                     />
 
                     <input
-                      value={postForm.availabilityNote}
+                      required
+                      value={postForm.price}
                       onChange={(event) =>
-                        setPostForm({ ...postForm, availabilityNote: event.target.value })
+                        setPostForm({ ...postForm, price: formatPriceInput(event.target.value) })
                       }
-                      placeholder="Availability note, e.g. Vacant now, reserved till Friday, tenant leaves July"
+                      placeholder={postFormIsJointVenture ? "Estimated project value / budget" : "Asking price, e.g. â‚¦120,000,000"}
                       className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
+
+                    {!postFormIsJointVenture ? (
+                      <>
+                        <select
+                          required
+                          value={postForm.type}
+                          onChange={(event) =>
+                            setPostForm({ ...postForm, type: event.target.value })
+                          }
+                          className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="Property type"
+                        >
+                          {propertyTypeOptions
+                            .filter((type) => type !== "Joint Venture" && type !== "Estate Development")
+                            .map((type) => (
+                              <option key={type} value={type}>
+                                {type}
+                              </option>
+                            ))}
+                        </select>
+
+                        <select
+                          required
+                          value={postForm.category}
+                          onChange={(event) =>
+                            setPostForm({ ...postForm, category: event.target.value })
+                          }
+                          className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="Listing purpose"
+                        >
+                          {listingPurposeOptions
+                            .filter((purpose) => !purpose.toLowerCase().includes("jv") && purpose !== "Joint Venture")
+                            .map((purpose) => (
+                              <option key={purpose} value={purpose}>
+                                {purpose}
+                              </option>
+                            ))}
+                        </select>
+
+                        <input
+                          value={postForm.landSize}
+                          onChange={(event) =>
+                            setPostForm({ ...postForm, landSize: event.target.value })
+                          }
+                          placeholder="Land / property size, e.g. 600sqm"
+                          className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        />
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <input
+                            value={postForm.bedrooms}
+                            onChange={(event) =>
+                              setPostForm({ ...postForm, bedrooms: event.target.value })
+                            }
+                            placeholder="Beds"
+                            className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+                          <input
+                            value={postForm.bathrooms}
+                            onChange={(event) =>
+                              setPostForm({ ...postForm, bathrooms: event.target.value })
+                            }
+                            placeholder="Baths"
+                            className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <select
+                          required
+                          value={postForm.jvStructure}
+                          onChange={(event) =>
+                            setPostForm({ ...postForm, jvStructure: event.target.value })
+                          }
+                          className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                          aria-label="JV structure"
+                        >
+                          {jvStructureOptions.map((structure) => (
+                            <option key={structure} value={structure}>
+                              {structure}
+                            </option>
+                          ))}
+                        </select>
+
+                        <input
+                          required
+                          value={postForm.landSize}
+                          onChange={(event) =>
+                            setPostForm({ ...postForm, landSize: event.target.value })
+                          }
+                          placeholder="Land size, e.g. 2 hectares or 10,000sqm"
+                          className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        />
+                      </>
+                    )}
                   </div>
+
+                  <textarea
+                    required
+                    value={postForm.description}
+                    onChange={(event) =>
+                      setPostForm({ ...postForm, description: event.target.value })
+                    }
+                    placeholder={postFormIsJointVenture ? "Briefly describe the JV opportunity, land location, expected partner, and project idea." : "Briefly describe the property, location, condition, and why it is a good opportunity."}
+                    className="mt-4 min-h-28 rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                  />
 
                   <input
                     value={postForm.yieldText}
                     onChange={(event) =>
-                      setPostForm({
-                        ...postForm,
-                        yieldText: event.target.value,
-                      })
+                      setPostForm({ ...postForm, yieldText: event.target.value })
                     }
-                    placeholder="Investment highlight, e.g. Estimated 14% yearly appreciation"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    placeholder="Main highlight, e.g. Verified title, good road access, strong rental demand"
+                    className="mt-4 rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                   />
                 </div>
 
                 {postFormIsJointVenture ? (
-                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
-                    <p className="text-sm font-black text-[#0d1c38]">Joint venture project profile</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-600">
-                      JV deals should be described as development opportunities, not bedroom/bathroom listings. Use this section for landowner, developer, investor, sharing formula, and project stage.
+                  <div className="rounded-[26px] border border-purple-200 bg-purple-50 p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-700">
+                      JV summary
                     </p>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <select
-                        value={postForm.jvStructure}
-                        onChange={(event) => setPostForm({ ...postForm, jvStructure: event.target.value })}
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                        aria-label="JV structure"
-                      >
-                        {jvStructureOptions.map((structure) => (
-                          <option key={structure}>{structure}</option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={postForm.jvProjectStage}
-                        onChange={(event) => setPostForm({ ...postForm, jvProjectStage: event.target.value })}
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                        aria-label="JV project stage"
-                      >
-                        {jvProjectStageOptions.map((stage) => (
-                          <option key={stage}>{stage}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <input
-                        value={postForm.landSize}
-                        onChange={(event) => setPostForm({ ...postForm, landSize: event.target.value })}
-                        placeholder="JV land size, e.g. 3,500sqm, 2 hectares, 20 plots"
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <input
-                        value={postForm.jvExpectedUnits}
-                        onChange={(event) => setPostForm({ ...postForm, jvExpectedUnits: event.target.value })}
-                        placeholder="Expected units, e.g. 24 terraces, 80 apartments"
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <input
-                        value={postForm.jvEstimatedProjectCost}
-                        onChange={(event) => setPostForm({ ...postForm, jvEstimatedProjectCost: formatPriceInput(event.target.value) })}
-                        placeholder="Estimated project cost, e.g. ₦1,500,000,000"
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <input
-                        value={postForm.jvCompletionTimeline}
-                        onChange={(event) => setPostForm({ ...postForm, jvCompletionTimeline: event.target.value })}
-                        placeholder="Completion timeline, e.g. 18 months after approval"
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                    </div>
-
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
                       <textarea
                         value={postForm.jvLandContribution}
-                        onChange={(event) => setPostForm({ ...postForm, jvLandContribution: event.target.value })}
-                        placeholder="Landowner contribution, e.g. clean land with C of O, access road, vacant possession"
-                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        onChange={(event) =>
+                          setPostForm({ ...postForm, jvLandContribution: event.target.value })
+                        }
+                        placeholder="What is the landowner contributing? e.g. land, title documents, approval"
+                        className="min-h-24 rounded-2xl border border-purple-100 px-5 py-4 text-sm outline-none focus:border-purple-500"
                       />
                       <textarea
                         value={postForm.jvDeveloperRequirement}
-                        onChange={(event) => setPostForm({ ...postForm, jvDeveloperRequirement: event.target.value })}
-                        placeholder="Developer requirement, e.g. fund construction, handle approvals, deliver infrastructure"
-                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <textarea
-                        value={postForm.jvInvestorRequirement}
-                        onChange={(event) => setPostForm({ ...postForm, jvInvestorRequirement: event.target.value })}
-                        placeholder="Investor requirement, e.g. equity funding, staged capital, off-plan buyer pool"
-                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <textarea
-                        value={postForm.jvSharingFormula}
-                        onChange={(event) => setPostForm({ ...postForm, jvSharingFormula: event.target.value })}
-                        placeholder="Sharing formula, e.g. 40% landowner / 60% developer, or units split after cost recovery"
-                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        onChange={(event) =>
+                          setPostForm({ ...postForm, jvDeveloperRequirement: event.target.value })
+                        }
+                        placeholder="What partner is needed? e.g. developer, investor, funding, construction"
+                        className="min-h-24 rounded-2xl border border-purple-100 px-5 py-4 text-sm outline-none focus:border-purple-500"
                       />
                     </div>
-
-                    <textarea
-                      value={postForm.jvTerms}
-                      onChange={(event) => setPostForm({ ...postForm, jvTerms: event.target.value })}
-                      placeholder="JV terms and notes, e.g. required due diligence, legal structure, approvals, exit plan, profit-sharing terms"
-                      className="mt-4 min-h-[110px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
                   </div>
-                ) : (
-                  <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                    <p className="text-sm font-black text-[#0d1c38]">Property specifications and amenities</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Add the details buyers and tenants normally search for. Leave fields empty if they do not apply, for example land may not need bedrooms.
-                    </p>
+                ) : null}
 
-                    <div className="mt-4 grid gap-4 md:grid-cols-4">
-                      <input type="number" min="0" value={postForm.bedrooms} onChange={(event) => setPostForm({ ...postForm, bedrooms: event.target.value })} placeholder="Bedrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                      <input type="number" min="0" value={postForm.bathrooms} onChange={(event) => setPostForm({ ...postForm, bathrooms: event.target.value })} placeholder="Bathrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                      <input type="number" min="0" value={postForm.toilets} onChange={(event) => setPostForm({ ...postForm, toilets: event.target.value })} placeholder="Toilets, e.g. 5" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                      <input type="number" min="0" value={postForm.parkingSpaces} onChange={(event) => setPostForm({ ...postForm, parkingSpaces: event.target.value })} placeholder="Parking spaces, e.g. 2" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <input value={postForm.landSize} onChange={(event) => setPostForm({ ...postForm, landSize: event.target.value })} placeholder="Land size, e.g. 500sqm, 1 plot, 2 hectares" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                      <input value={postForm.propertySize} onChange={(event) => setPostForm({ ...postForm, propertySize: event.target.value })} placeholder="Built-up size, e.g. 320sqm" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <select value={postForm.furnishingStatus} onChange={(event) => setPostForm({ ...postForm, furnishingStatus: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Furnishing status">
-                        {furnishingStatusOptions.map((status) => (<option key={status}>{status}</option>))}
-                      </select>
-                      <select value={postForm.propertyCondition} onChange={(event) => setPostForm({ ...postForm, propertyCondition: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Property condition">
-                        {propertyConditionOptions.map((condition) => (<option key={condition}>{condition}</option>))}
-                      </select>
-                    </div>
-
-                    <input list="amenity-options" value={postForm.amenities} onChange={(event) => setPostForm({ ...postForm, amenities: event.target.value })} placeholder="Amenities, e.g. 24/7 Security, CCTV, Swimming Pool, Fitted Kitchen" className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                  </div>
-                )}
-
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Neighborhood and infrastructure</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Add environment details buyers ask for before inspection. Use short, clear examples.
-                  </p>
-
-                  <textarea
-                    value={postForm.neighborhoodOverview}
-                    onChange={(event) => setPostForm({ ...postForm, neighborhoodOverview: event.target.value })}
-                    placeholder="Neighborhood overview, e.g. Quiet gated estate close to schools, malls, and major access roads."
-                    className="mt-4 min-h-[96px] w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <input
-                      value={postForm.roadAccess}
-                      onChange={(event) => setPostForm({ ...postForm, roadAccess: event.target.value })}
-                      placeholder="Road access, e.g. tarred road, interlocked estate road"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.distanceToMajorRoad}
-                      onChange={(event) => setPostForm({ ...postForm, distanceToMajorRoad: event.target.value })}
-                      placeholder="Distance to major road, e.g. 3 minutes to expressway"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.powerSupply}
-                      onChange={(event) => setPostForm({ ...postForm, powerSupply: event.target.value })}
-                      placeholder="Power supply, e.g. 18 hours average, transformer available"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.waterSupply}
-                      onChange={(event) => setPostForm({ ...postForm, waterSupply: event.target.value })}
-                      placeholder="Water supply, e.g. borehole, treated estate water"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.securityFeatures}
-                      onChange={(event) => setPostForm({ ...postForm, securityFeatures: event.target.value })}
-                      placeholder="Security, e.g. gated estate, CCTV, armed security"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.estateFeatures}
-                      onChange={(event) => setPostForm({ ...postForm, estateFeatures: event.target.value })}
-                      placeholder="Estate features, e.g. drainage, streetlights, gym, playground"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.nearbySchools}
-                      onChange={(event) => setPostForm({ ...postForm, nearbySchools: event.target.value })}
-                      placeholder="Nearby schools, e.g. 5 mins to Greensprings / Nile University"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.nearbyHospitals}
-                      onChange={(event) => setPostForm({ ...postForm, nearbyHospitals: event.target.value })}
-                      placeholder="Nearby hospitals, e.g. 7 mins to Evercare / National Hospital"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.nearbyMalls}
-                      onChange={(event) => setPostForm({ ...postForm, nearbyMalls: event.target.value })}
-                      placeholder="Nearby malls/markets, e.g. 10 mins to Novare Mall"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={postForm.nearbyTransport}
-                      onChange={(event) => setPostForm({ ...postForm, nearbyTransport: event.target.value })}
-                      placeholder="Nearby transport, e.g. BRT, airport road, expressway access"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Neighborhood and infrastructure</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Update road, power, security, and nearby infrastructure details for this listing.
-                  </p>
-
-                  <textarea
-                    value={editForm.neighborhoodOverview}
-                    onChange={(event) => setEditForm({ ...editForm, neighborhoodOverview: event.target.value })}
-                    placeholder="Neighborhood overview, e.g. Quiet gated estate close to schools, malls, and major access roads."
-                    className="mt-4 min-h-[96px] w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <input
-                      value={editForm.roadAccess}
-                      onChange={(event) => setEditForm({ ...editForm, roadAccess: event.target.value })}
-                      placeholder="Road access, e.g. tarred road, interlocked estate road"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.distanceToMajorRoad}
-                      onChange={(event) => setEditForm({ ...editForm, distanceToMajorRoad: event.target.value })}
-                      placeholder="Distance to major road, e.g. 3 minutes to expressway"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.powerSupply}
-                      onChange={(event) => setEditForm({ ...editForm, powerSupply: event.target.value })}
-                      placeholder="Power supply, e.g. 18 hours average, transformer available"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.waterSupply}
-                      onChange={(event) => setEditForm({ ...editForm, waterSupply: event.target.value })}
-                      placeholder="Water supply, e.g. borehole, treated estate water"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.securityFeatures}
-                      onChange={(event) => setEditForm({ ...editForm, securityFeatures: event.target.value })}
-                      placeholder="Security, e.g. gated estate, CCTV, armed security"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.estateFeatures}
-                      onChange={(event) => setEditForm({ ...editForm, estateFeatures: event.target.value })}
-                      placeholder="Estate features, e.g. drainage, streetlights, gym, playground"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.nearbySchools}
-                      onChange={(event) => setEditForm({ ...editForm, nearbySchools: event.target.value })}
-                      placeholder="Nearby schools, e.g. 5 mins to Greensprings / Nile University"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.nearbyHospitals}
-                      onChange={(event) => setEditForm({ ...editForm, nearbyHospitals: event.target.value })}
-                      placeholder="Nearby hospitals, e.g. 7 mins to Evercare / National Hospital"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.nearbyMalls}
-                      onChange={(event) => setEditForm({ ...editForm, nearbyMalls: event.target.value })}
-                      placeholder="Nearby malls/markets, e.g. 10 mins to Novare Mall"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.nearbyTransport}
-                      onChange={(event) => setEditForm({ ...editForm, nearbyTransport: event.target.value })}
-                      placeholder="Nearby transport, e.g. BRT, airport road, expressway access"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Property document / title papers</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Add the title document buyers expect to see, for example C of O, R of O, Governor's Consent, Deed of Assignment, Survey Plan, Excision, or Gazette.
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <select
-                      value={postForm.documentTitle}
-                      onChange={(event) =>
-                        setPostForm({ ...postForm, documentTitle: event.target.value })
-                      }
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Document title"
-                    >
-                      {documentTitleOptions.map((documentTitle) => (
-                        <option key={documentTitle}>{documentTitle}</option>
-                      ))}
-                    </select>
-
-                    <select
-                      value={postForm.documentStatus}
-                      onChange={(event) =>
-                        setPostForm({ ...postForm, documentStatus: event.target.value })
-                      }
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Document status"
-                    >
-                      {documentStatusOptions.map((documentStatus) => (
-                        <option key={documentStatus}>{documentStatus}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <textarea
-                    value={postForm.documentDetails}
-                    onChange={(event) =>
-                      setPostForm({ ...postForm, documentDetails: event.target.value })
-                    }
-                    placeholder="Optional document details, e.g. Survey plan available, Deed of Assignment executed, C of O processing, Gazette number, allocation file number..."
-                    rows={3}
-                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  <div className="mt-4 rounded-2xl border border-dashed border-amber-300 bg-white p-5">
-                    <label className="text-sm font-black text-[#0d1c38]">
-                      Upload title document file
-                    </label>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Optional but recommended. Upload PDF, JPG, PNG, or WEBP under 10MB, such as C of O, survey plan, deed, allocation letter, or approval paper.
-                    </p>
-                    <input
-                      type="file"
-                      accept="application/pdf,image/jpeg,image/png,image/webp"
-                      onChange={(event) =>
-                        setPostDocumentFile(event.target.files?.[0] || null)
-                      }
-                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    {postDocumentFile && (
-                      <p className="mt-3 text-xs font-bold text-emerald-700">
-                        Document selected: {postDocumentFile.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
-                  <label className="text-sm font-black text-[#0d1c38]">
-                    Property image
-                  </label>
-
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Upload one clear JPG, PNG, or WEBP image. Maximum 5MB.
-                  </p>
-
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(event) =>
-                      setPostImageFile(event.target.files?.[0] || null)
-                    }
-                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  {postImageFile && (
-                    <p className="mt-3 text-xs font-bold text-emerald-700">
-                      Selected: {postImageFile.name}
-                    </p>
-                  )}
-
-                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
-                    <label className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-                      More gallery images
-                    </label>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Optional. Add living room, bedroom, kitchen, bathroom, exterior, land/site, or document photos. You can select many images.
-                    </p>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(event) =>
-                        setPostGalleryFiles(Array.from(event.target.files || []))
-                      }
-                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    {postGalleryFiles.length > 0 && (
-                      <p className="mt-3 text-xs font-bold text-emerald-700">
-                        {postGalleryFiles.length} gallery image(s) selected
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <textarea
-                  required
-                  value={postForm.description}
-                  onChange={(event) =>
-                    setPostForm({
-                      ...postForm,
-                      description: event.target.value,
-                    })
-                  }
-                  placeholder="Describe the opportunity, e.g. A verified property in a fast-growing location suitable for rental income, resale value, or long-term investment."
-                  rows={4}
-                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                />
-
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Owner / agent / developer contact profile</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Record who submitted the property and how the public should see contact details. Keep phone hidden if INAMAAD should handle the lead first.
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <select
-                      value={postForm.contactRole}
-                      onChange={(event) => setPostForm({ ...postForm, contactRole: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Contact role"
-                    >
-                      {contactRoleOptions.map((role) => (
-                        <option key={role}>{role}</option>
-                      ))}
-                    </select>
-
-                    <select
-                      value={postForm.mandateStatus}
-                      onChange={(event) => setPostForm({ ...postForm, mandateStatus: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Mandate status"
-                    >
-                      {mandateStatusOptions.map((status) => (
-                        <option key={status}>{status}</option>
-                      ))}
-                    </select>
-
-                    <input
-                      value={postForm.ownerName}
-                      onChange={(event) => setPostForm({ ...postForm, ownerName: event.target.value })}
-                      placeholder="Contact person, e.g. Musa Abdullahi"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={postForm.companyName}
-                      onChange={(event) => setPostForm({ ...postForm, companyName: event.target.value })}
-                      placeholder="Company / developer name, e.g. INAMAAD Homes Ltd"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={postForm.ownerPhone}
-                      onChange={(event) => setPostForm({ ...postForm, ownerPhone: event.target.value })}
-                      placeholder="Phone number, e.g. 08106350486"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={postForm.contactWhatsapp}
-                      onChange={(event) => setPostForm({ ...postForm, contactWhatsapp: event.target.value })}
-                      placeholder="WhatsApp number, optional"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={postForm.contactEmail}
-                      onChange={(event) => setPostForm({ ...postForm, contactEmail: event.target.value })}
-                      placeholder="Contact email, optional"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <select
-                      value={postForm.publicContactVisibility}
-                      onChange={(event) => setPostForm({ ...postForm, publicContactVisibility: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Public contact visibility"
-                    >
-                      {publicContactVisibilityOptions.map((visibility) => (
-                        <option key={visibility}>{visibility}</option>
-                      ))}
-                    </select>
-
-                    <textarea
-                      value={postForm.contactAddress}
-                      onChange={(event) => setPostForm({ ...postForm, contactAddress: event.target.value })}
-                      placeholder="Contact office/address, optional. Keep private for staff use unless you choose Show All."
-                      rows={3}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
-                    />
-
-                    <select
-                      value={postForm.identityType}
-                      onChange={(event) => setPostForm({ ...postForm, identityType: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Identity verification type"
-                    >
-                      {identityTypeOptions.map((type) => (
-                        <option key={type}>{type}</option>
-                      ))}
-                    </select>
-
-                    <input
-                      value={postForm.identityNumber}
-                      onChange={(event) => setPostForm({ ...postForm, identityNumber: event.target.value })}
-                      placeholder="ID number / NIN / passport number, optional for staff verification"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={postForm.companyRegistrationNumber}
-                      onChange={(event) => setPostForm({ ...postForm, companyRegistrationNumber: event.target.value })}
-                      placeholder="CAC / company registration number, e.g. RC1234567"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <select
-                      value={postForm.mandateDocumentStatus}
-                      onChange={(event) => setPostForm({ ...postForm, mandateDocumentStatus: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Mandate document status"
-                    >
-                      {mandateDocumentStatusOptions.map((status) => (
-                        <option key={status}>{status}</option>
-                      ))}
-                    </select>
-
-                    <textarea
-                      value={postForm.contactVerificationNotes}
-                      onChange={(event) => setPostForm({ ...postForm, contactVerificationNotes: event.target.value })}
-                      placeholder="Verification note, e.g. Agent claims direct mandate from owner; CAC pending confirmation."
-                      rows={3}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
-                    />
-                  </div>
-
-                  <p className="mt-3 text-xs font-bold text-slate-500">
-                    Public contact setting: {postForm.publicContactVisibility}. Staff can always see the full contact profile.
-                  </p>
-                </div>
-
-                <button
-                  disabled={isLoading}
-                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isLoading ? "Submitting..." : "Submit for admin review"}
-                </button>
-              </form>
-            )}
-
-            {modal === "edit" && editingListing && (
-              <form onSubmit={submitEditListing} className="grid gap-4">
-                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
-                  <p className="font-black text-[#0d1c38]">Admin writing guide:</p>
-                  <p className="mt-2"><span className="font-black">Title:</span> Luxury Apartments in Maitama, Abuja</p>
-                  <p><span className="font-black">Investment highlight:</span> Premium capital appreciation in Abuja's prime district</p>
-                  <p><span className="font-black">Opportunity:</span> Explain the location, buyer/investor benefit, rental potential, documents, and why the property is valuable.</p>
-                </div>
-
-                <div className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-600">
-                  Editing: <span className="font-black text-[#0d1c38]">{editingListing.title}</span>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <input
-                    required
-                    value={editForm.title}
-                    onChange={(event) =>
-                      setEditForm({ ...editForm, title: event.target.value })
-                    }
-                    placeholder="Property title, e.g. 4 Bedroom Terrace Duplex in Lekki Phase 1"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  <select
-                    required
-                    value={editForm.stateName}
-                    onChange={(event) => setEditForm({ ...editForm, stateName: event.target.value })}
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    aria-label="State or FCT"
-                  >
-                    {nigeriaLocationLabels.map((location) => (
-                      <option key={location}>{location}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Exact property location</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Control what the public sees. Staff can keep exact address private while showing the area/state.
+                <div className="rounded-[26px] border border-slate-200 bg-white p-5">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                    2. Contact person
                   </p>
 
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <input
                       required
-                      value={editForm.cityArea}
-                      onChange={(event) => setEditForm({ ...editForm, cityArea: event.target.value })}
-                      placeholder="City / Area, e.g. Garki, Maitama, Lekki Phase 1"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={editForm.nearbyLandmark}
-                      onChange={(event) => setEditForm({ ...editForm, nearbyLandmark: event.target.value })}
-                      placeholder="Nearby landmark"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={editForm.fullAddress}
-                      onChange={(event) => setEditForm({ ...editForm, fullAddress: event.target.value })}
-                      placeholder="Full address / estate name"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
-                    />
-
-                    <input
-                      value={editForm.googleMapLink}
-                      onChange={(event) => setEditForm({ ...editForm, googleMapLink: event.target.value })}
-                      placeholder="Google Maps link"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
-                    />
-                  </div>
-
-                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={editForm.showExactAddress}
-                      onChange={(event) => setEditForm({ ...editForm, showExactAddress: event.target.checked })}
-                    />
-                    Show exact address and map link publicly
-                  </label>
-
-                  <p className="mt-3 text-xs font-bold text-slate-500">
-                    Public display: {editForm.cityArea || "Area"}, {editForm.stateName || "State/FCT"}
-                  </p>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Property video / virtual tour</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Use video links to show tours, drone footage, and walk-throughs without uploading heavy videos.
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <input
-                      value={editForm.videoUrl}
-                      onChange={(event) => setEditForm({ ...editForm, videoUrl: event.target.value })}
-                      placeholder="YouTube / property video link"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.virtualTourUrl}
-                      onChange={(event) => setEditForm({ ...editForm, virtualTourUrl: event.target.value })}
-                      placeholder="Virtual tour link"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    <input
-                      value={editForm.droneVideoUrl}
-                      onChange={(event) => setEditForm({ ...editForm, droneVideoUrl: event.target.value })}
-                      placeholder="Drone video link"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
-                    />
-                  </div>
-
-                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={editForm.showVideoPublicly}
-                      onChange={(event) => setEditForm({ ...editForm, showVideoPublicly: event.target.checked })}
-                    />
-                    Show video / virtual tour links publicly
-                  </label>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
-                    <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                      {postFormIsJointVenture ? "Estimated JV value / project cost" : "Price currency"}
-                    </label>
-                    <div className="mt-2 flex items-center gap-3">
-                      <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">
-                        ₦ ₦
-                      </span>
-                      <input
-                        required
-                        inputMode="numeric"
-                        value={editForm.price}
-                        onChange={(event) =>
-                          setEditForm({
-                            ...editForm,
-                            price: formatPriceInput(event.target.value),
-                          })
-                        }
-                        placeholder="Enter amount, e.g. 50000000"
-                        className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
-                      />
-                    </div>
-                    <p className="mt-2 text-xs font-bold text-slate-500">
-                      Auto calculated: {formatPricePreview(editForm.price)}
-                    </p>
-                  </div>
-
-                  <select
-                    value={editForm.type}
-                    onChange={(event) =>
-                      setEditForm({ ...editForm, type: event.target.value })
-                    }
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    aria-label="Property type"
-                  >
-                    {propertyTypeOptions.map((type) => (
-                      <option key={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Price breakdown and payment details</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-600">
-                    Add extra Nigerian real estate costs. The total estimated cost is calculated automatically from property price plus fees.
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    {[
-                      ["agencyFee", "Agency fee, e.g. 5000000"],
-                      ["legalFee", "Legal / documentation fee, e.g. 2500000"],
-                      ["serviceCharge", "Service charge, optional"],
-                      ["cautionFee", "Caution fee, optional"],
-                      ["surveyFee", "Survey fee, optional"],
-                      ["developmentFee", "Development fee, optional"],
-                    ].map(([field, placeholder]) => (
-                      <div key={field} className="rounded-2xl border border-amber-200 bg-white px-5 py-3 focus-within:border-[#0d1c38]">
-                        <label className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
-                          {placeholder.split(",")[0]}
-                        </label>
-                        <div className="mt-2 flex items-center gap-3">
-                          <span className="rounded-full bg-[#0d1c38] px-3 py-2 text-xs font-black text-white">₦</span>
-                          <input
-                            inputMode="numeric"
-                            value={editForm[field as keyof typeof editForm] as string}
-                            onChange={(event) =>
-                              setEditForm({
-                                ...editForm,
-                                [field]: formatPriceInput(event.target.value),
-                              })
-                            }
-                            placeholder={placeholder}
-                            className="w-full border-0 bg-transparent text-sm font-bold outline-none placeholder:font-normal"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 rounded-2xl bg-[#0d1c38] p-4 text-white">
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f0bf3c]">Auto total estimated cost</p>
-                    <p className="mt-2 text-2xl font-black">{calculateTotalEstimatedCost(editForm) || "₦0"}</p>
-                    <p className="mt-1 text-xs text-slate-300">Property price + agency + legal/documentation + service + caution + survey + development fees.</p>
-                  </div>
-
-                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={editForm.paymentPlanAvailable}
-                      onChange={(event) => setEditForm({ ...editForm, paymentPlanAvailable: event.target.checked })}
-                    />
-                    Payment plan / installment is available
-                  </label>
-
-                  <textarea
-                    value={editForm.installmentDetails}
-                    onChange={(event) => setEditForm({ ...editForm, installmentDetails: event.target.value })}
-                    placeholder="Installment details, e.g. 30% initial deposit, balance over 6 months"
-                    className="mt-4 min-h-[90px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <select
-                    value={editForm.category}
-                    onChange={(event) =>
-                      setEditForm({ ...editForm, category: event.target.value })
-                    }
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    aria-label="Listing purpose"
-                  >
-                    {listingPurposeOptions.map((purpose) => (
-                      <option key={purpose}>{purpose}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={editForm.status}
-                    onChange={(event) =>
-                      setEditForm({
-                        ...editForm,
-                        status: event.target.value as ListingStatus,
-                      })
-                    }
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  >
-                    <option>Verified</option>
-                    <option>Pending Review</option>
-                  </select>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Availability status</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Use this to mark a property as Available, Reserved, Sold, Rented, Leased, or Off Market.
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-3">
-                    <select
-                      value={editForm.availabilityStatus}
+                      value={postForm.ownerName}
                       onChange={(event) =>
-                        setEditForm({
-                          ...editForm,
-                          availabilityStatus: event.target.value as AvailabilityStatus,
+                        setPostForm({ ...postForm, ownerName: event.target.value })
+                      }
+                      placeholder="Your name / contact person"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      required
+                      value={postForm.ownerPhone}
+                      onChange={(event) =>
+                        setPostForm({
+                          ...postForm,
+                          ownerPhone: event.target.value,
+                          contactWhatsapp: event.target.value,
                         })
                       }
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Availability status"
-                    >
-                      {availabilityStatusOptions.map((status) => (
-                        <option key={status}>{status}</option>
-                      ))}
-                    </select>
-
-                    <input
-                      type="date"
-                      value={editForm.availableFrom}
-                      onChange={(event) =>
-                        setEditForm({ ...editForm, availableFrom: event.target.value })
-                      }
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Available from date"
+                      placeholder="Phone / WhatsApp number"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
 
                     <input
-                      value={editForm.availabilityNote}
+                      type="email"
+                      value={postForm.contactEmail}
                       onChange={(event) =>
-                        setEditForm({ ...editForm, availabilityNote: event.target.value })
+                        setPostForm({ ...postForm, contactEmail: event.target.value })
                       }
-                      placeholder="Note, e.g. Sold, reserved by client, vacant from 1 July"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      placeholder="Email address optional"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
-                  </div>
-                </div>
-
-
-                {isJointVentureListing(editForm) ? (
-                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
-                    <p className="text-sm font-black text-[#0d1c38]">Joint venture project profile</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-600">
-                      JV deals should be described as development opportunities, not bedroom/bathroom listings. Use this section for landowner, developer, investor, sharing formula, and project stage.
-                    </p>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <select
-                        value={editForm.jvStructure}
-                        onChange={(event) => setEditForm({ ...editForm, jvStructure: event.target.value })}
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                        aria-label="JV structure"
-                      >
-                        {jvStructureOptions.map((structure) => (
-                          <option key={structure}>{structure}</option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={editForm.jvProjectStage}
-                        onChange={(event) => setEditForm({ ...editForm, jvProjectStage: event.target.value })}
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                        aria-label="JV project stage"
-                      >
-                        {jvProjectStageOptions.map((stage) => (
-                          <option key={stage}>{stage}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <input
-                        value={editForm.landSize}
-                        onChange={(event) => setEditForm({ ...editForm, landSize: event.target.value })}
-                        placeholder="JV land size, e.g. 3,500sqm, 2 hectares, 20 plots"
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <input
-                        value={editForm.jvExpectedUnits}
-                        onChange={(event) => setEditForm({ ...editForm, jvExpectedUnits: event.target.value })}
-                        placeholder="Expected units, e.g. 24 terraces, 80 apartments"
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <input
-                        value={editForm.jvEstimatedProjectCost}
-                        onChange={(event) => setEditForm({ ...editForm, jvEstimatedProjectCost: formatPriceInput(event.target.value) })}
-                        placeholder="Estimated project cost, e.g. ₦1,500,000,000"
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <input
-                        value={editForm.jvCompletionTimeline}
-                        onChange={(event) => setEditForm({ ...editForm, jvCompletionTimeline: event.target.value })}
-                        placeholder="Completion timeline, e.g. 18 months after approval"
-                        className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <textarea
-                        value={editForm.jvLandContribution}
-                        onChange={(event) => setEditForm({ ...editForm, jvLandContribution: event.target.value })}
-                        placeholder="Landowner contribution, e.g. clean land with C of O, access road, vacant possession"
-                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <textarea
-                        value={editForm.jvDeveloperRequirement}
-                        onChange={(event) => setEditForm({ ...editForm, jvDeveloperRequirement: event.target.value })}
-                        placeholder="Developer requirement, e.g. fund construction, handle approvals, deliver infrastructure"
-                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <textarea
-                        value={editForm.jvInvestorRequirement}
-                        onChange={(event) => setEditForm({ ...editForm, jvInvestorRequirement: event.target.value })}
-                        placeholder="Investor requirement, e.g. equity funding, staged capital, off-plan buyer pool"
-                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                      <textarea
-                        value={editForm.jvSharingFormula}
-                        onChange={(event) => setEditForm({ ...editForm, jvSharingFormula: event.target.value })}
-                        placeholder="Sharing formula, e.g. 40% landowner / 60% developer, or units split after cost recovery"
-                        className="min-h-[96px] rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                    </div>
-
-                    <textarea
-                      value={editForm.jvTerms}
-                      onChange={(event) => setEditForm({ ...editForm, jvTerms: event.target.value })}
-                      placeholder="JV terms and notes, e.g. required due diligence, legal structure, approvals, exit plan, profit-sharing terms"
-                      className="mt-4 min-h-[110px] w-full rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <div className="mt-5 rounded-3xl border border-purple-200 bg-purple-50 p-5">
-                      <p className="text-sm font-black text-[#0d1c38]">JV deal pipeline</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">
-                        Manage this JV separately from normal property listings: due diligence, negotiation, agreement drafting, approval, rejection, or closure.
-                      </p>
-
-                      <div className="mt-4 grid gap-4 md:grid-cols-3">
-                        <select
-                          value={editForm.jvDealStatus}
-                          onChange={(event) => setEditForm({ ...editForm, jvDealStatus: event.target.value as JVDealStatus })}
-                          className="rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                          aria-label="JV deal status"
-                        >
-                          {jvDealStatusOptions.map((status) => (<option key={status}>{status}</option>))}
-                        </select>
-                        <input
-                          type="date"
-                          value={editForm.jvNextActionDate}
-                          onChange={(event) => setEditForm({ ...editForm, jvNextActionDate: event.target.value })}
-                          className="rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                          aria-label="JV next action date"
-                        />
-                        <input
-                          value={editForm.jvNextAction}
-                          onChange={(event) => setEditForm({ ...editForm, jvNextAction: event.target.value })}
-                          placeholder="Next action, e.g. schedule negotiation"
-                          className="rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                        />
-                      </div>
-
-                      <textarea
-                        value={editForm.jvInternalNotes}
-                        onChange={(event) => setEditForm({ ...editForm, jvInternalNotes: event.target.value })}
-                        placeholder="Private JV internal notes, negotiation risks, pending requirements, legal points..."
-                        className="mt-4 min-h-[110px] w-full rounded-2xl border border-purple-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      />
-                    </div>
-
-                    <div className="mt-5 rounded-3xl border border-amber-300 bg-white p-5">
-                      <p className="text-sm font-black text-[#0d1c38]">JV due-diligence documents</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">
-                        Staff-only files for serious JV review. Upload feasibility study, concept drawings, layout, BOQ/costing, and proposal documents. Public users only see review status, not the private files.
-                      </p>
-
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <select
-                          value={editForm.jvLandTitleStatus}
-                          onChange={(event) => setEditForm({ ...editForm, jvLandTitleStatus: event.target.value })}
-                          className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                          aria-label="JV land title status"
-                        >
-                          {jvLandTitleStatusOptions.map((status) => (<option key={status}>{status}</option>))}
-                        </select>
-
-                        <select
-                          value={editForm.jvDevelopmentApprovalStatus}
-                          onChange={(event) => setEditForm({ ...editForm, jvDevelopmentApprovalStatus: event.target.value })}
-                          className="rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                          aria-label="JV development approval status"
-                        >
-                          {jvDevelopmentApprovalStatusOptions.map((status) => (<option key={status}>{status}</option>))}
-                        </select>
-                      </div>
-
-                      {[
-                        ["Feasibility study", editJvFeasibilityStudyFile, setEditJvFeasibilityStudyFile, editForm.jvFeasibilityStudyUrl, "feasibility study"],
-                        ["Architectural concept", editJvArchitecturalConceptFile, setEditJvArchitecturalConceptFile, editForm.jvArchitecturalConceptUrl, "architectural concept"],
-                        ["Estate layout", editJvEstateLayoutFile, setEditJvEstateLayoutFile, editForm.jvEstateLayoutUrl, "estate layout"],
-                        ["BOQ / project costing", editJvBoqFile, setEditJvBoqFile, editForm.jvBoqUrl, "BOQ / project costing"],
-                        ["JV proposal document", editJvProposalDocumentFile, setEditJvProposalDocumentFile, editForm.jvProposalDocumentUrl, "JV proposal document"],
-                      ].map(([label, selectedFile, setFile, existingUrl, secureLabel]) => (
-                        <div key={String(label)} className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
-                          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                            <div>
-                              <p className="text-sm font-black text-[#0d1c38]">{String(label)}</p>
-                              <p className="mt-1 text-xs text-slate-500">PDF, JPG, PNG, WEBP. Private to senior staff.</p>
-                              {selectedFile instanceof File ? (
-                                <p className="mt-1 text-xs font-bold text-emerald-700">Selected: {selectedFile.name}</p>
-                              ) : existingUrl ? (
-                                <p className="mt-1 text-xs font-bold text-emerald-700">Uploaded securely</p>
-                              ) : (
-                                <p className="mt-1 text-xs text-slate-500">No file uploaded yet</p>
-                              )}
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              <label className="cursor-pointer rounded-full bg-white px-4 py-2 text-xs font-black text-[#0d1c38] ring-1 ring-amber-200">
-                                Upload
-                                <input
-                                  type="file"
-                                  accept="application/pdf,image/jpeg,image/png,image/webp"
-                                  className="hidden"
-                                  onChange={(event) => {
-                                    const file = event.target.files?.[0] || null;
-                                    (setFile as React.Dispatch<React.SetStateAction<File | null>>)(file);
-                                  }}
-                                />
-                              </label>
-
-                              <button
-                                type="button"
-                                onClick={() => openSecureJvDocument(String(existingUrl || ""), String(secureLabel))}
-                                className="rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                                disabled={!existingUrl || !canOpenDocuments}
-                              >
-                                {canOpenDocuments ? "Open secure file" : "Locked"}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                    <p className="text-sm font-black text-[#0d1c38]">Property specifications and amenities</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Update the physical property details buyers and tenants use to compare listings.
-                    </p>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-4">
-                      <input type="number" min="0" value={editForm.bedrooms} onChange={(event) => setEditForm({ ...editForm, bedrooms: event.target.value })} placeholder="Bedrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                      <input type="number" min="0" value={editForm.bathrooms} onChange={(event) => setEditForm({ ...editForm, bathrooms: event.target.value })} placeholder="Bathrooms, e.g. 4" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                      <input type="number" min="0" value={editForm.toilets} onChange={(event) => setEditForm({ ...editForm, toilets: event.target.value })} placeholder="Toilets, e.g. 5" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                      <input type="number" min="0" value={editForm.parkingSpaces} onChange={(event) => setEditForm({ ...editForm, parkingSpaces: event.target.value })} placeholder="Parking spaces, e.g. 2" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <input value={editForm.landSize} onChange={(event) => setEditForm({ ...editForm, landSize: event.target.value })} placeholder="Land size, e.g. 500sqm, 1 plot, 2 hectares" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                      <input value={editForm.propertySize} onChange={(event) => setEditForm({ ...editForm, propertySize: event.target.value })} placeholder="Built-up size, e.g. 320sqm" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <select value={editForm.furnishingStatus} onChange={(event) => setEditForm({ ...editForm, furnishingStatus: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Furnishing status">
-                        {furnishingStatusOptions.map((status) => (<option key={status}>{status}</option>))}
-                      </select>
-                      <select value={editForm.propertyCondition} onChange={(event) => setEditForm({ ...editForm, propertyCondition: event.target.value })} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" aria-label="Property condition">
-                        {propertyConditionOptions.map((condition) => (<option key={condition}>{condition}</option>))}
-                      </select>
-                    </div>
-
-                    <input list="amenity-options" value={editForm.amenities} onChange={(event) => setEditForm({ ...editForm, amenities: event.target.value })} placeholder="Amenities, e.g. 24/7 Security, CCTV, Swimming Pool, Fitted Kitchen" className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]" />
-                  </div>
-                )}
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Property document / title papers</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Keep this accurate. Examples: C of O, R of O, Governor's Consent, Deed of Assignment, Survey Plan, Excision, Gazette.
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <select
-                      value={editForm.documentTitle}
-                      onChange={(event) =>
-                        setEditForm({ ...editForm, documentTitle: event.target.value })
-                      }
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Document title"
-                    >
-                      {documentTitleOptions.map((documentTitle) => (
-                        <option key={documentTitle}>{documentTitle}</option>
-                      ))}
-                    </select>
 
                     <select
-                      value={editForm.documentStatus}
+                      value={postForm.contactRole}
                       onChange={(event) =>
-                        setEditForm({ ...editForm, documentStatus: event.target.value })
+                        setPostForm({ ...postForm, contactRole: event.target.value })
                       }
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Document status"
-                    >
-                      {documentStatusOptions.map((documentStatus) => (
-                        <option key={documentStatus}>{documentStatus}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <textarea
-                    value={editForm.documentDetails}
-                    onChange={(event) =>
-                      setEditForm({ ...editForm, documentDetails: event.target.value })
-                    }
-                    placeholder="Optional document details, e.g. Survey plan available, C of O processing, registered deed number, allocation file number..."
-                    rows={3}
-                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  <div className="mt-4 rounded-2xl border border-dashed border-amber-300 bg-white p-5">
-                    <label className="text-sm font-black text-[#0d1c38]">
-                      Replace title document file
-                    </label>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Leave empty to keep the current document. Upload PDF, JPG, PNG, or WEBP under 10MB. The file is stored privately and only staff can open it. The file is stored privately and only staff can open it.
-                    </p>
-                    {editForm.documentFileUrl && !editDocumentFile && (
-                      <button
-                        type="button"
-                        onClick={() => openSecurePropertyDocument(editForm.documentFileUrl)}
-                        disabled={!canOpenDocuments}
-                        title={!canOpenDocuments ? "Your role cannot open secure documents" : "Open secure title document"}
-                        className="mt-4 inline-flex rounded-2xl bg-[#0d1c38] px-4 py-3 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                      >
-                        {canOpenDocuments ? "Open secure document" : "Secure document locked"}
-                      </button>
-                    )}
-                    <input
-                      type="file"
-                      accept="application/pdf,image/jpeg,image/png,image/webp"
-                      onChange={(event) =>
-                        setEditDocumentFile(event.target.files?.[0] || null)
-                      }
-                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    {editDocumentFile && (
-                      <p className="mt-3 text-xs font-bold text-emerald-700">
-                        New document selected: {editDocumentFile.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-
-                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="text-sm font-black text-[#0d1c38]">Admin verification checklist</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">
-                        Complete these checks before approving a property as verified.
-                      </p>
-                    </div>
-                    <span className={`rounded-full px-4 py-2 text-xs font-black ${isListingVerificationComplete({
-                      ...editingListing,
-                      titleVerified: editForm.titleVerified,
-                      ownerVerified: editForm.ownerVerified,
-                      siteInspected: editForm.siteInspected,
-                      priceChecked: editForm.priceChecked,
-                      legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
-                    }) ? "bg-emerald-600 text-white" : "bg-amber-100 text-amber-800"}`}>
-                      {isListingVerificationComplete({
-                        ...editingListing,
-                        titleVerified: editForm.titleVerified,
-                        ownerVerified: editForm.ownerVerified,
-                        siteInspected: editForm.siteInspected,
-                        priceChecked: editForm.priceChecked,
-                        legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
-                      }) ? "Ready for approval" : "Verification incomplete"}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    {[
-                      ["titleVerified", "Title document checked"],
-                      ["ownerVerified", "Owner identity verified"],
-                      ["siteInspected", "Site inspection done"],
-                      ["priceChecked", "Price checked against market"],
-                    ].map(([key, label]) => (
-                      <label key={key} className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-black text-[#0d1c38]">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(editForm[key as keyof typeof editForm])}
-                          onChange={(event) =>
-                            setEditForm({ ...editForm, [key]: event.target.checked })
-                          }
-                          className="h-5 w-5 accent-emerald-600"
-                        />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <select
-                      value={editForm.legalReviewStatus}
-                      onChange={(event) =>
-                        setEditForm({ ...editForm, legalReviewStatus: event.target.value })
-                      }
-                      className="rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm outline-none focus:border-emerald-600"
-                      aria-label="Legal review status"
-                    >
-                      {legalReviewStatusOptions.map((status) => (
-                        <option key={status}>{status}</option>
-                      ))}
-                    </select>
-
-                    <input
-                      value={verificationSummary({
-                        ...editingListing,
-                        titleVerified: editForm.titleVerified,
-                        ownerVerified: editForm.ownerVerified,
-                        siteInspected: editForm.siteInspected,
-                        priceChecked: editForm.priceChecked,
-                        legalReviewStatus: editForm.legalReviewStatus as Listing["legalReviewStatus"],
-                      })}
-                      readOnly
-                      className="rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm font-black text-emerald-700 outline-none"
-                      aria-label="Verification summary"
-                    />
-                  </div>
-
-                  <textarea
-                    value={editForm.verificationNotes}
-                    onChange={(event) =>
-                      setEditForm({ ...editForm, verificationNotes: event.target.value })
-                    }
-                    placeholder="Verification notes, e.g. C of O sighted, owner ID checked, site inspected by agent, legal team cleared document."
-                    rows={3}
-                    className="mt-4 w-full rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm outline-none focus:border-emerald-600"
-                  />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-[#0d1c38]">
-                    <input
-                      type="checkbox"
-                      checked={editForm.featured}
-                      onChange={(event) =>
-                        setEditForm({ ...editForm, featured: event.target.checked })
-                      }
-                      className="h-5 w-5 accent-[#d4a017]"
-                    />
-                    Mark as featured / premium
-                  </label>
-
-                  <input
-                    type="number"
-                    min="0"
-                    value={editForm.featuredRank}
-                    onChange={(event) =>
-                      setEditForm({ ...editForm, featuredRank: event.target.value })
-                    }
-                    placeholder="Featured rank, e.g. 10"
-                    className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-                </div>
-
-                <input
-                  value={editForm.yieldText}
-                  onChange={(event) =>
-                    setEditForm({ ...editForm, yieldText: event.target.value })
-                  }
-                  placeholder="Investment highlight, e.g. Estimated 14% yearly appreciation"
-                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                />
-
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
-                  <label className="text-sm font-black text-[#0d1c38]">
-                    Replace property image
-                  </label>
-
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Leave empty to keep the current image. Upload JPG, PNG, or WEBP under 5MB.
-                  </p>
-
-                  {editForm.imageUrl && !editImageFile && (
-                    <img
-                      src={editForm.imageUrl}
-                      alt={editForm.title}
-                      className="mt-4 h-36 w-full rounded-2xl object-cover"
-                    />
-                  )}
-
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(event) =>
-                      setEditImageFile(event.target.files?.[0] || null)
-                    }
-                    className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                  />
-
-                  {editImageFile && (
-                    <p className="mt-3 text-xs font-bold text-emerald-700">
-                      New image selected: {editImageFile.name}
-                    </p>
-                  )}
-
-                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
-                    <label className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-                      Add more gallery images
-                    </label>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Existing gallery images stay saved. Add more photos for bedroom, kitchen, exterior, land/site, or documents.
-                    </p>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(event) =>
-                        setEditGalleryFiles(Array.from(event.target.files || []))
-                      }
-                      className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-                    {editGalleryFiles.length > 0 && (
-                      <p className="mt-3 text-xs font-bold text-emerald-700">
-                        {editGalleryFiles.length} new gallery image(s) selected
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <textarea
-                  required
-                  value={editForm.description}
-                  onChange={(event) =>
-                    setEditForm({ ...editForm, description: event.target.value })
-                  }
-                  placeholder="Describe the opportunity, e.g. A verified property in a fast-growing location suitable for rental income, resale value, or long-term investment."
-                  rows={4}
-                  className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                />
-
-                <div className="rounded-3xl border border-slate-200 bg-[#f7f8fb] p-5">
-                  <p className="text-sm font-black text-[#0d1c38]">Owner / agent / developer contact profile</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Staff can update mandate status and choose what contact details public visitors may see.
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <select
-                      value={editForm.contactRole}
-                      onChange={(event) => setEditForm({ ...editForm, contactRole: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                       aria-label="Contact role"
                     >
                       {contactRoleOptions.map((role) => (
-                        <option key={role}>{role}</option>
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
                       ))}
                     </select>
+                  </div>
+                </div>
 
-                    <select
-                      value={editForm.mandateStatus}
-                      onChange={(event) => setEditForm({ ...editForm, mandateStatus: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Mandate status"
-                    >
-                      {mandateStatusOptions.map((status) => (
-                        <option key={status}>{status}</option>
-                      ))}
-                    </select>
+                <div className="rounded-[26px] border border-slate-200 bg-[#f8fafc] p-5">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                    3. Optional upload
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Uploads are optional for now. You can submit without documents; INAMAAD can request documents later before approval.
+                  </p>
 
-                    <input
-                      value={editForm.ownerName}
-                      onChange={(event) => setEditForm({ ...editForm, ownerName: event.target.value })}
-                      placeholder="Contact person, e.g. Musa Abdullahi"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={editForm.companyName}
-                      onChange={(event) => setEditForm({ ...editForm, companyName: event.target.value })}
-                      placeholder="Company / developer name, e.g. INAMAAD Homes Ltd"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={editForm.ownerPhone}
-                      onChange={(event) => setEditForm({ ...editForm, ownerPhone: event.target.value })}
-                      placeholder="Phone number, e.g. 08106350486"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={editForm.contactWhatsapp}
-                      onChange={(event) => setEditForm({ ...editForm, contactWhatsapp: event.target.value })}
-                      placeholder="WhatsApp number, optional"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={editForm.contactEmail}
-                      onChange={(event) => setEditForm({ ...editForm, contactEmail: event.target.value })}
-                      placeholder="Contact email, optional"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <select
-                      value={editForm.publicContactVisibility}
-                      onChange={(event) => setEditForm({ ...editForm, publicContactVisibility: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Public contact visibility"
-                    >
-                      {publicContactVisibilityOptions.map((visibility) => (
-                        <option key={visibility}>{visibility}</option>
-                      ))}
-                    </select>
-
-                    <textarea
-                      value={editForm.contactAddress}
-                      onChange={(event) => setEditForm({ ...editForm, contactAddress: event.target.value })}
-                      placeholder="Contact office/address, optional. Keep private unless visibility is Show All."
-                      rows={3}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
-                    />
-
-                    <select
-                      value={editForm.identityType}
-                      onChange={(event) => setEditForm({ ...editForm, identityType: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Identity verification type"
-                    >
-                      {identityTypeOptions.map((type) => (
-                        <option key={type}>{type}</option>
-                      ))}
-                    </select>
-
-                    <input
-                      value={editForm.identityNumber}
-                      onChange={(event) => setEditForm({ ...editForm, identityNumber: event.target.value })}
-                      placeholder="ID number / NIN / passport number"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <input
-                      value={editForm.companyRegistrationNumber}
-                      onChange={(event) => setEditForm({ ...editForm, companyRegistrationNumber: event.target.value })}
-                      placeholder="CAC / company registration number, e.g. RC1234567"
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                    />
-
-                    <select
-                      value={editForm.mandateDocumentStatus}
-                      onChange={(event) => setEditForm({ ...editForm, mandateDocumentStatus: event.target.value })}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
-                      aria-label="Mandate document status"
-                    >
-                      {mandateDocumentStatusOptions.map((status) => (
-                        <option key={status}>{status}</option>
-                      ))}
-                    </select>
-
-                    <label className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-black text-emerald-800 md:col-span-2">
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                      <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                        Main image optional
+                      </span>
                       <input
-                        type="checkbox"
-                        checked={Boolean(editForm.contactProfileVerified)}
-                        onChange={(event) => setEditForm({ ...editForm, contactProfileVerified: event.target.checked })}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) => setPostImageFile(event.target.files?.[0] || null)}
+                        className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-[#fff7df] file:px-4 file:py-2 file:text-xs file:font-black file:text-[#9b6b16]"
                       />
-                      Owner/agent/developer profile verified
                     </label>
 
-                    <textarea
-                      value={editForm.contactVerificationNotes}
-                      onChange={(event) => setEditForm({ ...editForm, contactVerificationNotes: event.target.value })}
-                      placeholder="Private verification notes, e.g. ID checked, CAC verified, mandate letter reviewed."
-                      rows={3}
-                      className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm outline-none focus:border-[#0d1c38] md:col-span-2"
-                    />
-
-                    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 md:col-span-2">
-                      <p className="text-sm font-black text-[#0d1c38]">Private verification document uploads</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Staff-only files. Upload owner ID, CAC certificate, and mandate/authorization letter. These files are stored in a private Supabase bucket and opened with temporary signed links only.
-                      </p>
-
-                      <div className="mt-4 grid gap-4 md:grid-cols-3">
-                        {[
-                          {
-                            label: "Owner/agent ID document",
-                            url: editForm.identityDocumentUrl,
-                            file: editIdentityDocumentFile,
-                            setFile: setEditIdentityDocumentFile,
-                            openLabel: "owner/agent ID document",
-                          },
-                          {
-                            label: "CAC/company document",
-                            url: editForm.cacDocumentUrl,
-                            file: editCacDocumentFile,
-                            setFile: setEditCacDocumentFile,
-                            openLabel: "CAC/company document",
-                          },
-                          {
-                            label: "Mandate/authorization letter",
-                            url: editForm.mandateDocumentUrl,
-                            file: editMandateDocumentFile,
-                            setFile: setEditMandateDocumentFile,
-                            openLabel: "mandate/authorization letter",
-                          },
-                        ].map((item) => (
-                          <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <label className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-                              {item.label}
-                            </label>
-                            <input
-                              type="file"
-                              accept="application/pdf,image/jpeg,image/png,image/webp"
-                              onChange={(event) => item.setFile(event.target.files?.[0] || null)}
-                              disabled={!canOpenDocuments}
-                              className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs outline-none focus:border-[#0d1c38] disabled:cursor-not-allowed disabled:opacity-60"
-                            />
-                            <p className="mt-2 text-xs font-bold text-slate-500">
-                              {item.file ? `Selected: ${item.file.name}` : item.url ? "Uploaded" : "Not uploaded"}
-                            </p>
-                            {item.url && (
-                              <button
-                                type="button"
-                                onClick={() => openSecureVerificationDocument(item.url, item.openLabel)}
-                                disabled={!canOpenDocuments}
-                                className="mt-3 rounded-full bg-[#0d1c38] px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {canOpenDocuments ? "Open secure file" : "Locked"}
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <label className="block rounded-2xl border border-slate-200 bg-white p-4">
+                      <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                        Title / proposal document optional
+                      </span>
+                      <input
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png,image/webp"
+                        onChange={(event) => setPostDocumentFile(event.target.files?.[0] || null)}
+                        className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-[#fff7df] file:px-4 file:py-2 file:text-xs file:font-black file:text-[#9b6b16]"
+                      />
+                    </label>
                   </div>
-
-                  <p className="mt-3 text-xs font-bold text-slate-500">
-                    Public contact setting: {editForm.publicContactVisibility}. Staff can always see the full contact profile.
-                  </p>
                 </div>
 
                 <button
+                  type="submit"
                   disabled={isLoading}
-                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white transition hover:bg-[#13284f] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isLoading ? "Saving changes..." : "Save listing changes"}
+                  {isLoading ? "Submitting..." : postFormIsJointVenture ? "Submit JV for review" : "Submit property for review"}
                 </button>
               </form>
             )}
-
-            {modal === "investor" && (
+{modal === "investor" && (
               <form onSubmit={submitInvestorRequest} className="grid gap-4">
                 <input
                   type="text"

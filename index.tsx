@@ -6379,7 +6379,7 @@ function InamaadMainApp() {
               <option value="">Unassigned</option>
               {assignableStaffMembers.map((member) => (
                 <option key={member.email} value={member.email}>
-                  {member.fullName || member.email} Ã¢â‚¬â€ {member.role}
+                  {member.fullName || member.email} - {member.role}
                 </option>
               ))}
             </select>
@@ -8456,7 +8456,7 @@ function InamaadMainApp() {
         </div>
 
         <div className="mx-auto mt-8 max-w-7xl border-t border-slate-200 pt-5 text-center text-xs font-semibold text-slate-500">
-          Ã‚Â© 2026 INAMAAD Real Estate. All rights reserved.
+          © 2026 INAMAAD Real Estate. All rights reserved.
         </div>
       </footer>
 
@@ -8947,7 +8947,7 @@ function InamaadMainApp() {
                       onChange={(event) =>
                         setPostForm({ ...postForm, price: formatPriceInput(event.target.value) })
                       }
-                      placeholder={postFormIsJointVenture ? "Estimated project value / budget" : "Asking price, e.g. â‚¦120,000,000"}
+                      placeholder={postFormIsJointVenture ? "Estimated project value / budget" : "Asking price, e.g. ₦120,000,000"}
                       className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
                     />
 
@@ -10673,7 +10673,7 @@ function InamaadMainApp() {
                       >
                         <div className="flex items-start gap-3">
                           <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${check.passed ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"}`}>
-                            {check.passed ? "Ã¢Å“â€œ" : "!"}
+                            {check.passed ? "OK" : "!"}
                           </span>
                           <div>
                             <p className="text-sm font-black text-[#0d1c38]">{check.label}</p>
@@ -10686,7 +10686,7 @@ function InamaadMainApp() {
 
                   {failedLaunchFoundationChecks.length > 0 ? (
                     <p className="mt-4 rounded-2xl bg-[#fff7df] p-4 text-sm font-semibold leading-6 text-[#9b6b16]">
-                      Next Phase 1 action: {failedLaunchFoundationChecks[0].label} Ã¢â‚¬â€ {failedLaunchFoundationChecks[0].detail}
+                      Next Phase 1 action: {failedLaunchFoundationChecks[0].label} - {failedLaunchFoundationChecks[0].detail}
                     </p>
                   ) : (
                     <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold leading-6 text-emerald-700">
@@ -11436,68 +11436,96 @@ function InamaadMainApp() {
                     Pending listings
                   </h3>
 
-                  <div className="mt-4 grid gap-4">
-                    {pendingListings.length === 0 && (
-                      <p className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
-                        No pending listings right now.
-                      </p>
-                    )}
-
-                    {pendingListings.map((listing) => (
-                      <div
-                        key={listing.id}
-                        className="rounded-2xl border border-slate-200 p-5"
-                      >
-                        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-                          <div>
-                            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d49613]">
-                              {buildListingReference(listing.id)}
-                            </p>
-
-                            <p className="mt-1 font-black text-[#0d1c38]">
-                              {listing.title}
-                            </p>
-
-                            <p className="mt-1 text-sm text-slate-500">
-                              {listing.location}  -  {listing.price}
-                            </p>
-
-                            <p className="mt-2 text-sm text-slate-500">
-                              {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"}  - {" "}
-                              {listing.ownerPhone || listing.contactWhatsapp || "No phone"}  -  {listing.mandateStatus || "Not Confirmed"}
-                            </p>
-                          </div>
-
-                          <div className="flex gap-3">
-                            <button
-                              onClick={() => openEditListing(listing)}
-                              disabled={!canEditListings}
-                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                            >
-                              Edit
-                            </button>
-
-                            <button
-                              onClick={() => approveListing(listing.id)}
-                              disabled={!canApproveListings || !isListingVerificationComplete(listing)}
-                              title={!canApproveListings ? "Your role cannot approve listings" : !isListingVerificationComplete(listing) ? "Complete verification checklist first" : "Approve listing"}
-                              className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                            >
-                              {!canApproveListings ? "No approve access" : isListingVerificationComplete(listing) ? "Approve" : "Verify first"}
-                            </button>
-
-                            <button
-                              onClick={() => deleteListing(listing.id)}
-                              disabled={!canDeleteListings}
-                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                            >
-                              Delete
-                            </button>
-                          </div>
+                  {pendingListings.length === 0 ? (
+                    <p className="mt-4 rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-500">
+                      No pending listings right now.
+                    </p>
+                  ) : (
+                    <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
+                      <div className="min-w-[980px]">
+                        <div className="grid grid-cols-[140px_1.5fr_1.3fr_120px_160px_220px] gap-4 bg-slate-50 px-5 py-3 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                          <span>Reference</span>
+                          <span>Title</span>
+                          <span>Location / price</span>
+                          <span>Status</span>
+                          <span>Verification</span>
+                          <span>Actions</span>
                         </div>
+
+                        {pendingListings.map((listing) => (
+                          <div
+                            key={listing.id}
+                            className="grid grid-cols-[140px_1.5fr_1.3fr_120px_160px_220px] items-center gap-4 border-t border-slate-200 px-5 py-4 text-sm"
+                          >
+                            <div>
+                              <p className="font-black uppercase tracking-[0.16em] text-[#d49613]">
+                                {buildListingReference(listing.id)}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="font-black text-[#0d1c38]">
+                                {listing.title}
+                              </p>
+                              <p className="mt-1 text-xs font-bold text-slate-500">
+                                {listing.type} - {listing.category}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="font-bold text-slate-700">{listing.location}</p>
+                              <p className="mt-1 text-xs text-slate-500">{listing.price}</p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {listing.contactRole || "Owner"}: {listing.companyName || listing.ownerName || "Not provided"} - {listing.ownerPhone || listing.contactWhatsapp || "No phone"}
+                              </p>
+                            </div>
+
+                            <div>
+                              <span className={`rounded-full px-3 py-1 text-xs font-black ${listing.status === "Verified" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                                {listing.status}
+                              </span>
+                            </div>
+
+                            <div>
+                              <p className="text-xs font-black text-slate-600">
+                                {verificationSummary(listing)}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {listing.legalReviewStatus || "Not Reviewed"}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                onClick={() => openEditListing(listing)}
+                                disabled={!canEditListings}
+                                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                              >
+                                Edit
+                              </button>
+
+                              <button
+                                onClick={() => approveListing(listing.id)}
+                                disabled={!canApproveListings || !isListingVerificationComplete(listing)}
+                                title={!canApproveListings ? "Your role cannot approve listings" : !isListingVerificationComplete(listing) ? "Complete verification checklist first" : "Approve listing"}
+                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                              >
+                                {!canApproveListings ? "No approve" : isListingVerificationComplete(listing) ? "Approve" : "Verify first"}
+                              </button>
+
+                              <button
+                                onClick={() => deleteListing(listing.id)}
+                                disabled={!canDeleteListings}
+                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -12547,50 +12575,73 @@ function InamaadMainApp() {
                     All listings
                   </h3>
 
-                  <div className="mt-4 grid gap-4">
-                    {listings.map((listing) => (
-                      <div
-                        key={listing.id}
-                        className="rounded-2xl border border-slate-200 p-5"
-                      >
-                        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                  <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
+                    <div className="min-w-[980px]">
+                      <div className="grid grid-cols-[140px_1.5fr_1.2fr_120px_170px_90px_150px] gap-4 bg-slate-50 px-5 py-3 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                        <span>Reference</span>
+                        <span>Title</span>
+                        <span>Location</span>
+                        <span>Price</span>
+                        <span>Status</span>
+                        <span>Views</span>
+                        <span>Actions</span>
+                      </div>
+
+                      {listings.map((listing) => (
+                        <div
+                          key={listing.id}
+                          className="grid grid-cols-[140px_1.5fr_1.2fr_120px_170px_90px_150px] items-center gap-4 border-t border-slate-200 px-5 py-4 text-sm"
+                        >
                           <div>
-                            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#d49613]">
+                            <p className="font-black uppercase tracking-[0.16em] text-[#d49613]">
                               {buildListingReference(listing.id)}
-                            </p>
-
-                            <p className="mt-1 font-black text-[#0d1c38]">
-                              {listing.title}
-                            </p>
-
-                            <p className="mt-1 text-sm text-slate-500">
-                              {listing.location}  -  {listing.price}
-                            </p>
-
-                            {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
-                              <p className="mt-1 text-xs font-bold text-slate-500">
-                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join("  -  ")}
-                              </p>
-                            )}
-
-                            <p className="mt-1 text-xs font-black text-slate-400">
-                              {listing.status}  -  {listing.availabilityStatus || "Available"}
-                              {listing.featured ? `  -  Featured rank ${listing.featuredRank || 0}` : ""}
-                            </p>
-
-                            {listing.availabilityNote && (
-                              <p className="mt-1 text-xs font-bold text-slate-500">
-                                Availability note: {listing.availabilityNote}
-                              </p>
-                            )}
-
-
-                            <p className="mt-1 text-xs font-bold text-slate-500">
-                              Views: {viewCountByListingId[listing.id] || 0}
                             </p>
                           </div>
 
-                          <div className="flex gap-3">
+                          <div>
+                            <p className="font-black text-[#0d1c38]">
+                              {listing.title}
+                            </p>
+                            <p className="mt-1 text-xs font-bold text-slate-500">
+                              {listing.type} - {listing.category}
+                            </p>
+                            {(listing.bedrooms || listing.bathrooms || listing.landSize) && (
+                              <p className="mt-1 text-xs text-slate-500">
+                                {[listing.bedrooms ? `${listing.bedrooms} bed` : "", listing.bathrooms ? `${listing.bathrooms} bath` : "", listing.landSize || ""].filter(Boolean).join(" - ")}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="font-bold text-slate-700">{listing.location}</p>
+                            {listing.availabilityNote && (
+                              <p className="mt-1 text-xs text-slate-500">
+                                {listing.availabilityNote}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="font-black text-[#0d1c38]">{listing.price}</p>
+                          </div>
+
+                          <div>
+                            <span className={`rounded-full px-3 py-1 text-xs font-black ${listing.status === "Verified" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                              {listing.status}
+                            </span>
+                            <p className="mt-2 text-xs font-black text-slate-400">
+                              {listing.availabilityStatus || "Available"}
+                              {listing.featured ? ` - Featured ${listing.featuredRank || 0}` : ""}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs font-black text-slate-600">
+                              {viewCountByListingId[listing.id] || 0}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
                             <button
                               onClick={() => openEditListing(listing)}
                               disabled={!canEditListings}
@@ -12608,10 +12659,11 @@ function InamaadMainApp() {
                             </button>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
+
               </div>
             )}
           </div>

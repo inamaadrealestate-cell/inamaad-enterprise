@@ -11163,7 +11163,7 @@ function InamaadMainApp() {
                               type="button"
                               onClick={() => deleteStaffMember(member.email)}
                               disabled={!isSuperAdmin || member.email === user?.email}
-                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                              className="rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                               Remove
                             </button>
@@ -11442,8 +11442,8 @@ function InamaadMainApp() {
                     </p>
                   ) : (
                     <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
-                      <div className="min-w-[980px]">
-                        <div className="grid grid-cols-[140px_1.5fr_1.3fr_120px_160px_220px] gap-4 bg-slate-50 px-5 py-3 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                      <div className="min-w-[720px]">
+                        <div className="grid grid-cols-[85px_1.25fr_1fr_85px_105px_125px] gap-2 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">
                           <span>Reference</span>
                           <span>Title</span>
                           <span>Location / price</span>
@@ -11455,7 +11455,7 @@ function InamaadMainApp() {
                         {pendingListings.map((listing) => (
                           <div
                             key={listing.id}
-                            className="grid grid-cols-[140px_1.5fr_1.3fr_120px_160px_220px] items-center gap-4 border-t border-slate-200 px-5 py-4 text-sm"
+                            className="grid grid-cols-[85px_1.25fr_1fr_85px_105px_125px] items-center gap-2 border-t border-slate-200 px-3 py-3 text-xs"
                           >
                             <div>
                               <p className="font-black uppercase tracking-[0.16em] text-[#d49613]">
@@ -11499,7 +11499,7 @@ function InamaadMainApp() {
                               <button
                                 onClick={() => openEditListing(listing)}
                                 disabled={!canEditListings}
-                                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                className="rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 Edit
                               </button>
@@ -11508,7 +11508,7 @@ function InamaadMainApp() {
                                 onClick={() => approveListing(listing.id)}
                                 disabled={!canApproveListings || !isListingVerificationComplete(listing)}
                                 title={!canApproveListings ? "Your role cannot approve listings" : !isListingVerificationComplete(listing) ? "Complete verification checklist first" : "Approve listing"}
-                                className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 {!canApproveListings ? "No approve" : isListingVerificationComplete(listing) ? "Approve" : "Verify first"}
                               </button>
@@ -11516,7 +11516,7 @@ function InamaadMainApp() {
                               <button
                                 onClick={() => deleteListing(listing.id)}
                                 disabled={!canDeleteListings}
-                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                className="rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 Delete
                               </button>
@@ -11660,7 +11660,7 @@ function InamaadMainApp() {
                               <button
                                 onClick={() => deletePropertyInquiry(inquiry.id)}
                                 disabled={!canDeleteLeads}
-                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                className="rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 Delete
                               </button>
@@ -12011,7 +12011,7 @@ function InamaadMainApp() {
                                 Closed
                               </button>
 
-                              <button onClick={() => deleteJvApplication(application.id)} disabled={!canDeleteLeads} className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+                              <button onClick={() => deleteJvApplication(application.id)} disabled={!canDeleteLeads} className="rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
                                 Delete
                               </button>
                             </div>
@@ -12129,7 +12129,7 @@ function InamaadMainApp() {
                                 Closed
                               </button>
 
-                              <button onClick={() => deletePropertyOffer(offer.id)} disabled={!canDeleteLeads} className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+                              <button onClick={() => deletePropertyOffer(offer.id)} disabled={!canDeleteLeads} className="rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
                                 Delete
                               </button>
                             </div>
@@ -12275,7 +12275,7 @@ function InamaadMainApp() {
                               <button
                                 onClick={() => deleteInspectionBooking(booking.id)}
                                 disabled={!canDeleteLeads}
-                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                className="rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 Delete
                               </button>
@@ -12416,7 +12416,7 @@ function InamaadMainApp() {
                               <button
                                 onClick={() => deleteContactMessage(message.id)}
                                 disabled={!canDeleteLeads}
-                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                className="rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 Delete
                               </button>
@@ -12558,7 +12558,7 @@ function InamaadMainApp() {
                               <button
                                 onClick={() => deleteInvestorRequest(request.id)}
                                 disabled={!canDeleteLeads}
-                                className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                className="rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 Delete
                               </button>
@@ -12576,8 +12576,8 @@ function InamaadMainApp() {
                   </h3>
 
                   <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
-                    <div className="min-w-[980px]">
-                      <div className="grid grid-cols-[140px_1.5fr_1.2fr_120px_170px_90px_150px] gap-4 bg-slate-50 px-5 py-3 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                    <div className="min-w-[720px]">
+                      <div className="grid grid-cols-[85px_1.3fr_0.9fr_80px_95px_45px_95px] gap-2 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">
                         <span>Reference</span>
                         <span>Title</span>
                         <span>Location</span>
@@ -12590,7 +12590,7 @@ function InamaadMainApp() {
                       {listings.map((listing) => (
                         <div
                           key={listing.id}
-                          className="grid grid-cols-[140px_1.5fr_1.2fr_120px_170px_90px_150px] items-center gap-4 border-t border-slate-200 px-5 py-4 text-sm"
+                          className="grid grid-cols-[85px_1.3fr_0.9fr_80px_95px_45px_95px] items-center gap-2 border-t border-slate-200 px-3 py-3 text-xs"
                         >
                           <div>
                             <p className="font-black uppercase tracking-[0.16em] text-[#d49613]">
@@ -12645,7 +12645,7 @@ function InamaadMainApp() {
                             <button
                               onClick={() => openEditListing(listing)}
                               disabled={!canEditListings}
-                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                              className="rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                               Edit
                             </button>
@@ -12653,7 +12653,7 @@ function InamaadMainApp() {
                             <button
                               onClick={() => deleteListing(listing.id)}
                               disabled={!canDeleteListings}
-                              className="rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                              className="rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                               Delete
                             </button>

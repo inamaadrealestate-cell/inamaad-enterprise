@@ -492,3 +492,79 @@ html body #root header.sticky > div > a > div:nth-child(2) > div:nth-child(2) {
 }
 
 /* INAMAAD_COMPACT_NAVBAR_NOWRAP_END */
+
+/* INAMAAD_FITTED_ADMIN_LISTING_COLUMNS_START */
+/* Make Admin -> Pending Listings / All Listings fit inside the modal without horizontal scrolling. */
+
+html body #root .min-w-\[720px\],
+html body #root .min-w-\[980px\] {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* Compact every admin listing table row/header */
+html body #root .min-w-\[720px\] > .grid,
+html body #root .min-w-\[980px\] > .grid {
+  grid-template-columns: 70px minmax(120px, 1.4fr) minmax(105px, 1fr) minmax(78px, 0.8fr) 70px 34px 70px !important;
+  gap: 6px !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+/* Allow long text/prices to wrap instead of pushing the table wide */
+html body #root .min-w-\[720px\] > .grid > *,
+html body #root .min-w-\[980px\] > .grid > * {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+/* Make reference and price smaller */
+html body #root .min-w-\[720px\] > .grid > :nth-child(1),
+html body #root .min-w-\[980px\] > .grid > :nth-child(1),
+html body #root .min-w-\[720px\] > .grid > :nth-child(4),
+html body #root .min-w-\[980px\] > .grid > :nth-child(4) {
+  font-size: 10px !important;
+  line-height: 1.35 !important;
+}
+
+/* Keep title readable but compact */
+html body #root .min-w-\[720px\] > .grid > :nth-child(2),
+html body #root .min-w-\[980px\] > .grid > :nth-child(2) {
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+
+/* Make status pill smaller */
+html body #root .min-w-\[720px\] > .grid > :nth-child(5) span,
+html body #root .min-w-\[980px\] > .grid > :nth-child(5) span {
+  padding: 3px 8px !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+}
+
+/* Make Edit/Delete buttons smaller and fitted */
+html body #root .min-w-\[720px\] button,
+html body #root .min-w-\[980px\] button {
+  padding: 6px 10px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  border-radius: 999px !important;
+}
+
+/* Remove the ugly horizontal scrollbar area where possible */
+html body #root .overflow-x-auto {
+  overflow-x: hidden !important;
+}
+
+/* On smaller screens, stack the admin listing rows neatly */
+@media (max-width: 760px) {
+  html body #root .min-w-\[720px\] > .grid,
+  html body #root .min-w-\[980px\] > .grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+}
+/* INAMAAD_FITTED_ADMIN_LISTING_COLUMNS_END */

@@ -9221,6 +9221,340 @@ function InamaadMainApp() {
                 </button>
               </form>
             )}
+            {/* INAMAAD_RESTORED_ADMIN_EDIT_FIELDS */}
+            {modal === "edit" && (
+              editingListing ? (
+                <form onSubmit={submitEditListing} className="grid gap-4">
+                  <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-slate-700">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[#9b6b16]">
+                      Admin quick edit
+                    </p>
+                    <h3 className="mt-2 text-xl font-black text-[#0d1c38]">
+                      Edit listing details
+                    </h3>
+                    <p className="mt-2">
+                      Update the important public listing details, media, contact information,
+                      review status, and verification notes.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f7f8fb] p-5 text-sm text-slate-600">
+                    Editing: <span className="font-black text-[#0d1c38]">{editingListing.title}</span>
+                  </div>
+
+                  <div className="rounded-[26px] border border-slate-200 bg-white p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                      Main listing details
+                    </p>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <input
+                        required
+                        value={editForm.title}
+                        onChange={(event) => setEditForm({ ...editForm, title: event.target.value })}
+                        placeholder="Listing title"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <input
+                        required
+                        value={editForm.price}
+                        onChange={(event) => setEditForm({ ...editForm, price: formatPriceInput(event.target.value) })}
+                        placeholder="Price / value"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <select
+                        value={editForm.stateName}
+                        onChange={(event) => setEditForm({ ...editForm, stateName: event.target.value })}
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="State or FCT"
+                      >
+                        {nigeriaLocationLabels.map((location) => (
+                          <option key={location} value={location}>
+                            {location}
+                          </option>
+                        ))}
+                      </select>
+
+                      <input
+                        value={editForm.cityArea}
+                        onChange={(event) => setEditForm({ ...editForm, cityArea: event.target.value })}
+                        placeholder="City / area"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <select
+                        value={editForm.type}
+                        onChange={(event) => setEditForm({ ...editForm, type: event.target.value })}
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="Listing type"
+                      >
+                        {propertyTypeOptions.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={editForm.category}
+                        onChange={(event) => setEditForm({ ...editForm, category: event.target.value })}
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="Listing purpose"
+                      >
+                        {listingPurposeOptions.map((purpose) => (
+                          <option key={purpose} value={purpose}>
+                            {purpose}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={editForm.status}
+                        onChange={(event) => setEditForm({ ...editForm, status: event.target.value as ListingStatus })}
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="Review status"
+                      >
+                        <option value="Pending Review">Pending Review</option>
+                        <option value="Verified">Verified</option>
+                      </select>
+
+                      <select
+                        value={editForm.availabilityStatus}
+                        onChange={(event) => setEditForm({ ...editForm, availabilityStatus: event.target.value as AvailabilityStatus })}
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="Availability"
+                      >
+                        {availabilityStatusOptions.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+
+                      <input
+                        value={editForm.landSize}
+                        onChange={(event) => setEditForm({ ...editForm, landSize: event.target.value })}
+                        placeholder="Land / property size"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <input
+                        value={editForm.videoUrl}
+                        onChange={(event) => setEditForm({ ...editForm, videoUrl: event.target.value })}
+                        placeholder="Video URL"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+                    </div>
+
+                    <textarea
+                      required
+                      value={editForm.description}
+                      onChange={(event) => setEditForm({ ...editForm, description: event.target.value })}
+                      placeholder="Listing description"
+                      rows={5}
+                      className="mt-4 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+
+                    <input
+                      value={editForm.yieldText}
+                      onChange={(event) => setEditForm({ ...editForm, yieldText: event.target.value })}
+                      placeholder="Investment highlight / short public highlight"
+                      className="mt-4 rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                    />
+                  </div>
+
+                  {!isJointVentureListing(editForm) ? (
+                    <div className="rounded-[26px] border border-slate-200 bg-white p-5">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                        Property facts
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <input
+                          value={editForm.bedrooms}
+                          onChange={(event) => setEditForm({ ...editForm, bedrooms: event.target.value })}
+                          placeholder="Bedrooms"
+                          className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        />
+
+                        <input
+                          value={editForm.bathrooms}
+                          onChange={(event) => setEditForm({ ...editForm, bathrooms: event.target.value })}
+                          placeholder="Bathrooms"
+                          className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-[26px] border border-purple-200 bg-purple-50 p-5">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-700">
+                        JV deal details
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <select
+                          value={editForm.jvStructure}
+                          onChange={(event) => setEditForm({ ...editForm, jvStructure: event.target.value })}
+                          className="rounded-2xl border border-purple-100 px-5 py-4 text-sm outline-none focus:border-purple-500"
+                          aria-label="JV structure"
+                        >
+                          {jvStructureOptions.map((structure) => (
+                            <option key={structure} value={structure}>
+                              {structure}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          value={editForm.jvProjectStage}
+                          onChange={(event) => setEditForm({ ...editForm, jvProjectStage: event.target.value })}
+                          className="rounded-2xl border border-purple-100 px-5 py-4 text-sm outline-none focus:border-purple-500"
+                          aria-label="JV project stage"
+                        >
+                          {jvProjectStageOptions.map((stage) => (
+                            <option key={stage} value={stage}>
+                              {stage}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <textarea
+                        value={editForm.jvLandContribution}
+                        onChange={(event) => setEditForm({ ...editForm, jvLandContribution: event.target.value })}
+                        placeholder="Landowner contribution"
+                        rows={3}
+                        className="mt-4 w-full rounded-2xl border border-purple-100 px-5 py-4 text-sm outline-none focus:border-purple-500"
+                      />
+
+                      <textarea
+                        value={editForm.jvDeveloperRequirement}
+                        onChange={(event) => setEditForm({ ...editForm, jvDeveloperRequirement: event.target.value })}
+                        placeholder="Developer / investor requirement"
+                        rows={3}
+                        className="mt-4 w-full rounded-2xl border border-purple-100 px-5 py-4 text-sm outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  )}
+
+                  <div className="rounded-[26px] border border-slate-200 bg-white p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d39b19]">
+                      Contact and image
+                    </p>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <input
+                        value={editForm.ownerName}
+                        onChange={(event) => setEditForm({ ...editForm, ownerName: event.target.value })}
+                        placeholder="Owner / contact name"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <input
+                        value={editForm.ownerPhone}
+                        onChange={(event) => setEditForm({ ...editForm, ownerPhone: event.target.value, contactWhatsapp: event.target.value })}
+                        placeholder="Phone / WhatsApp"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <input
+                        type="email"
+                        value={editForm.contactEmail}
+                        onChange={(event) => setEditForm({ ...editForm, contactEmail: event.target.value })}
+                        placeholder="Email"
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                      />
+
+                      <select
+                        value={editForm.publicContactVisibility}
+                        onChange={(event) => setEditForm({ ...editForm, publicContactVisibility: event.target.value })}
+                        className="rounded-2xl border border-slate-200 px-5 py-4 text-sm outline-none focus:border-[#0d1c38]"
+                        aria-label="Public contact visibility"
+                      >
+                        {publicContactVisibilityOptions.map((visibility) => (
+                          <option key={visibility} value={visibility}>
+                            {visibility}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <label className="mt-4 block rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                        Replace main image optional
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) => setEditImageFile(event.target.files?.[0] || null)}
+                        className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-[#fff7df] file:px-4 file:py-2 file:text-xs file:font-black file:text-[#9b6b16]"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="rounded-[26px] border border-emerald-200 bg-emerald-50 p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+                      Verification
+                    </p>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <label className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-black text-[#0d1c38]">
+                        <input type="checkbox" checked={editForm.titleVerified} onChange={(event) => setEditForm({ ...editForm, titleVerified: event.target.checked })} className="h-5 w-5 accent-emerald-600" />
+                        Title document checked
+                      </label>
+
+                      <label className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-black text-[#0d1c38]">
+                        <input type="checkbox" checked={editForm.ownerVerified} onChange={(event) => setEditForm({ ...editForm, ownerVerified: event.target.checked })} className="h-5 w-5 accent-emerald-600" />
+                        Owner verified
+                      </label>
+
+                      <label className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-black text-[#0d1c38]">
+                        <input type="checkbox" checked={editForm.siteInspected} onChange={(event) => setEditForm({ ...editForm, siteInspected: event.target.checked })} className="h-5 w-5 accent-emerald-600" />
+                        Site inspected
+                      </label>
+
+                      <label className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-black text-[#0d1c38]">
+                        <input type="checkbox" checked={editForm.priceChecked} onChange={(event) => setEditForm({ ...editForm, priceChecked: event.target.checked })} className="h-5 w-5 accent-emerald-600" />
+                        Price checked
+                      </label>
+                    </div>
+
+                    <select
+                      value={editForm.legalReviewStatus}
+                      onChange={(event) => setEditForm({ ...editForm, legalReviewStatus: event.target.value })}
+                      className="mt-4 rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm outline-none focus:border-emerald-600"
+                      aria-label="Legal review status"
+                    >
+                      {legalReviewStatusOptions.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      value={editForm.verificationNotes}
+                      onChange={(event) => setEditForm({ ...editForm, verificationNotes: event.target.value })}
+                      placeholder="Verification notes"
+                      rows={3}
+                      className="mt-4 w-full rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-sm outline-none focus:border-emerald-600"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="rounded-2xl bg-[#0d1c38] px-6 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isLoading ? "Saving changes..." : "Save listing changes"}
+                  </button>
+                </form>
+              ) : (
+                <div className="rounded-2xl bg-amber-50 p-5 text-sm font-bold text-amber-800">
+                  No listing was selected. Close this window and click Edit again.
+                </div>
+              )
+            )}
 {modal === "investor" && (
               <form onSubmit={submitInvestorRequest} className="grid gap-4">
                 <input

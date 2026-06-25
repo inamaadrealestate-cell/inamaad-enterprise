@@ -568,3 +568,96 @@ html body #root .overflow-x-auto {
   }
 }
 /* INAMAAD_FITTED_ADMIN_LISTING_COLUMNS_END */
+
+/* INAMAAD_SAFE_COMPACT_CARDS_START */
+/* Compact public listing cards without removing listing information */
+
+#properties .inamaad-mobile-horizontal {
+  gap: 14px !important;
+}
+
+@media (min-width: 1024px) {
+  #properties .inamaad-mobile-horizontal {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+#properties article.inamaad-listing-card-mobile {
+  border-radius: 18px !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08) !important;
+}
+
+#properties article.inamaad-listing-card-mobile > div:first-child {
+  height: 120px !important;
+}
+
+@media (min-width: 640px) {
+  #properties article.inamaad-listing-card-mobile > div:first-child {
+    height: 140px !important;
+  }
+}
+
+#properties article.inamaad-listing-card-mobile > div:first-child > div.relative.z-10 {
+  padding: 12px !important;
+}
+
+#properties article.inamaad-listing-card-mobile > div:last-child {
+  padding: 12px !important;
+}
+
+#properties article.inamaad-listing-card-mobile h3 {
+  font-size: 15px !important;
+  line-height: 1.2 !important;
+  margin-top: 5px !important;
+}
+
+#properties article.inamaad-listing-card-mobile p {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+#properties article.inamaad-listing-card-mobile [class*="text-3xl"] {
+  font-size: 18px !important;
+  line-height: 1.15 !important;
+}
+
+#properties article.inamaad-listing-card-mobile [class*="text-xl"] {
+  font-size: 15px !important;
+}
+
+#properties article.inamaad-listing-card-mobile [class*="mt-6"] {
+  margin-top: 10px !important;
+}
+
+#properties article.inamaad-listing-card-mobile [class*="mt-5"] {
+  margin-top: 8px !important;
+}
+
+#properties article.inamaad-listing-card-mobile [class*="mt-4"] {
+  margin-top: 8px !important;
+}
+
+#properties article.inamaad-listing-card-mobile .bg-slate-50 {
+  padding: 10px !important;
+}
+
+#properties article.inamaad-listing-card-mobile button {
+  padding: 8px 10px !important;
+  font-size: 11px !important;
+}
+
+/* Show only 12 listings until Explore More is clicked */
+#properties:not(.inamaad-show-all-listings) article[data-inamaad-open-listing="true"]:nth-of-type(n+13) {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  #properties .inamaad-mobile-horizontal {
+    gap: 12px !important;
+  }
+
+  #properties article.inamaad-listing-card-mobile > div:first-child {
+    height: 120px !important;
+  }
+}
+/* INAMAAD_SAFE_COMPACT_CARDS_END */

@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -58,6 +58,62 @@
   </div>
 </div>
     <script type="module" src="/main.tsx"></script>
-  </body>
+  
+<!-- INAMAAD_SAFE_EXPLORE_MORE_SCRIPT_START -->
+<script>
+(function () {
+  function setupExploreMore() {
+    var section = document.getElementById("properties");
+    if (!section) return;
+
+    var grid = section.querySelector(".inamaad-mobile-horizontal");
+    if (!grid) return;
+
+    var cards = grid.querySelectorAll('article[data-inamaad-open-listing="true"]');
+    var oldButton = section.querySelector("[data-inamaad-explore-more]");
+    if (oldButton) oldButton.remove();
+
+    if (cards.length <= 12 || section.classList.contains("inamaad-show-all-listings")) return;
+
+    var wrap = document.createElement("div");
+    wrap.setAttribute("data-inamaad-explore-more", "true");
+    wrap.style.display = "flex";
+    wrap.style.justifyContent = "center";
+    wrap.style.marginTop = "28px";
+
+    var button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Explore more listings (" + (cards.length - 12) + " more)";
+    button.style.border = "0";
+    button.style.borderRadius = "18px";
+    button.style.background = "#0d1c38";
+    button.style.color = "#ffffff";
+    button.style.padding = "14px 22px";
+    button.style.fontWeight = "900";
+    button.style.cursor = "pointer";
+
+    button.onclick = function () {
+      section.classList.add("inamaad-show-all-listings");
+      wrap.remove();
+    };
+
+    wrap.appendChild(button);
+    grid.insertAdjacentElement("afterend", wrap);
+  }
+
+  window.addEventListener("load", setupExploreMore);
+  window.addEventListener("hashchange", setupExploreMore);
+  setTimeout(setupExploreMore, 1000);
+  setTimeout(setupExploreMore, 2500);
+
+  var observer = new MutationObserver(function () {
+    setupExploreMore();
+  });
+
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>
+<!-- INAMAAD_SAFE_EXPLORE_MORE_SCRIPT_END -->
+</body>
 </html>
 

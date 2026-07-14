@@ -3761,6 +3761,12 @@ function InamaadMainApp() {
   }
 
   function openPostModal(mode: "property" | "jv") {
+    if (!isSignedIn) {
+      setModal("signin");
+      showSuccess("Please sign in or create an account before submitting a property or JV opportunity.");
+      return;
+    }
+
     switchPostSubmissionMode(mode);
     setModal("post");
     window.setTimeout(() => scheduleAutoRefresh(0), 0);
@@ -3768,6 +3774,25 @@ function InamaadMainApp() {
 
   async function submitListing(event: React.FormEvent) {
     event.preventDefault();
+
+    if (!isSignedIn) {
+      setModal("signin");
+      showSuccess("Please sign in or create an account before submitting a property or JV opportunity.");
+      return;
+    }
+
+    if (supabase) {
+      const { data: authenticationData } = await supabase.auth.getUser();
+
+      if (!authenticationData.user) {
+        setUser(null);
+        setDemoSignedIn(false);
+        setDemoUserEmail("");
+        setModal("signin");
+        showSuccess("Your session has expired. Please sign in again before submitting your listing.");
+        return;
+      }
+    }
 
     setIsLoading(true);
 
